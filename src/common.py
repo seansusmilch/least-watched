@@ -1,4 +1,9 @@
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
 
 EMBY_TOKEN = os.getenv("EMBY_TOKEN")
 EMBY_URL = os.getenv("EMBY_URL")
