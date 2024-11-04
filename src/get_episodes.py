@@ -1,26 +1,43 @@
-import json
-from src.common import EMBY_DEVICE, EMBY_URL
-import requests
+from src.common import EMBY_DEVICE, EMBY_URL, get_client
 
-params = {
-    "Fields": "MediaSources",
-    "ExcludeFields": "VideoChapters,VideoMediaSources,MeadiaStreams",
-    "MediaTypes": "Video",
-    "IncludeItemTypes": "Episode",
-    "ParentId": 202309,
-    "Limit": 100,
-    **EMBY_DEVICE,
-}
 
-response = requests.get(f"{EMBY_URL}/emby/Items", params=params)
-total_bytes = 0
-for item in response.json()["Items"]:
-    print(json.dumps(item, indent=4))
-    if "MediaSources" not in item:
-        continue
-    for media_source in item["MediaSources"]:
-        total_bytes += media_source["Size"]
+async def get_episodes(
+    id: str | int,
+    calculate_size: bool = False,
+):
+    client = await get_client()
 
-print(f"Total bytes: {total_bytes}")
-total_gigabytes = total_bytes / (1024**3)
-print(f"Total gigabytes: {total_gigabytes:.2f}")
+    params = {
+        "MediaTypes": "Video",
+        "IncludeItemTypes": "Episode",
+        "ExcludeItemTypes": "Season",
+        "ParentId": id,
+        **EMBY_DEVICE,
+    }
+
+    if calculate_size:
+        params["Fields"] = "MediaSources"
+        params["ExcludeFields"] = "VideoChapters,VideoMediaSources,MeadiaStreams"
+
+    res = await client.get(f"{EMBY_URL}/emby/Items", params=params)
+
+    if calculate_size:
+        total_bytes = 0
+        for item in res.json()["Items"]:
+            if "MediaSources" not in item:
+                continue
+            for media_source in item["MediaSources"]:
+                total_bytes += media_source["Size"]
+        total_gigabytes = total_bytes / (1024**3)
+        return res.json(), total_gigabytes
+
+    return res.json()
+
+
+if __name__ == "__main__":
+    import asyncio
+
+    results = asyncio.run(get_episodes(202309, calculate_size=True))
+    for episode in results[0]["Items"]:
+        print(episode["Type"], episode["Name"])
+    print(f"Total gigabytes: {results[1]:.2f}")
