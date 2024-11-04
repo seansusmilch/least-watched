@@ -1,5 +1,5 @@
 import json
-from common import EMBY_DEVICE, EMBY_URL
+from src.common import EMBY_DEVICE, EMBY_URL
 import requests
 
 params = {

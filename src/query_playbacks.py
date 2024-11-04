@@ -1,5 +1,5 @@
 import requests
-from common import EMBY_URL, EMBY_DEVICE
+from src.common import EMBY_URL, EMBY_DEVICE
 
 params = {
     "aggregate_data": "true",
