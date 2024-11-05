@@ -2,7 +2,7 @@ from src.common import EMBY_URL, EMBY_DEVICE, get_client
 
 
 async def get_shows_list():
-    client = await get_client()
+    client = get_client()
 
     params = {
         "IncludeItemTypes": "Series",
@@ -22,4 +22,5 @@ if __name__ == "__main__":
 
     results = asyncio.run(get_shows_list())
     for show in results["Items"]:
+        print(show)
         print(show["Id"], show["Name"])

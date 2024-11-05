@@ -16,7 +16,7 @@ EMBY_DEVICE = {
 
 
 @ttl_cache(maxsize=1, ttl=60)
-async def get_client():
+def get_client():
     client = httpx.AsyncClient()
     return client
 
