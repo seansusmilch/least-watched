@@ -20,4 +20,4 @@ async def query_playbacks(query: str) -> dict:
 if __name__ == "__main__":
     import asyncio
 
-    print(asyncio.run(query_playbacks("Wonder Egg Priority")))
+    print(asyncio.run(query_playbacks("The Office")))

@@ -40,6 +40,6 @@ if __name__ == "__main__":
 
     results = asyncio.run(get_episodes(225892, calculate_size=True))
     for episode in results[0]["Items"]:
-        print(episode)
-        print(episode["Type"], episode["Name"])
+        # print(episode)
+        print(episode["Type"], episode["Name"], episode["DateCreated"])
     print(f"Total gigabytes: {results[1]:.2f}")

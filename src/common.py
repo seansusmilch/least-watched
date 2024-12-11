@@ -1,6 +1,9 @@
 import os
 import httpx
 from cachetools.func import ttl_cache
+from dotenv import load_dotenv
+
+load_dotenv()  # Load environment variables from .env file
 
 EMBY_TOKEN = os.getenv("EMBY_TOKEN")
 EMBY_URL = os.getenv("EMBY_URL")

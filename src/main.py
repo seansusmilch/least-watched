@@ -1,4 +1,5 @@
 import asyncio
+import json
 from src.get_episodes import get_episodes
 from src.get_shows_list import get_shows_list
 from src.query_playbacks import query_playbacks
@@ -14,10 +15,12 @@ async def process_show(show):
             f'"{show["Name"]}" has never been played. {total_size:.2f}GB could be deleted???'
         )
         date_created = min([episode["DateCreated"] for episode in episodes["Items"]])
+        root_folder = episodes["Items"][0]["MediaSources"][0]["Path"].split("/")[2]
         return {
             "name": show["Name"],
             "total_size": total_size,
             "date_created": date_created,
+            "root_folder": root_folder,
         }
     return None
 
@@ -27,8 +30,8 @@ async def main():
 
     can_delete = []
     chunk_size = 20
-    for i in range(0, len(shows["Items"]), chunk_size):
-        chunk = shows["Items"][i : i + chunk_size]
+    for i in range(0, len(shows), chunk_size):
+        chunk = shows[i : i + chunk_size]
         tasks = [process_show(show) for show in chunk]
         results = await asyncio.gather(*tasks)
         for result in results:
@@ -38,8 +41,12 @@ async def main():
     print("\n\n\n")
     print("Shows that can be deleted:")
 
-    for show in sorted(can_delete, key=lambda x: x["date_created"]):
-        print(f"{show['name']} - {show['total_size']:.2f}GB - {show['date_created']}")
+    sorted_date = sorted(can_delete, key=lambda x: x["date_created"])
+    sorted_root = sorted(sorted_date, key=lambda x: x["root_folder"])
+    for show in sorted_root:
+        print(
+            f"{show['date_created']} - {show["root_folder"]} - {show['name']} - {show['total_size']:.2f}GB"
+        )
 
     delete_size = sum([show["total_size"] for show in can_delete])
     print(f"Total size that can be deleted: {delete_size:.2f}GB")
