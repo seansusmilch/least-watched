@@ -14,6 +14,9 @@ async def process_show(show):
         print(
             f'"{show["Name"]}" has never been played. {total_size:.2f}GB could be deleted???'
         )
+        if not episodes["Items"]:
+            print(f'"{show["Name"]}" has no episodes.', episodes)
+            return None
         date_created = min([episode["DateCreated"] for episode in episodes["Items"]])
         root_folder = episodes["Items"][0]["MediaSources"][0]["Path"].split("/")[2]
         return {
@@ -29,7 +32,7 @@ async def main():
     shows = await get_shows_list()
 
     can_delete = []
-    chunk_size = 20
+    chunk_size = 10
     for i in range(0, len(shows), chunk_size):
         chunk = shows[i : i + chunk_size]
         tasks = [process_show(show) for show in chunk]
@@ -42,7 +45,8 @@ async def main():
     print("Shows that can be deleted:")
 
     sorted_date = sorted(can_delete, key=lambda x: x["date_created"])
-    sorted_root = sorted(sorted_date, key=lambda x: x["root_folder"])
+    sorted_size = sorted(sorted_date, key=lambda x: x["total_size"])
+    sorted_root = sorted(sorted_size, key=lambda x: x["root_folder"])
     for show in sorted_root:
         print(
             f"{show['date_created']} - {show["root_folder"]} - {show['name']} - {show['total_size']:.2f}GB"
