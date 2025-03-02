@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Least-Watched Media{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h1 class="display-5 mb-3">Dashboard <span class="text-accent">// Media Overview</span></h1>
+        <p class="lead">Identify your least-watched media from Emby, with Sonarr and Radarr integration.</p>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card stats-card h-100">
+            <div class="card-body">
+                <h6 class="card-title">Total Unwatched</h6>
+                <p class="display-4">{{ total_count }}</p>
+                <small class="text-secondary">Media Items</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stats-card h-100">
+            <div class="card-body">
+                <h6 class="card-title">Total Size</h6>
+                <p class="display-4">{{ "%.1f"|format(total_size) }}</p>
+                <small class="text-secondary">GB</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stats-card h-100">
+            <div class="card-body">
+                <h6 class="card-title">Movies</h6>
+                <p class="display-4">{{ counts.movie or 0 }}</p>
+                <small class="text-secondary">Unwatched</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stats-card h-100">
+            <div class="card-body">
+                <h6 class="card-title">TV Shows</h6>
+                <p class="display-4">{{ counts.show or 0 }}</p>
+                <small class="text-secondary">Unwatched</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if last_updated %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="alert alert-info">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
+                        class="bi bi-info-circle" viewBox="0 0 16 16">
+                        <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z" />
+                        <path
+                            d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z" />
+                    </svg>
+                </div>
+                <div>
+                    <h5 class="alert-heading">Last Updated</h5>
+                    <p class="mb-0">{{ last_updated|format_datetime }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <ul class="nav nav-tabs card-header-tabs" id="mediaTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="all-tab" data-bs-toggle="tab" data-bs-target="#all"
+                            type="button" role="tab" aria-controls="all" aria-selected="true">All Media</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="movies-tab" data-bs-toggle="tab" data-bs-target="#movies"
+                            type="button" role="tab" aria-controls="movies" aria-selected="false">Movies</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="shows-tab" data-bs-toggle="tab" data-bs-target="#shows"
+                            type="button" role="tab" aria-controls="shows" aria-selected="false">TV Shows</button>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body">
+                <div class="tab-content" id="mediaTabContent">
+                    <div class="tab-pane fade show active" id="all" role="tabpanel" aria-labelledby="all-tab">
+                        {% if media_items %}
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Title</th>
+                                        <th>Type</th>
+                                        <th>Size</th>
+                                        <th>Date Added</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in media_items %}
+                                    <tr class="media-item">
+                                        <td>{{ item.title }}</td>
+                                        <td>
+                                            <span
+                                                class="badge {% if item.media_type == 'movie' %}bg-primary{% else %}bg-success{% endif %}">
+                                                {{ item.media_type|capitalize }}
+                                            </span>
+                                        </td>
+                                        <td>{{ "%.1f"|format(item.size_gb) }} GB</td>
+                                        <td>{{ item.date_created|format_datetime }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-secondary">
+                            <h5 class="alert-heading">No Media Found</h5>
+                            <p>No unwatched media items found. Run a scan to find unwatched media.</p>
+                            <hr>
+                            <a href="/scan" class="btn btn-primary">Run Scan</a>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="tab-pane fade" id="movies" role="tabpanel" aria-labelledby="movies-tab">
+                        {% if movie_items %}
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Title</th>
+                                        <th>Size</th>
+                                        <th>Date Added</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in movie_items %}
+                                    <tr class="media-item">
+                                        <td>{{ item.title }}</td>
+                                        <td>{{ "%.1f"|format(item.size_gb) }} GB</td>
+                                        <td>{{ item.date_created|format_datetime }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-secondary">
+                            <p>No unwatched movies found.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="tab-pane fade" id="shows" role="tabpanel" aria-labelledby="shows-tab">
+                        {% if show_items %}
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Title</th>
+                                        <th>Size</th>
+                                        <th>Date Added</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in show_items %}
+                                    <tr class="media-item">
+                                        <td>{{ item.title }}</td>
+                                        <td>{{ "%.1f"|format(item.size_gb) }} GB</td>
+                                        <td>{{ item.date_created|format_datetime }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-secondary">
+                            <p>No unwatched TV shows found.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12 text-center">
+        <a href="/scan" class="btn btn-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search me-2"
+                viewBox="0 0 16 16">
+                <path
+                    d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z" />
+            </svg>
+            Run New Scan
+        </a>
+    </div>
+</div>
+{% endblock %}

@@ -1,6 +1,6 @@
 # Least-Watched
 
-A Python tool to identify unwatched or least-watched media from your Emby server, with integration to Sonarr and Radarr. Now with a web interface!
+A Python tool to identify unwatched or least-watched media from your Emby server, with integration to Sonarr and Radarr.
 
 ## Features
 
@@ -8,31 +8,29 @@ A Python tool to identify unwatched or least-watched media from your Emby server
 - Ignores recently added content
 - Integrates with Emby, Sonarr, and Radarr
 - Configurable batch processing and concurrency limits
-- Web interface for easy management
-- SQLite database for storing media data
 
 ## Requirements
 
 - Python 3.12+
 - Poetry (dependency management)
-- Emby server (with Playback Reporting plugin installed)
+- Emby server
 - Sonarr and Radarr
 
 ## Installation
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/yourusername/least-watched.git
+   git clone https: //github.com/yourusername/least-watched.git
    cd least-watched
    ```
 
 2. Install Poetry if you don't have it already:
    ```bash
    # Windows (PowerShell)
-   (Invoke-WebRequest -Uri https://install.python-poetry.org -UseBasicParsing).Content | python -
+   (Invoke-WebRequest -Uri https: //install.python-poetry.org -UseBasicParsing).Content | python -
 
    # macOS/Linux
-   curl -sSL https://install.python-poetry.org | python3 -
+   curl -sSL https: //install.python-poetry.org | python3 -
    ```
 
 3. Install dependencies using Poetry:
@@ -42,34 +40,19 @@ A Python tool to identify unwatched or least-watched media from your Emby server
 
 ## Configuration
 
-You can configure the application in two ways:
-
-### 1. Using the Web Interface
-
-1. Start the application:
-   ```bash
-   poetry run python -m src.main
-   ```
-
-2. Open your browser and navigate to `http://localhost:8000`
-
-3. Go to the Settings page to configure your Emby, Sonarr, and Radarr settings
-
-### 2. Using Environment Variables
-
 Create a `.env` file in the root directory with the following variables:
 
 ```
 # Emby configuration
-EMBY_URL=http://your-emby-server:8096
+EMBY_URL=http: //your-emby-server:8096
 EMBY_TOKEN=your-emby-api-token
 
 # Sonarr configuration
-SONARR_URL=http://your-sonarr-server:8989
+SONARR_URL=http: //your-sonarr-server:8989
 SONARR_API_KEY=your-sonarr-api-key
 
 # Radarr configuration
-RADARR_URL=http://your-radarr-server:7878
+RADARR_URL=http: //your-radarr-server:7878
 RADARR_API_KEY=your-radarr-api-key
 
 # Application settings
@@ -87,26 +70,10 @@ BATCH_SIZE=40                 # Number of items to process in each batch
 
 ## Usage
 
-### Web Interface
-
-1. Start the application:
-   ```bash
-   poetry run python -m src.main
-   ```
-
-2. Open your browser and navigate to `http://localhost:8000`
-
-3. Use the web interface to:
-   - View unwatched media
-   - Scan for new unwatched media
-   - Configure application settings
-
-### Command Line (Legacy)
-
-The command line interface is still available for backward compatibility:
+Run the application using Poetry:
 
 ```bash
-poetry run python -m src.cli
+poetry run python -m src.main
 ```
 
 ## Development
@@ -125,6 +92,7 @@ To add new dependencies:
 poetry add package-name
 ```
 
-## License
-
-[MIT License](LICENSE)
+- Use poetry to manage dependencies.
+- Use FastAPI to create a REST API.
+- Use templates to render HTML.
+- Use a SQLite database to store media data.
