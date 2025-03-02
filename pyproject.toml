@@ -13,6 +13,7 @@ cachetools = "^5.5.0"
 arrapi = "^1.4.13"
 setuptools = "^75.8.0"
 tqdm = "^4.66.2"
+dateparser = "^1.2.1"
 
 
 [build-system]
