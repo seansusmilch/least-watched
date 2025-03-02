@@ -1,22 +1,29 @@
 # Least-Watched
 
-A Python tool to identify unwatched or least-watched media from your Emby server, with integration to Sonarr and Radarr. Now with a web interface!
+A modern application to identify unwatched or least-watched media from your Emby server, with integration to Sonarr and Radarr.
+
+## Project Structure
+
+This is a monorepo containing both the backend and frontend applications:
+
+- `packages/backend`: Python FastAPI backend that communicates with Emby, Sonarr, and Radarr
+- `packages/frontend`: Next.js frontend with a modern dark UI
 
 ## Features
 
 - Identifies media that hasn't been watched for a configurable period
 - Ignores recently added content
 - Integrates with Emby, Sonarr, and Radarr
+- Modern, responsive dark UI
 - Configurable batch processing and concurrency limits
-- Web interface for easy management
-- SQLite database for storing media data
 
 ## Requirements
 
 - Python 3.12+
 - Poetry (dependency management)
-- Emby server (with Playback Reporting plugin installed)
-- Sonarr and Radarr
+- Node.js 18+ and npm
+- Emby server
+- Sonarr and Radarr (optional)
 
 ## Installation
 
@@ -26,38 +33,19 @@ A Python tool to identify unwatched or least-watched media from your Emby server
    cd least-watched
    ```
 
-2. Install Poetry if you don't have it already:
+2. Install dependencies:
    ```bash
-   # Windows (PowerShell)
-   (Invoke-WebRequest -Uri https://install.python-poetry.org -UseBasicParsing).Content | python -
-
-   # macOS/Linux
-   curl -sSL https://install.python-poetry.org | python3 -
+   npm run install:all
    ```
 
-3. Install dependencies using Poetry:
-   ```bash
-   poetry install
-   ```
+   This will install:
+   - Root npm dependencies
+   - Backend Python dependencies using Poetry
+   - Frontend npm dependencies
 
 ## Configuration
 
-You can configure the application in two ways:
-
-### 1. Using the Web Interface
-
-1. Start the application:
-   ```bash
-   poetry run python -m src.main
-   ```
-
-2. Open your browser and navigate to `http://localhost:8000`
-
-3. Go to the Settings page to configure your Emby, Sonarr, and Radarr settings
-
-### 2. Using Environment Variables
-
-Create a `.env` file in the root directory with the following variables:
+Create a `.env` file in the `packages/backend` directory with the following variables:
 
 ```
 # Emby configuration
@@ -85,46 +73,62 @@ BATCH_SIZE=40                 # Number of items to process in each batch
 - **Sonarr**: Go to Settings > General > API Key
 - **Radarr**: Go to Settings > General > API Key
 
-## Usage
+## Running the Application
 
-### Web Interface
-
-1. Start the application:
-   ```bash
-   poetry run python -m src.main
-   ```
-
-2. Open your browser and navigate to `http://localhost:8000`
-
-3. Use the web interface to:
-   - View unwatched media
-   - Scan for new unwatched media
-   - Configure application settings
-
-### Command Line (Legacy)
-
-The command line interface is still available for backward compatibility:
+You can run both the backend and frontend with a single command:
 
 ```bash
-poetry run python -m src.cli
+npm start
 ```
+
+Or run them separately:
+
+```bash
+# Run just the backend
+npm run start:backend
+
+# Run just the frontend
+npm run start:frontend
+```
+
+The application will be available at:
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8000
 
 ## Development
 
-This project uses Poetry for dependency management with virtual environments. The configuration in `poetry.toml` ensures that the virtual environment is created within the project directory.
+### Backend
 
-To activate the virtual environment:
+The backend is a Python FastAPI application that uses Poetry for dependency management.
+
+To activate the Poetry virtual environment:
 
 ```bash
+cd packages/backend
 poetry shell
 ```
 
-To add new dependencies:
+### Frontend
+
+The frontend is a Next.js application with TypeScript and Tailwind CSS.
+
+To run the frontend in development mode:
 
 ```bash
-poetry add package-name
+cd packages/frontend
+npm run dev
 ```
+
+## Building for Production
+
+To build the frontend for production:
+
+```bash
+npm run build:frontend
+```
+
+The backend can be deployed using various methods such as Gunicorn, Docker, or a WSGI server.
 
 ## License
 
-[MIT License](LICENSE)
+MIT

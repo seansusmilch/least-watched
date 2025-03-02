@@ -4,4 +4,4 @@ __pycache__/
 .env
 config.json
 *.db
-
+node_modules/

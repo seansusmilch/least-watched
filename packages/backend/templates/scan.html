@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+
+{% block title %}Scan - Least-Watched Media{% endblock %}
+
+{% block extra_css %}
+<style>
+    @keyframes pulse {
+        0% {
+            opacity: 0.6;
+        }
+
+        50% {
+            opacity: 1;
+        }
+
+        100% {
+            opacity: 0.6;
+        }
+    }
+
+    .scanning-pulse {
+        animation: pulse 2s infinite ease-in-out;
+    }
+
+    .progress-container {
+        position: relative;
+        margin: 30px 0;
+    }
+
+    .progress-percentage {
+        position: absolute;
+        top: -25px;
+        right: 0;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--accent-tertiary);
+    }
+
+    .current-item {
+        font-family: 'Courier New', monospace;
+        background-color: var(--bg-tertiary);
+        padding: 10px 15px;
+        border-radius: 6px;
+        border-left: 3px solid var(--accent-primary);
+        margin: 15px 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h1 class="display-5 mb-3">Media Scan <span class="text-accent">// Discovery</span></h1>
+        <p class="lead">Scan your Emby server for unwatched or least-watched media.</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Scan Configuration</h5>
+            </div>
+            <div class="card-body">
+                {% if scan_in_progress %}
+                <div class="alert alert-info">
+                    <div class="d-flex align-items-center">
+                        <div class="me-3 scanning-pulse">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
+                                class="bi bi-arrow-repeat" viewBox="0 0 16 16">
+                                <path
+                                    d="M11.534 7h3.932a.25.25 0 0 1 .192.41l-1.966 2.36a.25.25 0 0 1-.384 0l-1.966-2.36a.25.25 0 0 1 .192-.41zm-11 2h3.932a.25.25 0 0 0 .192-.41L2.692 6.23a.25.25 0 0 0-.384 0L.342 8.59A.25.25 0 0 0 .534 9z" />
+                                <path fill-rule="evenodd"
+                                    d="M8 3c-1.552 0-2.94.707-3.857 1.818a.5.5 0 1 1-.771-.636A6.002 6.002 0 0 1 13.917 7H12.9A5.002 5.002 0 0 0 8 3zM3.1 9a5.002 5.002 0 0 0 8.757 2.182.5.5 0 1 1 .771.636A6.002 6.002 0 0 1 2.083 9H3.1z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h5 class="alert-heading">Scan in Progress</h5>
+                            <p class="mb-0">Please wait while we scan your media library. This page will automatically
+                                refresh to show progress.</p>
+                        </div>
+                    </div>
+
+                    <div class="progress-container">
+                        <div class="progress-percentage">{{ progress.percent_complete }}%</div>
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"
+                                style="width: {{ progress.percent_complete }}%"
+                                aria-valuenow="{{ progress.percent_complete }}" aria-valuemin="0" aria-valuemax="100">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-3">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <small class="text-secondary">Processed:</small>
+                                <p class="mb-0">{{ progress.processed_items }} / {{ progress.total_items }}</p>
+                            </div>
+                            <div class="col-md-4">
+                                <small class="text-secondary">Unwatched Found:</small>
+                                <p class="mb-0">{{ progress.unwatched_found }}</p>
+                            </div>
+                        </div>
+
+                        {% if progress.current_item %}
+                        <div class="mt-3">
+                            <small class="text-secondary">Currently Processing:</small>
+                            <div class="current-item">{{ progress.current_item }}</div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% elif scan_complete %}
+                <div class="alert alert-success">
+                    <div class="d-flex align-items-center">
+                        <div class="me-3">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
+                                class="bi bi-check-circle" viewBox="0 0 16 16">
+                                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z" />
+                                <path
+                                    d="M10.97 4.97a.235.235 0 0 0-.02.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-1.071-1.05z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h5 class="alert-heading">Scan Complete</h5>
+                            <p class="mb-0">The scan has completed successfully.</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-3">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <small class="text-secondary">Total Unwatched Items:</small>
+                                <p class="mb-0 fw-bold">{{ total_count }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <small class="text-secondary">Total Size:</small>
+                                <p class="mb-0 fw-bold">{{ "%.1f"|format(total_size) }} GB</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-3">
+                        <a href="/" class="btn btn-primary">View Results</a>
+                        <span id="redirect-message" class="ms-2 text-accent"></span>
+                    </div>
+                </div>
+                {% endif %}
+
+                <form action="/scan" method="post">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="days_threshold" class="form-label">Days Threshold</label>
+                                <input type="number" class="form-control" id="days_threshold" name="days_threshold"
+                                    value="{{ config.days_threshold }}" min="1" required {% if scan_in_progress
+                                    %}disabled{% endif %}>
+                                <div class="form-text">Consider media unwatched if not watched in this many days.</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="ignore_newer_than_days" class="form-label">Ignore Newer Than Days</label>
+                                <input type="number" class="form-control" id="ignore_newer_than_days"
+                                    name="ignore_newer_than_days" value="{{ config.ignore_newer_than_days }}" min="0"
+                                    required {% if scan_in_progress %}disabled{% endif %}>
+                                <div class="form-text">Ignore media added within this many days.</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="concurrent_limit" class="form-label">Concurrent Limit</label>
+                                <input type="number" class="form-control" id="concurrent_limit" name="concurrent_limit"
+                                    value="{{ config.concurrent_limit }}" min="1" max="20" required {% if
+                                    scan_in_progress %}disabled{% endif %}>
+                                <div class="form-text">Number of concurrent API requests.</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="batch_size" class="form-label">Batch Size</label>
+                                <input type="number" class="form-control" id="batch_size" name="batch_size"
+                                    value="{{ config.batch_size }}" min="1" max="100" required {% if scan_in_progress
+                                    %}disabled{% endif %}>
+                                <div class="form-text">Number of items to process in each batch.</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary" {% if scan_in_progress %}disabled{% endif %}>
+                            {% if scan_in_progress %}
+                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                            Scanning...
+                            {% else %}
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                class="bi bi-search me-2" viewBox="0 0 16 16">
+                                <path
+                                    d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z" />
+                            </svg>
+                            Start Scan
+                            {% endif %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Scan Information</h5>
+            </div>
+            <div class="card-body">
+                <p>The scan process will:</p>
+                <ul>
+                    <li>Connect to your Emby server</li>
+                    <li>Retrieve all media items</li>
+                    <li>Filter for unwatched or least-watched items</li>
+                    <li>Save the results to the database</li>
+                </ul>
+
+                <div class="alert alert-secondary mt-3">
+                    <div class="d-flex align-items-center">
+                        <div class="me-3">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor"
+                                class="bi bi-info-circle" viewBox="0 0 16 16">
+                                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z" />
+                                <path
+                                    d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h6 class="mb-1">Last Scan</h6>
+                            <p class="mb-0 small">{% if last_updated %}{{ last_updated|format_datetime }}{% else
+                                %}Never{% endif %}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/scan.js"></script>
+{% endblock %}

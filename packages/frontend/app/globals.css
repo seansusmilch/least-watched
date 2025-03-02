@@ -1,0 +1,105 @@
+@import 'tailwindcss';
+
+:root {
+  --foreground-rgb: 255, 255, 255;
+  --background-start-rgb: 13, 17, 23;
+  --background-end-rgb: 8, 10, 14;
+
+  --primary-glow: conic-gradient(
+    from 180deg at 50% 50%,
+    #2563eb 0deg,
+    #1e40af 55deg,
+    #1e3a8a 120deg,
+    #1e3a8a 160deg,
+    transparent 360deg
+  );
+
+  --secondary-glow: radial-gradient(
+    rgba(37, 99, 235, 0.2),
+    rgba(37, 99, 235, 0)
+  );
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+  min-height: 100vh;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgb(var(--background-start-rgb));
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(37, 99, 235, 0.6);
+}
+
+/* Animations */
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Futuristic accents */
+.futuristic-border {
+  border: 1px solid rgba(37, 99, 235, 0.3);
+  box-shadow: 0 0 10px rgba(37, 99, 235, 0.1);
+}
+
+.futuristic-glow {
+  text-shadow: 0 0 8px rgba(37, 99, 235, 0.6);
+}
+
+/* Glass effect for cards */
+.glass-effect {
+  background: rgba(17, 24, 39, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Table styles */
+.table-futuristic th {
+  background-color: rgba(17, 24, 39, 0.8);
+  color: rgba(37, 99, 235, 0.9);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.table-futuristic tr:nth-child(odd) {
+  background-color: rgba(0, 0, 0, 0.3);
+}
+
+.table-futuristic tr:nth-child(even) {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.table-futuristic td {
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 0 5px rgba(255, 255, 255, 0.1);
+}
