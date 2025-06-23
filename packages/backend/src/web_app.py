@@ -6,12 +6,10 @@ import os
 from pathlib import Path
 import pytz
 import json
-from fastapi import Body
+from pydantic import BaseModel
 
-from fastapi import FastAPI, Request, Depends, Form, BackgroundTasks
-from fastapi.templating import Jinja2Templates
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import RedirectResponse, JSONResponse, HTMLResponse
+from fastapi import FastAPI, BackgroundTasks, Depends
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -19,6 +17,18 @@ from src.config import get_config, update_config
 from src.models import init_db, get_db, MediaItemDB
 from src.media_processor import get_unwatched_media
 from src.db_service import DatabaseService
+
+
+# Pydantic models for API requests
+class ScanSettings(BaseModel):
+    days_threshold: int
+    ignore_newer_than_days: int
+    concurrent_limit: int
+    batch_size: int
+
+
+class ConfigUpdate(BaseModel):
+    config: Dict[str, Any]
 
 
 # Initialize FastAPI app
@@ -32,16 +42,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Create static directory if it doesn't exist
-static_dir = Path("static")
-static_dir.mkdir(exist_ok=True)
-
-# Mount static files
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-# Initialize templates
-templates = Jinja2Templates(directory="templates")
 
 # Initialize database
 init_db()
@@ -62,67 +62,6 @@ scan_progress = {
 }
 
 
-@app.get("/")
-async def index(request: Request, db: Session = Depends(get_db)):
-    """Render the index page."""
-    global scan_complete
-
-    # Reset scan complete flag when viewing results
-    scan_complete = False
-
-    # Get media items from database
-    all_items = DatabaseService.get_all_media_items(db)
-    movie_items = DatabaseService.get_media_items_by_type(db, "movie")
-    show_items = DatabaseService.get_media_items_by_type(db, "show")
-
-    # Get statistics
-    total_size = DatabaseService.get_total_size(db)
-    last_updated = DatabaseService.get_last_updated(db)
-    counts = DatabaseService.get_count_by_type(db)
-
-    return templates.TemplateResponse(
-        "index.html",
-        {
-            "request": request,
-            "media_items": all_items,
-            "movie_items": movie_items,
-            "show_items": show_items,
-            "total_count": len(all_items),
-            "total_size": total_size,
-            "last_updated": last_updated,
-            "counts": counts,
-        },
-    )
-
-
-@app.get("/scan")
-async def scan_page(request: Request, db: Session = Depends(get_db)):
-    """Render the scan page."""
-    global scan_in_progress, scan_complete, last_scan_time, scan_results, scan_progress
-
-    config = get_config()
-
-    # Get statistics if scan is complete
-    if scan_complete and scan_results["total_count"] == 0:
-        all_items = DatabaseService.get_all_media_items(db)
-        scan_results["total_count"] = len(all_items)
-        scan_results["total_size"] = DatabaseService.get_total_size(db)
-
-    return templates.TemplateResponse(
-        "scan.html",
-        {
-            "request": request,
-            "config": config,
-            "scan_in_progress": scan_in_progress,
-            "scan_complete": scan_complete,
-            "last_updated": last_scan_time,
-            "total_count": scan_results["total_count"],
-            "total_size": scan_results["total_size"],
-            "progress": scan_progress,
-        },
-    )
-
-
 @app.get("/api/scan-progress")
 async def get_scan_progress():
     """Return the current scan progress as JSON."""
@@ -136,96 +75,6 @@ async def get_scan_progress():
             "results": scan_results if scan_complete else None,
         }
     )
-
-
-@app.post("/scan")
-async def start_scan(
-    request: Request,
-    background_tasks: BackgroundTasks,
-    days_threshold: int = Form(...),
-    ignore_newer_than_days: int = Form(...),
-    concurrent_limit: int = Form(...),
-    batch_size: int = Form(...),
-):
-    """Start a scan with the provided settings."""
-    global scan_in_progress, scan_complete, scan_progress
-
-    # Update config with new values
-    config_update = {
-        "days_threshold": days_threshold,
-        "ignore_newer_than_days": ignore_newer_than_days,
-        "concurrent_limit": concurrent_limit,
-        "batch_size": batch_size,
-    }
-    update_config(config_update)
-
-    # Start scan in background if not already running
-    if not scan_in_progress:
-        scan_in_progress = True
-        scan_complete = False
-        background_tasks.add_task(
-            run_scan,
-            days_threshold,
-            ignore_newer_than_days,
-            concurrent_limit,
-            batch_size,
-        )
-
-    return templates.TemplateResponse(
-        "scan.html",
-        {
-            "request": request,
-            "config": get_config(),
-            "scan_in_progress": scan_in_progress,
-            "scan_complete": scan_complete,
-            "last_updated": last_scan_time,
-            "total_count": scan_results["total_count"],
-            "total_size": scan_results["total_size"],
-            "progress": scan_progress,
-        },
-    )
-
-
-@app.get("/settings")
-async def settings_page(request: Request):
-    """Render the settings page."""
-    config = get_config()
-
-    return templates.TemplateResponse(
-        "settings.html",
-        {
-            "request": request,
-            "config": config,
-        },
-    )
-
-
-@app.post("/settings")
-async def update_settings(
-    request: Request,
-    emby_url: str = Form(...),
-    emby_token: str = Form(...),
-    sonarr_url: str = Form(...),
-    sonarr_api_key: str = Form(...),
-    radarr_url: str = Form(...),
-    radarr_api_key: str = Form(...),
-    timezone: str = Form(...),
-):
-    """Update settings with the provided values."""
-    # Update config with new values
-    config_update = {
-        "emby_url": emby_url,
-        "emby_token": emby_token,
-        "sonarr_url": sonarr_url,
-        "sonarr_api_key": sonarr_api_key,
-        "radarr_url": radarr_url,
-        "radarr_api_key": radarr_api_key,
-        "timezone": timezone,
-    }
-    update_config(config_update)
-
-    # Redirect to settings page
-    return RedirectResponse(url="/settings", status_code=303)
 
 
 async def run_scan(
@@ -283,35 +132,6 @@ async def run_scan(
         scan_in_progress = False
 
 
-# Add Jinja2 filters
-@app.on_event("startup")
-async def startup_event():
-    """Add custom filters to Jinja2 templates."""
-
-    def format_datetime(value):
-        if isinstance(value, datetime):
-            # Get the configured timezone
-            config = get_config()
-            timezone_str = config.get("timezone", "UTC")
-
-            try:
-                # Convert UTC time to the configured timezone
-                timezone = pytz.timezone(timezone_str)
-                if value.tzinfo is None:
-                    # Assume UTC if no timezone info
-                    value = pytz.utc.localize(value)
-                # Convert to the target timezone
-                value = value.astimezone(timezone)
-                return value.strftime("%Y-%m-%d %H:%M %Z")
-            except pytz.exceptions.UnknownTimeZoneError:
-                # Fallback to UTC if timezone is invalid
-                return value.strftime("%Y-%m-%d %H:%M UTC")
-        return value
-
-    templates.env.filters["format_datetime"] = format_datetime
-    templates.env.globals["now"] = lambda fmt: datetime.now().strftime(fmt)
-
-
 # API endpoints for Next.js frontend
 @app.get("/api/media")
 async def get_media(db: Session = Depends(get_db)):
@@ -346,51 +166,10 @@ async def get_stats(db: Session = Depends(get_db)):
 @app.post("/api/scan/start")
 async def start_scan_api(
     background_tasks: BackgroundTasks,
-    request: Request,
-    days_threshold: Optional[int] = Form(None),
-    ignore_newer_than_days: Optional[int] = Form(None),
-    concurrent_limit: Optional[int] = Form(None),
-    batch_size: Optional[int] = Form(None),
+    scan_settings: ScanSettings,
 ):
-    """Start a scan via API. Accepts either form data or JSON."""
+    """Start a scan via API. Accepts JSON request body with scan settings."""
     global scan_in_progress, scan_complete, scan_progress
-
-    # Try to get parameters from form data first, then from JSON if not present
-    if (
-        days_threshold is None
-        or ignore_newer_than_days is None
-        or concurrent_limit is None
-        or batch_size is None
-    ):
-        try:
-            data = await request.json()
-        except Exception:
-            data = {}
-        days_threshold = (
-            days_threshold if days_threshold is not None else data.get("days_threshold")
-        )
-        ignore_newer_than_days = (
-            ignore_newer_than_days
-            if ignore_newer_than_days is not None
-            else data.get("ignore_newer_than_days")
-        )
-        concurrent_limit = (
-            concurrent_limit
-            if concurrent_limit is not None
-            else data.get("concurrent_limit")
-        )
-        batch_size = batch_size if batch_size is not None else data.get("batch_size")
-
-    # Validate required parameters
-    if (
-        days_threshold is None
-        or ignore_newer_than_days is None
-        or concurrent_limit is None
-        or batch_size is None
-    ):
-        return JSONResponse(
-            status_code=400, content={"error": "Missing required scan parameters"}
-        )
 
     if scan_in_progress:
         return {"error": "Scan already in progress"}
@@ -408,20 +187,20 @@ async def start_scan_api(
 
     # Update config with scan parameters
     config_update = {
-        "days_threshold": days_threshold,
-        "ignore_newer_than_days": ignore_newer_than_days,
-        "concurrent_limit": concurrent_limit,
-        "batch_size": batch_size,
+        "days_threshold": scan_settings.days_threshold,
+        "ignore_newer_than_days": scan_settings.ignore_newer_than_days,
+        "concurrent_limit": scan_settings.concurrent_limit,
+        "batch_size": scan_settings.batch_size,
     }
     update_config(config_update)
 
     # Start scan in background
     background_tasks.add_task(
         run_scan,
-        days_threshold,
-        ignore_newer_than_days,
-        concurrent_limit,
-        batch_size,
+        scan_settings.days_threshold,
+        scan_settings.ignore_newer_than_days,
+        scan_settings.concurrent_limit,
+        scan_settings.batch_size,
     )
 
     return {"status": "Scan started"}
@@ -443,10 +222,9 @@ async def get_config_api():
 
 
 @app.post("/api/config")
-async def update_config_api(request: Request):
+async def update_config_api(config_data: ConfigUpdate):
     """Update application configuration."""
-    data = await request.json()
-    config_update = data.get("config", {})
+    config_update = config_data.config
 
     # Don't update sensitive fields if they are masked
     if config_update.get("emby_token") == "***":
