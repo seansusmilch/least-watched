@@ -1,0 +1,145 @@
+---
+description: figuring out what this project is, where things are located, how things work
+globs: 
+alwaysApply: false
+---
+# Least-Watched Project Guide
+
+## Project Overview
+A Python tool with Next.js frontend to identify unwatched or least-watched media from Emby servers, with integration to Sonarr and Radarr for automated media management.
+
+## Project Structure
+
+### Backend (Python)
+- **Main entry point**: [packages/backend/src/main.py](mdc:packages/backend/src/main.py) - FastAPI application and CLI entry point
+- **Configuration**: [packages/backend/src/config.py](mdc:packages/backend/src/config.py) - Environment variables and app settings
+- **Database**: [packages/backend/src/db_service.py](mdc:packages/backend/src/db_service.py) - SQLite database operations
+- **Data models**: [packages/backend/src/models.py](mdc:packages/backend/src/models.py) - Pydantic models for data structures
+- **Media processing**: [packages/backend/src/media_processor.py](mdc:packages/backend/src/media_processor.py) - Core business logic
+- **Web application**: [packages/backend/src/web_app.py](mdc:packages/backend/src/web_app.py) - FastAPI routes and endpoints
+- **CLI interface**: [packages/backend/src/cli.py](mdc:packages/backend/src/cli.py) - Command-line interface
+- **Display utilities**: [packages/backend/src/display.py](mdc:packages/backend/src/display.py) - Output formatting and display
+
+### API Providers
+- **Emby integration**: [packages/backend/src/providers/playbackreporting.py](mdc:packages/backend/src/providers/playbackreporting.py) - Emby API client
+- **Sonarr integration**: [packages/backend/src/providers/sonarr.py](mdc:packages/backend/src/providers/sonarr.py) - Sonarr API client  
+- **Radarr integration**: [packages/backend/src/providers/radarr.py](mdc:packages/backend/src/providers/radarr.py) - Radarr API client
+
+### Frontend (Next.js)
+- **Main layout**: [packages/frontend/app/layout.tsx](mdc:packages/frontend/app/layout.tsx) - Root layout component
+- **Home page**: [packages/frontend/app/page.tsx](mdc:packages/frontend/app/page.tsx) - Dashboard/landing page
+- **Media page**: [packages/frontend/app/media/page.tsx](mdc:packages/frontend/app/media/page.tsx) - Media listing and management
+- **Scan page**: [packages/frontend/app/scan/page.tsx](mdc:packages/frontend/app/scan/page.tsx) - Media scanning interface
+- **Settings page**: [packages/frontend/app/settings/page.tsx](mdc:packages/frontend/app/settings/page.tsx) - Configuration management
+- **Components**: [packages/frontend/app/components/](mdc:packages/frontend/app/components) - Reusable React components
+
+### Backend Templates (Legacy)
+- **Base template**: [packages/backend/templates/base.html](mdc:packages/backend/templates/base.html) - HTML base template
+- **Index template**: [packages/backend/templates/index.html](mdc:packages/backend/templates/index.html) - Main dashboard template
+- **Media list template**: [packages/backend/templates/media_list.html](mdc:packages/backend/templates/media_list.html) - Media listing template
+
+### Configuration Files
+- **Poetry config**: [pyproject.toml](mdc:pyproject.toml) - Python dependencies and project metadata
+- **Poetry settings**: [poetry.toml](mdc:poetry.toml) - Poetry configuration
+- **Frontend dependencies**: [packages/frontend/package.json](mdc:packages/frontend/package.json) - Node.js dependencies
+- **Next.js config**: [packages/frontend/next.config.ts](mdc:packages/frontend/next.config.ts) - Next.js configuration
+- **Tailwind config**: [packages/frontend/tailwind.config.js](mdc:packages/frontend/tailwind.config.js) - Tailwind CSS configuration
+
+## Development Patterns
+
+### Backend Development
+- Use **Poetry** for dependency management: `poetry add package-name`
+- Run backend: `poetry run python -m src.main`
+- Activate virtual environment: `poetry shell`
+- All code uses **FastAPI** for REST API endpoints
+- **SQLite** database for persistent storage via [packages/backend/src/db_service.py](mdc:packages/backend/src/db_service.py)
+- **Pydantic models** for data validation and serialization
+- **Async/await** patterns for API integrations and database operations
+
+### Frontend Development
+- Uses **Next.js 14** with App Router
+- **TypeScript** for type safety
+- **Tailwind CSS** for styling
+- **React Server Components** where possible
+- API calls to backend FastAPI endpoints
+
+### Configuration Management
+- Environment variables in `.env` file (not tracked in git)
+- Configuration loaded via [packages/backend/src/config.py](mdc:packages/backend/src/config.py)
+- Key settings: EMBY_URL, EMBY_TOKEN, SONARR_URL, SONARR_API_KEY, RADARR_URL, RADARR_API_KEY
+
+### API Integration Patterns
+- All external API clients in [packages/backend/src/providers/](mdc:packages/backend/src/providers)
+- Use **httpx** for async HTTP requests
+- Implement rate limiting and error handling
+- Batch processing for large datasets
+
+### Database Patterns
+- **SQLite** for local storage
+- Database schema managed in [packages/backend/src/models.py](mdc:packages/backend/src/models.py)
+- All database operations through [packages/backend/src/db_service.py](mdc:packages/backend/src/db_service.py)
+- Use connection pooling and proper async context managers
+
+## Key Concepts
+
+### Media Processing Workflow
+1. **Scan**: Discover media from Emby server
+2. **Filter**: Apply unwatched days threshold and ignore recent additions
+3. **Process**: Determine deletion candidates based on criteria
+4. **Action**: Integrate with Sonarr/Radarr for automated management
+
+### Configuration Parameters
+- `UNWATCHED_DAYS_THRESHOLD`: Days to consider media unwatched (default: 365)
+- `IGNORE_NEWER_THAN_DAYS`: Ignore recently added media (default: 270)
+- `CONCURRENT_LIMIT`: Concurrent API requests (default: 5)
+- `BATCH_SIZE`: Items per processing batch (default: 40)
+
+## Development Commands
+
+### Backend Commands (PowerShell)
+```powershell
+# Install dependencies
+poetry install
+
+# Run application
+poetry run python -m src.main
+
+# Activate virtual environment  
+poetry shell
+
+# Add new dependency
+poetry add package-name
+
+# Run with development server
+poetry run uvicorn src.web_app:app --reload
+```
+
+### Frontend Commands (PowerShell)
+```powershell
+# Navigate to frontend
+cd packages/frontend
+
+# Install dependencies
+npm install
+
+# Run development server
+npm run dev
+
+# Build for production
+npm run build
+```
+
+## Testing and Debugging
+- Use **pytest** for backend testing
+- **Jest** for frontend testing
+- Enable FastAPI automatic docs at `/docs` endpoint
+- Use **uvicorn** with `--reload` for development
+- Frontend hot reload with Next.js dev server
+
+## API Endpoints
+- `/api/media` - Media listing and management
+- `/api/scan` - Trigger media scanning
+- `/api/settings` - Configuration management
+- `/docs` - FastAPI automatic documentation
+- `/health` - Health check endpoint
+

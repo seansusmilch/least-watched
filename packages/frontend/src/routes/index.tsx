@@ -1,16 +1,17 @@
-'use client';
+import { createFileRoute, redirect } from '@tanstack/react-router';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-
-export default function Home() {
-  const router = useRouter();
-
-  useEffect(() => {
+export const Route = createFileRoute('/')({
+  beforeLoad: async () => {
     // Redirect to the media page
-    router.push('/media');
-  }, [router]);
+    throw redirect({
+      to: '/media',
+    });
+  },
+  component: Index,
+});
 
+function Index() {
+  // This component should never render due to the redirect
   return (
     <main className='flex min-h-screen flex-col items-center justify-center p-24'>
       <div className='text-center'>

@@ -1,0 +1,187 @@
+---
+description: figuring out how to write code in this project. how to use the api. how to use the database
+globs: 
+alwaysApply: false
+---
+# Coding Standards and Best Practices
+
+## Python Backend Standards
+
+### Code Style
+- Follow **PEP 8** formatting standards
+- Use **type hints** for all function parameters and return values
+- Use **async/await** for all I/O operations (database, HTTP requests)
+- Import order: standard library, third-party, local imports
+- Maximum line length: 88 characters (Black formatter standard)
+
+### Error Handling
+- Use **try/except** blocks for external API calls
+- Log errors with appropriate context using Python logging
+- Return meaningful error responses from FastAPI endpoints
+- Use **HTTPException** for API error responses
+
+### Database Operations
+- Always use **async context managers** for database connections
+- Use parameterized queries to prevent SQL injection
+- Handle database connection errors gracefully
+- Reference: [packages/backend/src/db_service.py](mdc:packages/backend/src/db_service.py)
+
+### API Integration
+- Implement **exponential backoff** for retries
+- Use **httpx.AsyncClient** with connection pooling
+- Set reasonable **timeout values** for external requests  
+- Log API request/response for debugging
+- Reference providers in: [packages/backend/src/providers/](mdc:packages/backend/src/providers)
+
+### FastAPI Patterns
+- Use **Pydantic models** for request/response validation
+- Implement proper **dependency injection**
+- Use **async def** for all endpoint functions
+- Return appropriate **HTTP status codes**
+- Add **OpenAPI documentation** with descriptions
+- Reference: [packages/backend/src/web_app.py](mdc:packages/backend/src/web_app.py)
+
+### Configuration Management
+- All configuration via **environment variables**
+- Use **pydantic.BaseSettings** for config validation
+- Provide sensible **default values**
+- Never commit secrets or API keys
+- Reference: [packages/backend/src/config.py](mdc:packages/backend/src/config.py)
+
+## Frontend Standards
+
+### TypeScript Usage
+- Enable **strict mode** in TypeScript configuration
+- Use **interface** for object type definitions
+- Prefer **type** for union types and aliases
+- Always define **component props** with interfaces
+- Use **optional chaining** (?.) for nullable properties
+
+### React Component Patterns
+- Use **React Server Components** by default
+- Add **'use client'** directive only when necessary (interactivity, hooks)
+- Prefer **function components** over class components
+- Use **descriptive component names** in PascalCase
+- Extract reusable logic into **custom hooks**
+
+### Styling with Tailwind CSS
+- Use **Tailwind utility classes** for styling
+- Create **component-specific CSS** only when necessary
+- Use **responsive design** classes (sm:, md:, lg:)
+- Maintain **consistent spacing** using Tailwind scale
+- Reference: [packages/frontend/tailwind.config.js](mdc:packages/frontend/tailwind.config.js)
+
+### Next.js App Router Patterns
+- Use **page.tsx** for route components
+- Use **layout.tsx** for shared layouts
+- Implement **loading.tsx** for loading states
+- Use **error.tsx** for error boundaries
+- Keep **metadata** definitions close to page components
+
+### API Integration
+- Use **fetch** or **axios** for API calls
+- Implement **error handling** for network requests
+- Use **React Query** or **SWR** for data fetching when needed
+- Show **loading states** during API calls
+- Handle **error states** gracefully
+
+## File Organization
+
+### Backend Structure
+```
+packages/backend/src/
+├── main.py              # Application entry point
+├── config.py            # Configuration management
+├── models.py            # Pydantic data models
+├── db_service.py        # Database operations
+├── web_app.py           # FastAPI application
+├── media_processor.py   # Business logic
+├── cli.py               # CLI interface
+├── display.py           # Output formatting
+├── utils.py             # Utility functions
+└── providers/           # External API clients
+    ├── __init__.py
+    ├── playbackreporting.py  # Emby integration
+    ├── sonarr.py            # Sonarr integration
+    └── radarr.py            # Radarr integration
+```
+
+### Frontend Structure
+```
+packages/frontend/app/
+├── layout.tsx           # Root layout
+├── page.tsx             # Home page
+├── globals.css          # Global styles
+├── components/          # Reusable components
+├── media/
+│   └── page.tsx         # Media management page
+├── scan/
+│   └── page.tsx         # Scanning interface
+└── settings/
+    └── page.tsx         # Settings page
+```
+
+## Performance Guidelines
+
+### Backend Performance
+- Use **connection pooling** for database connections
+- Implement **batch processing** for large datasets
+- Use **async/await** to avoid blocking operations
+- Set appropriate **concurrent limits** for external APIs
+- Cache frequently accessed data when appropriate
+
+### Frontend Performance
+- Use **React.memo** for expensive components
+- Implement **lazy loading** for large components
+- Optimize **image loading** with Next.js Image component
+- Use **code splitting** for large bundles
+- Minimize **client-side JavaScript** where possible
+
+## Security Considerations
+
+### Backend Security
+- Validate all **input data** with Pydantic models
+- Use **parameterized queries** for database operations
+- Implement **rate limiting** for API endpoints
+- Never log **sensitive information** (API keys, tokens)
+- Use **HTTPS** for all external API communications
+
+### Frontend Security
+- Sanitize **user inputs** before display
+- Use **environment variables** for configuration
+- Implement **CSP headers** for XSS protection
+- Avoid storing **sensitive data** in localStorage
+- Use **secure cookies** for authentication
+
+## Testing Standards
+
+### Backend Testing
+- Write **unit tests** for core business logic
+- Use **pytest** as the testing framework
+- Mock **external API calls** in tests
+- Test **error conditions** and edge cases
+- Maintain **test coverage** above 80%
+
+### Frontend Testing
+- Write **component tests** with Jest and React Testing Library
+- Test **user interactions** and form submissions
+- Mock **API calls** in component tests
+- Test **responsive behavior** across screen sizes
+- Use **accessibility testing** tools
+
+## Documentation Requirements
+
+### Code Documentation
+- Add **docstrings** to all Python functions and classes
+- Use **JSDoc comments** for complex TypeScript functions
+- Document **API endpoints** with FastAPI automatic docs
+- Include **usage examples** in documentation
+- Keep **README files** up to date
+
+### API Documentation
+- Use **OpenAPI/Swagger** documentation via FastAPI
+- Document **request/response schemas**
+- Include **example requests** and responses
+- Document **error codes** and their meanings
+- Provide **authentication requirements**
+

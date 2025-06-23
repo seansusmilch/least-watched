@@ -1,3 +1,11 @@
 {
-  "cSpell.words": ["httpx", "radarr", "sonarr"]
+  "cSpell.words": ["httpx", "radarr", "sonarr"],
+  "sqltools.connections": [
+    {
+      "previewLimit": 50,
+      "driver": "SQLite",
+      "name": "media_data",
+      "database": "packages/backend/media_data.db"
+    }
+  ]
 }
