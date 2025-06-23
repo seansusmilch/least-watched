@@ -7,9 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime
 import re
 import asyncio
-
-EMBY_TOKEN = os.getenv("EMBY_TOKEN")
-EMBY_URL = os.getenv("EMBY_URL")
+from src.config import get_config
 
 
 @dataclass
@@ -65,8 +63,9 @@ class PlaybackReportingResponse:
 class PlaybackReportingProvider:
 
     def __init__(self):
-        self.url = EMBY_URL
-        self.api_key = EMBY_TOKEN
+        config = get_config()
+        self.url = config.get("emby_url")
+        self.api_key = config.get("emby_token")
         self.client = self._get_client()
 
     def _get_client(self):

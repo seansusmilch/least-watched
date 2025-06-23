@@ -1,9 +1,10 @@
 from arrapi import RadarrAPI
-import os
+from src.config import get_config
 
 
 def get_radarr_api():
-    return RadarrAPI(os.getenv("RADARR_URL"), os.getenv("RADARR_API_KEY"))
+    config = get_config()
+    return RadarrAPI(config.get("radarr_url"), config.get("radarr_api_key"))
 
 
 if __name__ == "__main__":

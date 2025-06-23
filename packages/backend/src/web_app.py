@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import pytz
 import json
+from fastapi import Body
 
 from fastapi import FastAPI, Request, Depends, Form, BackgroundTasks
 from fastapi.templating import Jinja2Templates
@@ -345,13 +346,51 @@ async def get_stats(db: Session = Depends(get_db)):
 @app.post("/api/scan/start")
 async def start_scan_api(
     background_tasks: BackgroundTasks,
-    days_threshold: int = Form(...),
-    ignore_newer_than_days: int = Form(...),
-    concurrent_limit: int = Form(...),
-    batch_size: int = Form(...),
+    request: Request,
+    days_threshold: Optional[int] = Form(None),
+    ignore_newer_than_days: Optional[int] = Form(None),
+    concurrent_limit: Optional[int] = Form(None),
+    batch_size: Optional[int] = Form(None),
 ):
-    """Start a scan via API."""
+    """Start a scan via API. Accepts either form data or JSON."""
     global scan_in_progress, scan_complete, scan_progress
+
+    # Try to get parameters from form data first, then from JSON if not present
+    if (
+        days_threshold is None
+        or ignore_newer_than_days is None
+        or concurrent_limit is None
+        or batch_size is None
+    ):
+        try:
+            data = await request.json()
+        except Exception:
+            data = {}
+        days_threshold = (
+            days_threshold if days_threshold is not None else data.get("days_threshold")
+        )
+        ignore_newer_than_days = (
+            ignore_newer_than_days
+            if ignore_newer_than_days is not None
+            else data.get("ignore_newer_than_days")
+        )
+        concurrent_limit = (
+            concurrent_limit
+            if concurrent_limit is not None
+            else data.get("concurrent_limit")
+        )
+        batch_size = batch_size if batch_size is not None else data.get("batch_size")
+
+    # Validate required parameters
+    if (
+        days_threshold is None
+        or ignore_newer_than_days is None
+        or concurrent_limit is None
+        or batch_size is None
+    ):
+        return JSONResponse(
+            status_code=400, content={"error": "Missing required scan parameters"}
+        )
 
     if scan_in_progress:
         return {"error": "Scan already in progress"}

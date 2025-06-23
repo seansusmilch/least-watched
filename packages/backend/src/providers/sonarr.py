@@ -1,9 +1,10 @@
 from arrapi import SonarrAPI
-import os
+from src.config import get_config
 
 
 def get_sonarr_api():
-    return SonarrAPI(os.getenv("SONARR_URL"), os.getenv("SONARR_API_KEY"))
+    config = get_config()
+    return SonarrAPI(config.get("sonarr_url"), config.get("sonarr_api_key"))
 
 
 if __name__ == "__main__":

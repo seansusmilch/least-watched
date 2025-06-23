@@ -1,4 +1,5 @@
 import type { AppConfig } from '../types/config';
+import type { ScanSettings, ScanStatus } from '../types/scan';
 
 // Base API configuration
 const API_BASE_URL = ''; // Empty since we're using relative URLs
@@ -98,6 +99,29 @@ export const api = {
 
     return response.json();
   },
+
+  // Start a new scan with given settings
+  startScan: async (settings: ScanSettings): Promise<{ success: boolean }> => {
+    const response = await fetch(`${API_BASE_URL}/api/scan/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings),
+    });
+
+    if (!response.ok) {
+      throw new ApiError(
+        `API request failed: ${response.statusText}`,
+        response.status,
+        response.statusText
+      );
+    }
+
+    return response.json();
+  },
+
+  // Get current scan progress/status
+  getScanProgress: (): Promise<ScanStatus> =>
+    apiRequest<ScanStatus>('/api/scan-progress'),
 };
 
 // Query keys factory for consistent cache management
@@ -117,5 +141,11 @@ export const queryKeys = {
   // Config queries
   config: {
     all: ['config'] as const,
+  },
+  // Scan queries
+  scan: {
+    all: ['scan'] as const,
+    progress: () => [...queryKeys.scan.all, 'progress'] as const,
+    status: () => [...queryKeys.scan.all, 'status'] as const,
   },
 } as const;
