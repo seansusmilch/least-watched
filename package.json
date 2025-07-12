@@ -10,7 +10,7 @@
     "db:seed": "bun run scripts/seed-database.ts",
     "predev": "bun run db:generate && bun run db:push",
     "dev": "next dev --turbopack",
-    "prebuild": "bun run db:generate && bun run db:migrate",
+    "prebuild": "bun run db:generate",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"

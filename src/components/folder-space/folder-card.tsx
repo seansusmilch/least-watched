@@ -3,9 +3,8 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { HardDrive, Tv, Film, AlertTriangle } from 'lucide-react';
+import { HardDrive, Tv, Film } from 'lucide-react';
 import { formatFileSize } from './utils';
-import { EnhancedFolderDetails } from './enhanced-folder-details';
 import { DiskSpaceDetails } from './disk-space-details';
 import type { FolderSpaceData } from '@/lib/actions/media-processing';
 
@@ -15,7 +14,6 @@ interface FolderCardProps {
 }
 
 export function FolderCard({ folder, onClick }: FolderCardProps) {
-  const isEnhanced = folder.enhancedData;
   const hasDiskSpaceData = folder.diskSpaceData?.hasEnhancedData;
   const freeSpacePercent = folder.totalSpaceGB
     ? (folder.freeSpaceGB / folder.totalSpaceGB) * 100
@@ -24,8 +22,8 @@ export function FolderCard({ folder, onClick }: FolderCardProps) {
   return (
     <Card
       className={`cursor-pointer hover:shadow-md transition-shadow ${
-        isEnhanced?.isLowSpace ? 'border-orange-500' : ''
-      } ${hasDiskSpaceData ? 'border-blue-200' : ''}`}
+        hasDiskSpaceData ? 'border-blue-200' : ''
+      }`}
       onClick={() => onClick(folder.path)}
     >
       <CardContent className='p-4'>
@@ -37,16 +35,8 @@ export function FolderCard({ folder, onClick }: FolderCardProps) {
               <Tv className='h-4 w-4 text-green-500' />
             )}
             <HardDrive className='h-4 w-4 text-gray-500' />
-            {isEnhanced?.isLowSpace && (
-              <AlertTriangle className='h-4 w-4 text-orange-500' />
-            )}
           </div>
           <div className='flex space-x-1'>
-            {isEnhanced && (
-              <Badge variant='secondary' className='text-xs'>
-                Enhanced
-              </Badge>
-            )}
             {hasDiskSpaceData && (
               <Badge variant='outline' className='text-xs'>
                 DiskSpace
@@ -67,8 +57,8 @@ export function FolderCard({ folder, onClick }: FolderCardProps) {
           </div>
           <div className='text-xs text-muted-foreground'>{folder.source}</div>
 
-          {/* Enhanced space visualization for Radarr */}
-          {isEnhanced && folder.totalSpaceGB && (
+          {/* Space visualization */}
+          {folder.totalSpaceGB && (
             <div className='space-y-1'>
               <div className='flex justify-between text-xs'>
                 <span>Space Usage</span>
@@ -89,9 +79,6 @@ export function FolderCard({ folder, onClick }: FolderCardProps) {
               )}
             </div>
           </div>
-
-          {/* Enhanced data for Radarr folders */}
-          {isEnhanced && <EnhancedFolderDetails enhancedData={isEnhanced} />}
 
           {/* Enhanced diskspace data */}
           {hasDiskSpaceData && folder.diskSpaceData && (

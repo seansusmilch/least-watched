@@ -11,6 +11,8 @@ import {
   getEmbySettings,
 } from '@/lib/actions/settings';
 
+export const dynamic = 'force-dynamic';
+
 export default async function SettingsPage() {
   // Fetch all settings from database
   const [sonarrSettings, radarrSettings, embySettings] = await Promise.all([

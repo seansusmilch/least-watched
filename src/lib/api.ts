@@ -216,7 +216,7 @@ class ApiService {
     }
   }
 
-  async getSonarrSeries(configIndex: number = 0): Promise<any[]> {
+  async getSonarrSeries(configIndex: number = 0): Promise<SonarrSeries[]> {
     await this.ensureConfig();
     if (!this.config?.sonarr[configIndex]) return [];
 
@@ -237,7 +237,7 @@ class ApiService {
   async getSonarrHistory(
     seriesId?: number,
     configIndex: number = 0
-  ): Promise<any[]> {
+  ): Promise<unknown[]> {
     await this.ensureConfig();
     if (!this.config?.sonarr[configIndex]) return [];
 
@@ -278,7 +278,7 @@ class ApiService {
     }
   }
 
-  async getRadarrMovies(configIndex: number = 0): Promise<any[]> {
+  async getRadarrMovies(configIndex: number = 0): Promise<RadarrMovie[]> {
     await this.ensureConfig();
     if (!this.config?.radarr[configIndex]) return [];
 
@@ -299,7 +299,7 @@ class ApiService {
   async getRadarrHistory(
     movieId?: number,
     configIndex: number = 0
-  ): Promise<any[]> {
+  ): Promise<unknown[]> {
     await this.ensureConfig();
     if (!this.config?.radarr[configIndex]) return [];
 

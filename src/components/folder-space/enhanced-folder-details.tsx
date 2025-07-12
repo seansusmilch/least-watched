@@ -3,10 +3,17 @@
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, BarChart3, Users } from 'lucide-react';
 import { formatFileSize } from './utils';
-import type { FolderSpaceData } from '@/lib/actions/media-processing';
+
+// Define the enhanced data structure that this component expects
+interface EnhancedFolderData {
+  movieCount?: number;
+  averageMovieSize?: number;
+  qualityBreakdown?: Record<string, number>;
+  isLowSpace?: boolean;
+}
 
 interface EnhancedFolderDetailsProps {
-  enhancedData: NonNullable<FolderSpaceData['enhancedData']>;
+  enhancedData: EnhancedFolderData;
 }
 
 export function EnhancedFolderDetails({

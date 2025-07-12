@@ -54,8 +54,7 @@ export function FolderSelectionDialog({
         try {
           const result = await fetchFolders(
             instanceId,
-            instanceType.charAt(0).toUpperCase() +
-              (instanceType.slice(1) as 'Radarr' | 'Sonarr')
+            instanceType === 'sonarr' ? 'Sonarr' : 'Radarr'
           );
           if (result.success) {
             setFolders(result.data ?? []);
