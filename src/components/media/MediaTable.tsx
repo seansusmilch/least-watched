@@ -362,7 +362,7 @@ export const MediaTable = ({
                           </>
                         ) : (
                           <>
-                            <Tv className='h-3 w-3 mr-1' /> TV
+                            <Tv className='h-3 w-3 mr-1' /> Series
                           </>
                         )}
                       </Badge>

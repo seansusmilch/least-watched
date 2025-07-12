@@ -10,6 +10,9 @@ import {
 } from './actions/settings';
 import path from 'path';
 
+// Configuration constants
+const TESTING_LIMIT = 100; // Limit number of items processed per instance for testing
+
 const prisma = new PrismaClient();
 
 // Global progress tracking
@@ -304,7 +307,7 @@ export class MediaProcessor {
         });
         if (response.ok) {
           const series = await response.json();
-          totalItems += Math.min(series.length, 10); // Limit to 10 for testing
+          totalItems += Math.min(series.length, TESTING_LIMIT); // Limit for testing
         }
       } catch (error) {
         console.error(
@@ -322,7 +325,7 @@ export class MediaProcessor {
         });
         if (response.ok) {
           const movies = await response.json();
-          totalItems += Math.min(movies.length, 10); // Limit to 10 for testing
+          totalItems += Math.min(movies.length, TESTING_LIMIT); // Limit for testing
         }
       } catch (error) {
         console.error(
@@ -436,7 +439,7 @@ export class MediaProcessor {
       );
 
       // Limit to first 10 entries for testing
-      const limitedSeries = series.slice(0, 10);
+      const limitedSeries = series.slice(0, TESTING_LIMIT);
       console.log(
         `🔢 Processing first ${limitedSeries.length} series for testing`
       );
@@ -609,7 +612,7 @@ export class MediaProcessor {
       );
 
       // Limit to first 10 entries for testing
-      const limitedMovies = movies.slice(0, 10);
+      const limitedMovies = movies.slice(0, TESTING_LIMIT);
       console.log(
         `🔢 Processing first ${limitedMovies.length} movies for testing`
       );
