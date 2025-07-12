@@ -19,7 +19,8 @@ import { filterAndSortMediaItems } from '@/lib/utils/mediaFilters';
 export default function LeastWatchedPage() {
   // Custom hooks
   const { mediaItems, loading, refresh } = useMediaItems();
-  const { processing, progress, startProcessing } = useMediaProcessing(refresh);
+  const { processing, progress, startProcessing, closeProgress } =
+    useMediaProcessing(refresh);
   const { filters, sortCriteria, updateFilter, handleSort } = useMediaFilters();
   const {
     columnVisibility,
@@ -93,7 +94,12 @@ export default function LeastWatchedPage() {
         </div>
 
         {/* Processing Progress */}
-        {processing && <MediaProcessingProgress progress={progress} />}
+        {processing && (
+          <MediaProcessingProgress
+            progress={progress}
+            onClose={closeProgress}
+          />
+        )}
 
         {/* Folder Space Widget */}
         <FolderSpaceWidget

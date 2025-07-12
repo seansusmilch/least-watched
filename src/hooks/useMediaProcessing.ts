@@ -3,11 +3,13 @@ import { ProcessingProgress } from '@/lib/types/media';
 import {
   startMediaProcessing,
   getProcessingProgress,
+  getActiveMediaProcess,
 } from '@/lib/actions/media-processing';
 
 export const useMediaProcessing = (onComplete?: () => void) => {
   const [processing, setProcessing] = useState(false);
   const [progressId, setProgressId] = useState<string | null>(null);
+  const [isCompleted, setIsCompleted] = useState(false);
   const [progress, setProgress] = useState<ProcessingProgress>({
     processProgress: 0,
     progressPhase: '',
@@ -15,6 +17,31 @@ export const useMediaProcessing = (onComplete?: () => void) => {
     progressCurrent: 0,
     progressTotal: 0,
   });
+
+  // Check for active process on mount
+  useEffect(() => {
+    const checkActiveProcess = async () => {
+      try {
+        const activeProcess = await getActiveMediaProcess();
+        if (activeProcess) {
+          console.log('Found active media process:', activeProcess);
+          setProgressId(activeProcess.progressId);
+          setProcessing(true);
+          setProgress({
+            processProgress: activeProcess.progress.percentage,
+            progressPhase: activeProcess.progress.phase,
+            progressCurrentItem: activeProcess.progress.currentItem,
+            progressCurrent: activeProcess.progress.current,
+            progressTotal: activeProcess.progress.total,
+          });
+        }
+      } catch (error) {
+        console.error('Error checking for active process:', error);
+      }
+    };
+
+    checkActiveProcess();
+  }, []); // Run only on mount
 
   // Progress polling effect
   useEffect(() => {
@@ -36,13 +63,19 @@ export const useMediaProcessing = (onComplete?: () => void) => {
             // Check if processing is complete
             if (progressData.isComplete || progressData.percentage >= 100) {
               setProcessing(false);
+              setIsCompleted(true);
+
+              // Update progress to show completion
               setProgress({
-                processProgress: 0,
-                progressPhase: '',
-                progressCurrentItem: '',
-                progressCurrent: 0,
-                progressTotal: 0,
+                processProgress: 100,
+                progressPhase: 'Complete',
+                progressCurrentItem:
+                  progressData.currentItem ||
+                  'Processing completed successfully!',
+                progressCurrent: progressData.total,
+                progressTotal: progressData.total,
               });
+
               setProgressId(null);
 
               if (progressData.error) {
@@ -51,6 +84,7 @@ export const useMediaProcessing = (onComplete?: () => void) => {
                 console.log('Media processing completed successfully!');
               }
 
+              // Call onComplete callback immediately when processing finishes
               onComplete?.();
             }
           }
@@ -69,6 +103,7 @@ export const useMediaProcessing = (onComplete?: () => void) => {
 
   const startProcessing = async () => {
     setProcessing(true);
+    setIsCompleted(false);
     setProgress({
       processProgress: 0,
       progressPhase: 'Initializing...',
@@ -94,6 +129,7 @@ export const useMediaProcessing = (onComplete?: () => void) => {
 
   const resetProcessing = () => {
     setProcessing(false);
+    setIsCompleted(false);
     setProgress({
       processProgress: 0,
       progressPhase: '',
@@ -104,10 +140,22 @@ export const useMediaProcessing = (onComplete?: () => void) => {
     setProgressId(null);
   };
 
+  const closeProgress = () => {
+    setIsCompleted(false);
+    setProgress({
+      processProgress: 0,
+      progressPhase: '',
+      progressCurrentItem: '',
+      progressCurrent: 0,
+      progressTotal: 0,
+    });
+  };
+
   return {
-    processing,
+    processing: processing || isCompleted, // Show progress component during processing or completion
     progress,
     startProcessing,
     resetProcessing,
+    closeProgress,
   };
 };

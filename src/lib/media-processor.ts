@@ -11,7 +11,7 @@ import {
 import path from 'path';
 
 // Configuration constants
-const TESTING_LIMIT = 100; // Limit number of items processed per instance for testing
+const TESTING_LIMIT = 25; // Limit number of items processed per instance for testing
 
 const prisma = new PrismaClient();
 
@@ -252,6 +252,18 @@ export class MediaProcessor {
     progressStore.delete(progressId);
   }
 
+  static getActiveProcess(): {
+    progressId: string;
+    progress: MediaProcessingProgress;
+  } | null {
+    for (const [progressId, progress] of Array.from(progressStore.entries())) {
+      if (!progress.isComplete && !progress.error) {
+        return { progressId, progress };
+      }
+    }
+    return null;
+  }
+
   private getQualityScore(quality?: string): number {
     const qualityMap: Record<string, number> = {
       'Bluray-2160p': 100,
@@ -385,8 +397,8 @@ export class MediaProcessor {
     await this.storeProcessedItems(allProcessedItems);
 
     this.updateProgress(
-      'Complete',
-      totalItems,
+      'Items Stored',
+      processedItemCount,
       totalItems,
       `Processed ${allProcessedItems.length} items`
     );

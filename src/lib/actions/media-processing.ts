@@ -50,6 +50,13 @@ export async function getProcessingProgress(
   return MediaProcessor.getProgress(progressId);
 }
 
+export async function getActiveMediaProcess(): Promise<{
+  progressId: string;
+  progress: MediaProcessingProgress;
+} | null> {
+  return MediaProcessor.getActiveProcess();
+}
+
 // ============================================================================
 // Media Items Functions
 // ============================================================================
