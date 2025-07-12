@@ -19,8 +19,6 @@ import {
   getUniqueFilterOptions,
 } from '@/lib/utils/mediaFilters';
 
-export const dynamic = 'force-dynamic';
-
 export default function LeastWatchedPage() {
   // Custom hooks
   const { mediaItems, loading, refresh } = useMediaItems();
