@@ -22,6 +22,7 @@ import { Film, Tv, Eye, Clock, SortAsc, SortDesc, Columns } from 'lucide-react';
 import { MediaItem, SortCriteria } from '@/lib/types/media';
 import { formatDate, formatFileSize } from '@/lib/utils/formatters';
 import { availableColumns } from '@/lib/utils/columnConfig';
+import { DeletionScoreBreakdown } from './DeletionScoreBreakdown';
 
 interface MediaTableProps {
   items: MediaItem[];
@@ -58,6 +59,9 @@ export const MediaTable = ({
   isColumnPopoverOpen,
   setIsColumnPopoverOpen,
 }: MediaTableProps) => {
+  const [breakdownItem, setBreakdownItem] = useState<MediaItem | null>(null);
+  const [showBreakdown, setShowBreakdown] = useState(false);
+
   const getSortIcon = (field: keyof MediaItem) => {
     if (sortCriteria.field === field) {
       return sortCriteria.order === 'asc' ? (
@@ -77,6 +81,16 @@ export const MediaTable = ({
   const handleOpenColumnPopover = () => {
     onColumnVisibilityChange();
     setIsColumnPopoverOpen(true);
+  };
+
+  const handleOpenBreakdown = (item: MediaItem) => {
+    setBreakdownItem(item);
+    setShowBreakdown(true);
+  };
+
+  const handleCloseBreakdown = () => {
+    setShowBreakdown(false);
+    setBreakdownItem(null);
   };
 
   return (
@@ -470,6 +484,8 @@ export const MediaTable = ({
                                 ? 'secondary'
                                 : 'outline'
                             }
+                            className='cursor-pointer hover:opacity-80 transition-opacity'
+                            onClick={() => handleOpenBreakdown(item)}
                           >
                             {item.deletionScore}
                           </Badge>
@@ -490,6 +506,13 @@ export const MediaTable = ({
           </Table>
         </div>
       </CardContent>
+      {breakdownItem && (
+        <DeletionScoreBreakdown
+          item={breakdownItem}
+          open={showBreakdown}
+          onClose={handleCloseBreakdown}
+        />
+      )}
     </Card>
   );
 };
