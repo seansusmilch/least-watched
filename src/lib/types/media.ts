@@ -54,10 +54,71 @@ export interface SortCriteria {
 }
 
 export interface FilterOptions {
+  // Basic filters
   searchTerm: string;
+  searchType: 'contains' | 'exact' | 'regex';
+  mediaTypes: Set<'movie' | 'tv'>;
+  sources: Set<string>;
+
+  // Watch Status filters
+  watchStates: Set<'watched' | 'unwatched' | 'partial'>;
+  unwatchedDaysRange: { min?: number; max?: number };
+  lastWatchedRange: { start?: Date; end?: Date };
+  watchCountRange: { min?: number; max?: number };
+
+  // Quality & Size filters
+  sizeRange: { min?: number; max?: number; unit: 'GB' | 'MB' };
+  qualities: Set<string>;
+  qualityScoreRange: { min?: number; max?: number };
+  sizePerHourRange: { min?: number; max?: number };
+
+  // Content filters
+  yearRange: { min?: number; max?: number };
+  genres: Set<string>;
+  ratingRange: {
+    imdb?: { min?: number; max?: number };
+    tmdb?: { min?: number; max?: number };
+  };
+  runtimeRange: { min?: number; max?: number };
+
+  // TV Show specific filters
+  completionRange: { min?: number; max?: number };
+  seasonCountRange: { min?: number; max?: number };
+  episodeCountRange: { min?: number; max?: number };
+  monitored?: boolean;
+
+  // Management filters
+  dateAddedRange: { start?: Date; end?: Date };
+  folders: Set<string>;
+  deletionScoreRange: { min?: number; max?: number };
+
+  // Legacy filters (for backward compatibility)
   filterType: 'all' | 'movie' | 'tv';
   minSize: string;
   folderFilter: string;
+
+  // Meta
+  filterMode: 'basic' | 'advanced';
+  savedPresetId?: string;
+}
+
+// Filter preset interface
+export interface FilterPreset {
+  id: string;
+  name: string;
+  description: string;
+  filters: Partial<FilterOptions>;
+  isDefault?: boolean;
+  createdAt: Date;
+}
+
+// Quick filter options
+export interface QuickFilterOption {
+  id: string;
+  label: string;
+  description: string;
+  icon?: string;
+  filters: Partial<FilterOptions>;
 }
 
 export interface ProcessingProgress {

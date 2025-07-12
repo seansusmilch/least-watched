@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { AppLayout } from '@/components/app-layout';
 import { FolderSpaceWidget } from '@/components/folder-space/folder-space-widget';
 import {
@@ -14,14 +14,23 @@ import { useMediaItems } from '@/hooks/useMediaItems';
 import { useMediaProcessing } from '@/hooks/useMediaProcessing';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 import { useMediaFilters } from '@/hooks/useMediaFilters';
-import { filterAndSortMediaItems } from '@/lib/utils/mediaFilters';
+import {
+  filterAndSortMediaItems,
+  getUniqueFilterOptions,
+} from '@/lib/utils/mediaFilters';
 
 export default function LeastWatchedPage() {
   // Custom hooks
   const { mediaItems, loading, refresh } = useMediaItems();
   const { processing, progress, startProcessing, closeProgress } =
     useMediaProcessing(refresh);
-  const { filters, sortCriteria, updateFilter, handleSort } = useMediaFilters();
+  const {
+    filters,
+    sortCriteria,
+    updateFilter,
+    updateLegacyFilter,
+    handleSort,
+  } = useMediaFilters();
   const {
     columnVisibility,
     tempColumnVisibility,
@@ -44,9 +53,17 @@ export default function LeastWatchedPage() {
     sortCriteria
   );
 
+  // Get unique filter options from all media items
+  const filterOptions = useMemo(() => {
+    return getUniqueFilterOptions(mediaItems);
+  }, [mediaItems]);
+
   // Event handlers
   const handleFolderClick = (folderName: string) => {
-    updateFilter('folderFilter', folderName === 'Unknown' ? '' : folderName);
+    updateLegacyFilter(
+      'folderFilter',
+      folderName === 'Unknown' ? '' : folderName
+    );
   };
 
   const handleSelectAll = (checked: boolean) => {
@@ -113,8 +130,17 @@ export default function LeastWatchedPage() {
           totalItems={mediaItems.length}
         />
 
-        {/* Filters */}
-        <MediaFilters filters={filters} onFilterChange={updateFilter} />
+        {/* Enhanced Filters */}
+        <MediaFilters
+          filters={filters}
+          onFilterChange={updateFilter}
+          availableGenres={filterOptions.genres}
+          availableQualities={filterOptions.qualities}
+          availableSources={filterOptions.sources}
+          availableFolders={filterOptions.folders}
+          totalItems={mediaItems.length}
+          filteredItems={filteredAndSortedItems.length}
+        />
 
         {/* Media Table */}
         <MediaTable

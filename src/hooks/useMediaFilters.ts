@@ -1,14 +1,10 @@
 import { useState, useEffect } from 'react';
 import { SortCriteria, FilterOptions, MediaItem } from '@/lib/types/media';
 import { getDeletionScoreSettings } from '@/lib/actions/settings';
+import { createDefaultFilters } from '@/lib/utils/mediaFilters';
 
 export const useMediaFilters = () => {
-  const [filters, setFilters] = useState<FilterOptions>({
-    searchTerm: '',
-    filterType: 'all',
-    minSize: '',
-    folderFilter: '',
-  });
+  const [filters, setFilters] = useState<FilterOptions>(createDefaultFilters());
 
   const [sortCriteria, setSortCriteria] = useState<SortCriteria>({
     field: 'unwatchedDays',
@@ -32,7 +28,14 @@ export const useMediaFilters = () => {
     setDefaultSort();
   }, []);
 
-  const updateFilter = (key: keyof FilterOptions, value: string) => {
+  const updateFilter = (newFilters: Partial<FilterOptions>) => {
+    setFilters((prev) => ({
+      ...prev,
+      ...newFilters,
+    }));
+  };
+
+  const updateLegacyFilter = (key: keyof FilterOptions, value: string) => {
     setFilters((prev) => ({
       ...prev,
       [key]: value,
@@ -51,10 +54,24 @@ export const useMediaFilters = () => {
     });
   };
 
+  const resetFilters = () => {
+    setFilters(createDefaultFilters());
+  };
+
+  const applyQuickFilter = (quickFilterOptions: Partial<FilterOptions>) => {
+    setFilters((prev) => ({
+      ...prev,
+      ...quickFilterOptions,
+    }));
+  };
+
   return {
     filters,
     sortCriteria,
     updateFilter,
+    updateLegacyFilter, // For backward compatibility
     handleSort,
+    resetFilters,
+    applyQuickFilter,
   };
 };
