@@ -13,14 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
-import {
-  Loader2,
-  Save,
-  Trash2,
-  Info,
-  RotateCcw,
-  Calculator,
-} from 'lucide-react';
+import { Loader2, Save, Trash2, Info, RotateCcw } from 'lucide-react';
 import {
   Dialog,
   DialogClose,
@@ -87,7 +80,6 @@ export function DeletionScoreSettings() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [recalculating, setRecalculating] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [showSaveConfirmDialog, setShowSaveConfirmDialog] = useState(false);
 
@@ -154,39 +146,6 @@ export function DeletionScoreSettings() {
   const handleResetToDefaults = () => {
     setSettings(getDefaultSettings());
     setShowResetDialog(false);
-  };
-
-  const handleManualRecalculation = async () => {
-    setRecalculating(true);
-    try {
-      // Import the service dynamically to avoid circular dependencies
-      const { deletionScoreService } = await import(
-        '@/lib/services/deletion-score-service'
-      );
-
-      toast.info('Starting deletion score recalculation...', {
-        description: 'This may take a few minutes for large libraries.',
-      });
-
-      const result = await deletionScoreService.recalculateAllDeletionScores();
-
-      if (result.success) {
-        toast.success(
-          `Recalculation completed! ${result.totalUpdated} items updated.`,
-          {
-            description: `Processed ${result.totalProcessed} total items.`,
-            duration: 5000,
-          }
-        );
-      } else {
-        toast.error(result.error || 'Recalculation failed');
-      }
-    } catch (error) {
-      console.error('Manual recalculation failed:', error);
-      toast.error('Failed to recalculate deletion scores. Please try again.');
-    } finally {
-      setRecalculating(false);
-    }
   };
 
   if (loading) {
@@ -675,7 +634,7 @@ export function DeletionScoreSettings() {
           <div className='flex space-x-2'>
             <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
               <DialogTrigger asChild>
-                <Button variant='outline' disabled={saving || recalculating}>
+                <Button variant='outline' disabled={saving}>
                   <RotateCcw className='h-4 w-4 mr-2' />
                   Reset to Defaults
                 </Button>
@@ -698,29 +657,9 @@ export function DeletionScoreSettings() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
-
-            {settings.enabled && (
-              <Button
-                variant='outline'
-                onClick={handleManualRecalculation}
-                disabled={saving || recalculating}
-              >
-                {recalculating ? (
-                  <>
-                    <Loader2 className='h-4 w-4 mr-2 animate-spin' />
-                    Recalculating...
-                  </>
-                ) : (
-                  <>
-                    <Calculator className='h-4 w-4 mr-2' />
-                    Recalculate Scores
-                  </>
-                )}
-              </Button>
-            )}
           </div>
 
-          <Button onClick={handleSaveClick} disabled={saving || recalculating}>
+          <Button onClick={handleSaveClick} disabled={saving}>
             {saving ? (
               <>
                 <Loader2 className='h-4 w-4 mr-2 animate-spin' />
