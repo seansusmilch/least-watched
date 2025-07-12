@@ -5,6 +5,7 @@ CREATE TABLE "sonarr_settings" (
     "url" TEXT NOT NULL,
     "apiKey" TEXT NOT NULL,
     "enabled" BOOLEAN NOT NULL DEFAULT true,
+    "selectedFolders" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL
 );
@@ -16,6 +17,7 @@ CREATE TABLE "radarr_settings" (
     "url" TEXT NOT NULL,
     "apiKey" TEXT NOT NULL,
     "enabled" BOOLEAN NOT NULL DEFAULT true,
+    "selectedFolders" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL
 );
@@ -29,7 +31,8 @@ CREATE TABLE "emby_settings" (
     "userId" TEXT,
     "enabled" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "updatedAt" DATETIME NOT NULL,
+    "selectedFolders" TEXT
 );
 
 -- CreateTable
@@ -55,6 +58,27 @@ CREATE TABLE "media_items" (
     "sonarrId" INTEGER,
     "radarrId" INTEGER,
     "embyId" TEXT,
+    "mediaPath" TEXT,
+    "parentFolder" TEXT,
+    "sizeOnDisk" BIGINT,
+    "dateAdded" DATETIME,
+    "source" TEXT,
+    "quality" TEXT,
+    "qualityScore" INTEGER,
+    "episodesOnDisk" INTEGER,
+    "totalEpisodes" INTEGER,
+    "seasonCount" INTEGER,
+    "completionPercentage" INTEGER,
+    "monitored" BOOLEAN,
+    "imdbRating" REAL,
+    "tmdbRating" REAL,
+    "playProgress" INTEGER,
+    "fullyWatched" BOOLEAN,
+    "runtime" INTEGER,
+    "sizePerHour" REAL,
+    "genres" TEXT,
+    "overview" TEXT,
+    "deletionScore" REAL,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL
 );
@@ -70,3 +94,4 @@ CREATE UNIQUE INDEX "emby_settings_name_key" ON "emby_settings"("name");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "app_settings_key_key" ON "app_settings"("key");
+
