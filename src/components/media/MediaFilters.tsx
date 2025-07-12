@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
+import { MultiSelect } from '@/components/ui/multi-select';
 import {
   Select,
   SelectContent,
@@ -20,11 +20,6 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import {
   Filter,
   Search,
   Eye,
@@ -32,7 +27,6 @@ import {
   Settings,
   ChevronDown,
   ChevronUp,
-  X,
   Zap,
   Tv,
   HardDrive,
@@ -172,82 +166,9 @@ export const MediaFilters = ({
     return count;
   }, [filters]);
 
-  const MultiSelectFilter = ({
-    label,
-    options,
-    selectedValues,
-    onSelectionChange,
-    placeholder = 'Select options...',
-  }: {
-    label: string;
-    options: string[];
-    selectedValues: Set<string>;
-    onSelectionChange: (values: Set<string>) => void;
-    placeholder?: string;
-  }) => {
-    const [isOpen, setIsOpen] = useState(false);
-
-    const toggleOption = (option: string) => {
-      const newSelection = new Set(selectedValues);
-      if (newSelection.has(option)) {
-        newSelection.delete(option);
-      } else {
-        newSelection.add(option);
-      }
-      onSelectionChange(newSelection);
-    };
-
-    return (
-      <div className='space-y-2'>
-        <Label>{label}</Label>
-        <Popover open={isOpen} onOpenChange={setIsOpen}>
-          <PopoverTrigger asChild>
-            <Button variant='outline' className='w-full justify-between'>
-              <span className='truncate'>
-                {selectedValues.size === 0
-                  ? placeholder
-                  : `${selectedValues.size} selected`}
-              </span>
-              <ChevronDown className='h-4 w-4' />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className='w-64 p-2'>
-            <div className='space-y-2 max-h-48 overflow-y-auto'>
-              {options.map((option) => (
-                <div key={option} className='flex items-center space-x-2'>
-                  <Checkbox
-                    id={`${label}-${option}`}
-                    checked={selectedValues.has(option)}
-                    onCheckedChange={() => toggleOption(option)}
-                  />
-                  <Label htmlFor={`${label}-${option}`} className='text-sm'>
-                    {option}
-                  </Label>
-                </div>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
-        {selectedValues.size > 0 && (
-          <div className='flex flex-wrap gap-1'>
-            {Array.from(selectedValues).map((value) => (
-              <Badge key={value} variant='secondary' className='text-xs'>
-                {value}
-                <Button
-                  variant='ghost'
-                  size='sm'
-                  className='h-3 w-3 p-0 ml-1'
-                  onClick={() => toggleOption(value)}
-                >
-                  <X className='h-2 w-2' />
-                </Button>
-              </Badge>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  };
+  // Helper function to convert Set to array for MultiSelect
+  const setToArray = (set: Set<string>): string[] => Array.from(set);
+  const arrayToSet = (array: string[]): Set<string> => new Set(array);
 
   const RangeSlider = ({
     label,
@@ -382,24 +303,38 @@ export const MediaFilters = ({
           </div>
 
           <div className='grid gap-4 md:grid-cols-2'>
-            <MultiSelectFilter
-              label='Media Types'
-              options={['movie', 'tv']}
-              selectedValues={filters.mediaTypes}
-              onSelectionChange={(values) =>
-                onFilterChange({ mediaTypes: values as Set<'movie' | 'tv'> })
-              }
-              placeholder='All types'
-            />
-            <MultiSelectFilter
-              label='Sources'
-              options={availableSources}
-              selectedValues={filters.sources}
-              onSelectionChange={(values) =>
-                onFilterChange({ sources: values })
-              }
-              placeholder='All sources'
-            />
+            <div className='space-y-2'>
+              <Label>Media Types</Label>
+              <MultiSelect
+                options={[
+                  { label: 'Movies', value: 'movie' },
+                  { label: 'TV Shows', value: 'tv' },
+                ]}
+                onValueChange={(values) =>
+                  onFilterChange({
+                    mediaTypes: arrayToSet(values) as Set<'movie' | 'tv'>,
+                  })
+                }
+                defaultValue={setToArray(filters.mediaTypes)}
+                placeholder='All types'
+                maxCount={2}
+              />
+            </div>
+            <div className='space-y-2'>
+              <Label>Sources</Label>
+              <MultiSelect
+                options={availableSources.map((source) => ({
+                  label: source,
+                  value: source,
+                }))}
+                onValueChange={(values) =>
+                  onFilterChange({ sources: arrayToSet(values) })
+                }
+                defaultValue={setToArray(filters.sources)}
+                placeholder='All sources'
+                maxCount={3}
+              />
+            </div>
           </div>
         </div>
 
@@ -425,19 +360,26 @@ export const MediaFilters = ({
                 <Eye className='h-4 w-4' />
                 <span>Watch Status</span>
               </h4>
-              <MultiSelectFilter
-                label='Watch States'
-                options={['watched', 'unwatched', 'partial']}
-                selectedValues={filters.watchStates}
-                onSelectionChange={(values) =>
-                  onFilterChange({
-                    watchStates: values as Set<
-                      'watched' | 'unwatched' | 'partial'
-                    >,
-                  })
-                }
-                placeholder='All states'
-              />
+              <div className='space-y-2'>
+                <Label>Watch States</Label>
+                <MultiSelect
+                  options={[
+                    { label: 'Watched', value: 'watched' },
+                    { label: 'Unwatched', value: 'unwatched' },
+                    { label: 'Partial', value: 'partial' },
+                  ]}
+                  onValueChange={(values) =>
+                    onFilterChange({
+                      watchStates: arrayToSet(values) as Set<
+                        'watched' | 'unwatched' | 'partial'
+                      >,
+                    })
+                  }
+                  defaultValue={setToArray(filters.watchStates)}
+                  placeholder='All states'
+                  maxCount={3}
+                />
+              </div>
 
               <RangeSlider
                 label='Days Unwatched'
@@ -505,15 +447,21 @@ export const MediaFilters = ({
                 </div>
               </div>
 
-              <MultiSelectFilter
-                label='Quality'
-                options={availableQualities}
-                selectedValues={filters.qualities}
-                onSelectionChange={(values) =>
-                  onFilterChange({ qualities: values })
-                }
-                placeholder='All qualities'
-              />
+              <div className='space-y-2'>
+                <Label>Quality</Label>
+                <MultiSelect
+                  options={availableQualities.map((quality) => ({
+                    label: quality,
+                    value: quality,
+                  }))}
+                  onValueChange={(values) =>
+                    onFilterChange({ qualities: arrayToSet(values) })
+                  }
+                  defaultValue={setToArray(filters.qualities)}
+                  placeholder='All qualities'
+                  maxCount={3}
+                />
+              </div>
 
               <RangeSlider
                 label='Quality Score'
@@ -559,15 +507,21 @@ export const MediaFilters = ({
                 />
               </div>
 
-              <MultiSelectFilter
-                label='Genres'
-                options={availableGenres}
-                selectedValues={filters.genres}
-                onSelectionChange={(values) =>
-                  onFilterChange({ genres: values })
-                }
-                placeholder='All genres'
-              />
+              <div className='space-y-2'>
+                <Label>Genres</Label>
+                <MultiSelect
+                  options={availableGenres.map((genre) => ({
+                    label: genre,
+                    value: genre,
+                  }))}
+                  onValueChange={(values) =>
+                    onFilterChange({ genres: arrayToSet(values) })
+                  }
+                  defaultValue={setToArray(filters.genres)}
+                  placeholder='All genres'
+                  maxCount={3}
+                />
+              </div>
 
               <div className='grid gap-4 md:grid-cols-2'>
                 <RangeSlider
@@ -650,15 +604,21 @@ export const MediaFilters = ({
                 <Settings className='h-4 w-4' />
                 <span>Management</span>
               </h4>
-              <MultiSelectFilter
-                label='Folders'
-                options={availableFolders}
-                selectedValues={filters.folders}
-                onSelectionChange={(values) =>
-                  onFilterChange({ folders: values })
-                }
-                placeholder='All folders'
-              />
+              <div className='space-y-2'>
+                <Label>Folders</Label>
+                <MultiSelect
+                  options={availableFolders.map((folder) => ({
+                    label: folder,
+                    value: folder,
+                  }))}
+                  onValueChange={(values) =>
+                    onFilterChange({ folders: arrayToSet(values) })
+                  }
+                  defaultValue={setToArray(filters.folders)}
+                  placeholder='All folders'
+                  maxCount={3}
+                />
+              </div>
 
               <RangeSlider
                 label='Deletion Score'
