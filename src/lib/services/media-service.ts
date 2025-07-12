@@ -1,6 +1,4 @@
 import { MediaProcessor } from '../media-processor';
-import { deletionScoreCalculator } from '../deletion-score-calculator';
-import { getDeletionScoreSettings } from '../actions/settings';
 import { type MediaItemData } from '../types/media-processing';
 
 interface StoredMediaItem {
@@ -38,6 +36,7 @@ interface StoredMediaItem {
   genres?: string | null;
   overview?: string | null;
   folderRemainingSpacePercent?: number | null;
+  deletionScore?: number | null;
 }
 
 export class MediaService {
@@ -58,25 +57,8 @@ export class MediaService {
   }
 
   async getMediaItemsWithScores(): Promise<MediaItemData[]> {
-    try {
-      const storedItems = await this.processor.getStoredMediaItems();
-      const deletionScoreSettings = await getDeletionScoreSettings();
-
-      const mediaItems = this.transformStoredItemsToMediaData(storedItems);
-
-      // Add deletion scores
-      return mediaItems.map((item) => ({
-        ...item,
-        deletionScore: deletionScoreCalculator.calculateScore(
-          // Convert back to the format expected by deletion score calculator
-          this.convertToStoredMediaItemFormat(item),
-          deletionScoreSettings
-        ),
-      }));
-    } catch (error) {
-      console.error('Error getting media items with scores:', error);
-      return [];
-    }
+    // Now that scores are stored in the database, this method is the same as getMediaItems
+    return this.getMediaItems();
   }
 
   private transformStoredItemsToMediaData(
@@ -105,36 +87,10 @@ export class MediaService {
       sizePerHour: item.sizePerHour ?? undefined,
       genres: item.genres ?? undefined,
       overview: item.overview ?? undefined,
+      folderRemainingSpacePercent:
+        item.folderRemainingSpacePercent ?? undefined,
+      deletionScore: item.deletionScore ?? undefined,
     }));
-  }
-
-  private convertToStoredMediaItemFormat(item: MediaItemData): StoredMediaItem {
-    // Convert back to the format expected by deletion score calculator
-    // This maintains compatibility with existing deletion score logic
-    return {
-      ...item,
-      year: item.year ?? null,
-      mediaPath: item.mediaPath ?? null,
-      sizeOnDisk: item.sizeOnDisk ?? null,
-      dateAdded: item.dateAdded ?? null,
-      lastWatched: item.lastWatched ?? null,
-      source: item.source ?? null,
-      quality: item.quality ?? null,
-      qualityScore: item.qualityScore ?? null,
-      episodesOnDisk: item.episodesOnDisk ?? null,
-      totalEpisodes: item.totalEpisodes ?? null,
-      seasonCount: item.seasonCount ?? null,
-      completionPercentage: item.completionPercentage ?? null,
-      monitored: item.monitored ?? null,
-      imdbRating: item.imdbRating ?? null,
-      tmdbRating: item.tmdbRating ?? null,
-      playProgress: item.playProgress ?? null,
-      fullyWatched: item.fullyWatched ?? null,
-      runtime: item.runtime ?? null,
-      sizePerHour: item.sizePerHour ?? null,
-      genres: item.genres ?? null,
-      overview: item.overview ?? null,
-    };
   }
 }
 

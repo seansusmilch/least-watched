@@ -7,7 +7,11 @@ import {
 import {
   getEnhancedProcessingSettings,
   type EnhancedProcessingSettings,
+  getDeletionScoreSettings,
 } from './actions/settings';
+import { deletionScoreCalculator } from './deletion-score-calculator';
+import { folderSpaceService } from './services/folder-space-service';
+import { type FolderSpaceData } from './types/media-processing';
 import path from 'path';
 
 // Configuration constants
@@ -198,6 +202,9 @@ interface StoredMediaItem {
   // Metadata
   genres?: string | null;
   overview?: string | null;
+
+  // Deletion score
+  deletionScore?: number | null;
 }
 
 export class MediaProcessor {
@@ -895,6 +902,10 @@ export class MediaProcessor {
     console.log(`📦 Starting to store ${items.length} items`);
     let totalStored = 0;
 
+    // Get deletion score settings and folder space data for scoring
+    const deletionScoreSettings = await getDeletionScoreSettings();
+    const folderSpaceData = await folderSpaceService.getFolderSpaceData();
+
     for (const item of items) {
       try {
         // Build WHERE condition based on what IDs are available
@@ -933,6 +944,26 @@ export class MediaProcessor {
         // Safely convert sizeOnDisk to BigInt
         const sizeOnDisk = item.sizeOnDisk
           ? BigInt(Math.max(0, item.sizeOnDisk))
+          : null;
+
+        // Calculate deletion score
+        const folderRemainingSpacePercent =
+          this.calculateFolderRemainingSpacePercent(
+            item.parentFolder,
+            folderSpaceData
+          );
+
+        const deletionScore = deletionScoreSettings.enabled
+          ? deletionScoreCalculator.calculateScore(
+              {
+                id: existingItem?.id || 'temp',
+                sizeOnDisk: sizeOnDisk,
+                dateAdded: item.dateAdded,
+                lastWatched: item.lastWatched,
+                folderRemainingSpacePercent,
+              },
+              deletionScoreSettings
+            )
           : null;
 
         const itemData = {
@@ -978,6 +1009,9 @@ export class MediaProcessor {
           // Metadata
           genres: item.genres ? JSON.stringify(item.genres) : null,
           overview: item.overview,
+
+          // Deletion score
+          deletionScore: deletionScore,
         };
 
         if (existingItem) {
@@ -1028,6 +1062,29 @@ export class MediaProcessor {
     return await prisma.mediaItem.findMany({
       orderBy: [{ parentFolder: 'asc' }, { title: 'asc' }],
     });
+  }
+
+  private calculateFolderRemainingSpacePercent(
+    parentFolder: string | undefined,
+    folderSpaceData: FolderSpaceData[]
+  ): number | null {
+    if (!parentFolder) return null;
+
+    // Find matching folder space data
+    const matchingFolder = folderSpaceData.find(
+      (folder) =>
+        parentFolder.startsWith(folder.path) ||
+        folder.path.startsWith(parentFolder)
+    );
+
+    if (!matchingFolder || !matchingFolder.totalSpaceGB) {
+      return null;
+    }
+
+    // Calculate remaining space percentage
+    const remainingSpacePercent =
+      (matchingFolder.freeSpaceGB / matchingFolder.totalSpaceGB) * 100;
+    return Math.round(remainingSpacePercent * 100) / 100; // Round to 2 decimal places
   }
 }
 

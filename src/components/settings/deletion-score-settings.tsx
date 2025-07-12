@@ -13,7 +13,14 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
-import { Loader2, Save, Trash2, Info, RotateCcw } from 'lucide-react';
+import {
+  Loader2,
+  Save,
+  Trash2,
+  Info,
+  RotateCcw,
+  Calculator,
+} from 'lucide-react';
 import {
   Dialog,
   DialogClose,
@@ -80,7 +87,9 @@ export function DeletionScoreSettings() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [recalculating, setRecalculating] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
+  const [showSaveConfirmDialog, setShowSaveConfirmDialog] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -97,14 +106,40 @@ export function DeletionScoreSettings() {
     }
   };
 
+  const handleSaveClick = () => {
+    // Show confirmation dialog if deletion scoring is enabled
+    if (settings.enabled) {
+      setShowSaveConfirmDialog(true);
+    } else {
+      // If disabled, save directly without confirmation
+      handleSave();
+    }
+  };
+
   const handleSave = async () => {
+    setShowSaveConfirmDialog(false);
     setSaving(true);
     try {
       const result = await setDeletionScoreSettings(settings);
       if (result.success) {
-        toast.success(
-          'Deletion score settings saved successfully! Your settings have been updated.'
-        );
+        if (settings.enabled) {
+          toast.success(
+            'Settings saved successfully! Deletion scores are being recalculated in the background.',
+            {
+              description:
+                'This may take a few minutes for large libraries. The scores will update automatically.',
+              duration: 5000,
+            }
+          );
+        } else {
+          toast.success(
+            'Deletion score settings saved successfully! Deletion scoring is now disabled.',
+            {
+              description:
+                'Existing scores will remain but no new scores will be calculated.',
+            }
+          );
+        }
       } else {
         toast.error(result.message || 'Error saving settings');
       }
@@ -119,6 +154,39 @@ export function DeletionScoreSettings() {
   const handleResetToDefaults = () => {
     setSettings(getDefaultSettings());
     setShowResetDialog(false);
+  };
+
+  const handleManualRecalculation = async () => {
+    setRecalculating(true);
+    try {
+      // Import the service dynamically to avoid circular dependencies
+      const { deletionScoreService } = await import(
+        '@/lib/services/deletion-score-service'
+      );
+
+      toast.info('Starting deletion score recalculation...', {
+        description: 'This may take a few minutes for large libraries.',
+      });
+
+      const result = await deletionScoreService.recalculateAllDeletionScores();
+
+      if (result.success) {
+        toast.success(
+          `Recalculation completed! ${result.totalUpdated} items updated.`,
+          {
+            description: `Processed ${result.totalProcessed} total items.`,
+            duration: 5000,
+          }
+        );
+      } else {
+        toast.error(result.error || 'Recalculation failed');
+      }
+    } catch (error) {
+      console.error('Manual recalculation failed:', error);
+      toast.error('Failed to recalculate deletion scores. Please try again.');
+    } finally {
+      setRecalculating(false);
+    }
   };
 
   if (loading) {
@@ -602,34 +670,57 @@ export function DeletionScoreSettings() {
           </div>
         </div>
 
-        {/* Save and Reset Buttons */}
+        {/* Action Buttons */}
         <div className='flex justify-between pt-4'>
-          <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
-            <DialogTrigger asChild>
-              <Button variant='outline' disabled={saving}>
-                <RotateCcw className='h-4 w-4 mr-2' />
-                Reset to Defaults
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Reset to Default Settings</DialogTitle>
-                <DialogDescription>
-                  Are you sure you want to reset all settings to their default
-                  values? This action cannot be undone.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <DialogClose asChild>
-                  <Button variant='outline'>Cancel</Button>
-                </DialogClose>
-                <Button onClick={handleResetToDefaults}>
+          <div className='flex space-x-2'>
+            <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+              <DialogTrigger asChild>
+                <Button variant='outline' disabled={saving || recalculating}>
+                  <RotateCcw className='h-4 w-4 mr-2' />
                   Reset to Defaults
                 </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-          <Button onClick={handleSave} disabled={saving || !settings.enabled}>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Reset to Default Settings</DialogTitle>
+                  <DialogDescription>
+                    Are you sure you want to reset all settings to their default
+                    values? This action cannot be undone.
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button variant='outline'>Cancel</Button>
+                  </DialogClose>
+                  <Button onClick={handleResetToDefaults}>
+                    Reset to Defaults
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {settings.enabled && (
+              <Button
+                variant='outline'
+                onClick={handleManualRecalculation}
+                disabled={saving || recalculating}
+              >
+                {recalculating ? (
+                  <>
+                    <Loader2 className='h-4 w-4 mr-2 animate-spin' />
+                    Recalculating...
+                  </>
+                ) : (
+                  <>
+                    <Calculator className='h-4 w-4 mr-2' />
+                    Recalculate Scores
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+
+          <Button onClick={handleSaveClick} disabled={saving || recalculating}>
             {saving ? (
               <>
                 <Loader2 className='h-4 w-4 mr-2 animate-spin' />
@@ -643,6 +734,33 @@ export function DeletionScoreSettings() {
             )}
           </Button>
         </div>
+
+        {/* Save Confirmation Dialog */}
+        <Dialog
+          open={showSaveConfirmDialog}
+          onOpenChange={setShowSaveConfirmDialog}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Confirm Settings Save</DialogTitle>
+              <DialogDescription>
+                Saving these deletion score settings will trigger a
+                recalculation of all deletion scores in your media library. This
+                process may take several minutes for large libraries and will
+                run in the background.
+                <br />
+                <br />
+                Are you sure you want to continue?
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant='outline'>Cancel</Button>
+              </DialogClose>
+              <Button onClick={handleSave}>Save & Recalculate</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );

@@ -62,7 +62,7 @@ export interface MediaItemData {
   // Folder space tracking
   folderRemainingSpacePercent?: number;
 
-  // Deletion score (calculated dynamically)
+  // Deletion score (stored in database)
   deletionScore?: number;
 }
 

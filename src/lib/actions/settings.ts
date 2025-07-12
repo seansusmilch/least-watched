@@ -615,10 +615,24 @@ export async function setDeletionScoreSettings(
     );
     deletionScoreCalculator.invalidateCache();
 
+    // Trigger recalculation in the background if deletion scoring is enabled
+    if (settings.enabled) {
+      // Import and trigger recalculation without waiting for completion
+      const { deletionScoreService } = await import(
+        '../services/deletion-score-service'
+      );
+
+      // Fire and forget - don't wait for completion
+      deletionScoreService.recalculateAllDeletionScores().catch((error) => {
+        console.error('Background deletion score recalculation failed:', error);
+      });
+    }
+
     revalidatePath('/settings');
     return {
       success: true,
-      message: 'Deletion score settings updated successfully',
+      message:
+        'Deletion score settings updated successfully. Scores are being recalculated in the background.',
     };
   } catch (error) {
     console.error('Failed to set deletion score settings:', error);
