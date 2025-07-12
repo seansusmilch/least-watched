@@ -1,0 +1,281 @@
+{
+    "sonarrSettings": [
+        {
+            "name": "Main Sonarr",
+            "url": "http://localhost:8989",
+            "apiKey": "your-sonarr-api-key-here",
+            "enabled": true,
+            "selectedFolders": [
+                "/tv",
+                "/media/tv"
+            ]
+        },
+        {
+            "name": "Secondary Sonarr",
+            "url": "http://sonarr.local:8989",
+            "apiKey": "another-sonarr-api-key",
+            "enabled": false,
+            "selectedFolders": [
+                "/tv2"
+            ]
+        }
+    ],
+    "radarrSettings": [
+        {
+            "name": "Main Radarr",
+            "url": "http://localhost:7878",
+            "apiKey": "your-radarr-api-key-here",
+            "enabled": true,
+            "selectedFolders": [
+                "/movies",
+                "/media/movies"
+            ]
+        },
+        {
+            "name": "Secondary Radarr",
+            "url": "http://radarr.local:7878",
+            "apiKey": "another-radarr-api-key",
+            "enabled": false,
+            "selectedFolders": [
+                "/movies2"
+            ]
+        }
+    ],
+    "embySettings": [
+        {
+            "name": "Main Emby",
+            "url": "http://localhost:8096",
+            "apiKey": "your-emby-api-key-here",
+            "userId": "emby-user-id",
+            "enabled": true,
+            "selectedFolders": [
+                "/movies",
+                "/tv"
+            ]
+        },
+        {
+            "name": "Jellyfin Server",
+            "url": "http://jellyfin.local:8096",
+            "apiKey": "jellyfin-api-key",
+            "userId": "jellyfin-user-id",
+            "enabled": false,
+            "selectedFolders": [
+                "/media"
+            ]
+        }
+    ],
+    "appSettings": [
+        {
+            "key": "refresh_interval",
+            "value": "3600",
+            "description": "Data refresh interval in seconds"
+        },
+        {
+            "key": "enable_notifications",
+            "value": "true",
+            "description": "Enable push notifications for important events"
+        },
+        {
+            "key": "theme",
+            "value": "dark",
+            "description": "Default application theme"
+        }
+    ],
+    "mediaItems": [
+        {
+            "title": "The Matrix",
+            "type": "movie",
+            "tmdbId": 603,
+            "imdbId": "tt0133093",
+            "year": 1999,
+            "lastWatched": "2024-01-15",
+            "watchCount": 5,
+            "radarrId": 1,
+            "embyId": "emby-matrix-id",
+            "mediaPath": "/movies/The Matrix (1999)",
+            "parentFolder": "/movies",
+            "sizeOnDisk": 2147483648,
+            "dateAdded": "2023-06-01",
+            "source": "Main Radarr",
+            "quality": "Bluray-1080p",
+            "qualityScore": 19,
+            "monitored": true,
+            "imdbRating": 8.7,
+            "tmdbRating": 8.2,
+            "playProgress": 100,
+            "fullyWatched": true,
+            "runtime": 136,
+            "sizePerHour": 0.94,
+            "genres": [
+                "Action",
+                "Sci-Fi"
+            ],
+            "overview": "A computer hacker learns from mysterious rebels about the true nature of his reality and his role in the war against its controllers."
+        },
+        {
+            "title": "Inception",
+            "type": "movie",
+            "tmdbId": 27205,
+            "imdbId": "tt1375666",
+            "year": 2010,
+            "lastWatched": "2024-02-01",
+            "watchCount": 3,
+            "radarrId": 2,
+            "embyId": "emby-inception-id",
+            "mediaPath": "/movies/Inception (2010)",
+            "parentFolder": "/movies",
+            "sizeOnDisk": 3221225472,
+            "dateAdded": "2023-07-15",
+            "source": "Main Radarr",
+            "quality": "Bluray-1080p",
+            "qualityScore": 19,
+            "monitored": true,
+            "imdbRating": 8.8,
+            "tmdbRating": 8.3,
+            "playProgress": 85,
+            "fullyWatched": false,
+            "runtime": 148,
+            "sizePerHour": 1.31,
+            "genres": [
+                "Action",
+                "Sci-Fi",
+                "Thriller"
+            ],
+            "overview": "A thief who steals corporate secrets through the use of dream-sharing technology is given the inverse task of planting an idea into the mind of a C.E.O."
+        },
+        {
+            "title": "The Room",
+            "type": "movie",
+            "tmdbId": 11544,
+            "imdbId": "tt0368226",
+            "year": 2003,
+            "lastWatched": "2023-10-31",
+            "watchCount": 1,
+            "radarrId": 3,
+            "embyId": "emby-room-id",
+            "mediaPath": "/movies/The Room (2003)",
+            "parentFolder": "/movies",
+            "sizeOnDisk": 734003200,
+            "dateAdded": "2023-08-01",
+            "source": "Main Radarr",
+            "quality": "DVD",
+            "qualityScore": 1,
+            "monitored": false,
+            "imdbRating": 3.7,
+            "tmdbRating": 3.4,
+            "playProgress": 15,
+            "fullyWatched": false,
+            "runtime": 99,
+            "sizePerHour": 0.45,
+            "genres": [
+                "Drama",
+                "Romance"
+            ],
+            "overview": "Johnny is a successful banker who lives happily in San Francisco with his fiancée Lisa."
+        },
+        {
+            "title": "Breaking Bad",
+            "type": "tv",
+            "tmdbId": 1396,
+            "imdbId": "tt0903747",
+            "year": 2008,
+            "lastWatched": "2024-01-20",
+            "watchCount": 2,
+            "sonarrId": 1,
+            "embyId": "emby-bb-id",
+            "mediaPath": "/tv/Breaking Bad",
+            "parentFolder": "/tv",
+            "sizeOnDisk": 21474836480,
+            "dateAdded": "2023-05-01",
+            "source": "Main Sonarr",
+            "quality": "Bluray-1080p",
+            "qualityScore": 19,
+            "episodesOnDisk": 62,
+            "totalEpisodes": 62,
+            "seasonCount": 5,
+            "completionPercentage": 100,
+            "monitored": true,
+            "imdbRating": 9.5,
+            "tmdbRating": 8.8,
+            "playProgress": 100,
+            "fullyWatched": true,
+            "runtime": 47,
+            "sizePerHour": 0.69,
+            "genres": [
+                "Crime",
+                "Drama",
+                "Thriller"
+            ],
+            "overview": "A high school chemistry teacher diagnosed with inoperable lung cancer turns to manufacturing and selling methamphetamine in order to secure his family's future."
+        },
+        {
+            "title": "The Office",
+            "type": "tv",
+            "tmdbId": 2316,
+            "imdbId": "tt0386676",
+            "year": 2005,
+            "lastWatched": "2024-02-15",
+            "watchCount": 8,
+            "sonarrId": 2,
+            "embyId": "emby-office-id",
+            "mediaPath": "/tv/The Office (US)",
+            "parentFolder": "/tv",
+            "sizeOnDisk": 32212254720,
+            "dateAdded": "2023-04-01",
+            "source": "Main Sonarr",
+            "quality": "HDTV-1080p",
+            "qualityScore": 15,
+            "episodesOnDisk": 201,
+            "totalEpisodes": 201,
+            "seasonCount": 9,
+            "completionPercentage": 100,
+            "monitored": false,
+            "imdbRating": 9.0,
+            "tmdbRating": 8.6,
+            "playProgress": 100,
+            "fullyWatched": true,
+            "runtime": 22,
+            "sizePerHour": 2.18,
+            "genres": [
+                "Comedy"
+            ],
+            "overview": "A mockumentary on a group of typical office workers, where the workday consists of ego clashes, inappropriate behavior, and tedium."
+        },
+        {
+            "title": "Game of Thrones",
+            "type": "tv",
+            "tmdbId": 1399,
+            "imdbId": "tt0944947",
+            "year": 2011,
+            "lastWatched": "2023-12-01",
+            "watchCount": 1,
+            "sonarrId": 3,
+            "embyId": "emby-got-id",
+            "mediaPath": "/tv/Game of Thrones",
+            "parentFolder": "/tv",
+            "sizeOnDisk": 42949672960,
+            "dateAdded": "2023-03-01",
+            "source": "Main Sonarr",
+            "quality": "Bluray-1080p",
+            "qualityScore": 19,
+            "episodesOnDisk": 73,
+            "totalEpisodes": 73,
+            "seasonCount": 8,
+            "completionPercentage": 100,
+            "monitored": false,
+            "imdbRating": 9.2,
+            "tmdbRating": 8.4,
+            "playProgress": 60,
+            "fullyWatched": false,
+            "runtime": 57,
+            "sizePerHour": 1.02,
+            "genres": [
+                "Action",
+                "Adventure",
+                "Drama",
+                "Fantasy"
+            ],
+            "overview": "Nine noble families fight for control over the lands of Westeros, while an ancient enemy returns after being dormant for millennia."
+        }
+    ]
+}

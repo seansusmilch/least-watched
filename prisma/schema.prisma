@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model SonarrSettings {
+  id              String   @id @default(cuid())
+  name            String   @unique
+  url             String
+  apiKey          String
+  enabled         Boolean  @default(true)
+  selectedFolders String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+
+  @@map("sonarr_settings")
+}
+
+model RadarrSettings {
+  id                     String   @id @default(cuid())
+  name                   String   @unique
+  url                    String
+  apiKey                 String
+  enabled                Boolean  @default(true)
+  selectedFolders        String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@map("radarr_settings")
+}
+
+model EmbySettings {
+  id              String   @id @default(cuid())
+  name            String   @unique
+  url             String
+  apiKey          String
+  userId          String?
+  enabled         Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  selectedFolders String?
+
+  @@map("emby_settings")
+}
+
+model AppSettings {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("app_settings")
+}
+
+model MediaItem {
+  id                   String    @id @default(cuid())
+  title                String
+  type                 String
+  tmdbId               Int?
+  imdbId               String?
+  year                 Int?
+  lastWatched          DateTime?
+  watchCount           Int       @default(0)
+  sonarrId             Int?
+  radarrId             Int?
+  embyId               String?
+  mediaPath            String?
+  parentFolder         String?
+  sizeOnDisk           BigInt?
+  dateAdded            DateTime?
+  source               String?
+  quality              String?
+  qualityScore         Int?
+  episodesOnDisk       Int?
+  totalEpisodes        Int?
+  seasonCount          Int?
+  completionPercentage Int?
+  monitored            Boolean?
+  imdbRating           Float?
+  tmdbRating           Float?
+  playProgress         Int?
+  fullyWatched         Boolean?
+  runtime              Int?
+  sizePerHour          Float?
+  genres               String?
+  overview             String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@map("media_items")
+}

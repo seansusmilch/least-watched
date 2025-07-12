@@ -1,0 +1,6 @@
+---
+alwaysApply: true
+---
+- do not under any circumstance write code that will modify data in any external source
+- that includes Emby, Sonarr, and Radarr
+- you should only write code that READS data from these sources

@@ -1,0 +1,7 @@
+---
+alwaysApply: true
+---
+- use prisma for ORM
+- make a backup of the database before performing a database reset
+- before doing a reset, evaluate if a reset is truly necessary
+- if a reset is necessary, ask the user for confirmation before continuing

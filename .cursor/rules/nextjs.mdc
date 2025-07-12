@@ -1,0 +1,9 @@
+---
+alwaysApply: true
+---
+- use server actions when dealing with client server behavior
+- assume the dev server is already running
+- when adding things, prefer splitting into different files
+- keep files small and single purpose
+- use tanstack query for fetching data
+- use context7

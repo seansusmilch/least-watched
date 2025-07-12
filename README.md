@@ -1,134 +1,216 @@
-# Least-Watched
+# Least Watched
 
-A modern application to identify unwatched or least-watched media from your Emby server, with integration to Sonarr and Radarr.
-
-## Project Structure
-
-This is a monorepo containing both the backend and frontend applications:
-
-- `packages/backend`: Python FastAPI backend that communicates with Emby, Sonarr, and Radarr
-- `packages/frontend`: Next.js frontend with a modern dark UI
+A Next.js application for managing and tracking your least-watched media across Sonarr, Radarr, and Emby. This tool helps you identify content that hasn't been watched so you can make informed decisions about what to keep or remove.
 
 ## Features
 
-- Identifies media that hasn't been watched for a configurable period
-- Ignores recently added content
-- Integrates with Emby, Sonarr, and Radarr
-- Modern, responsive dark UI
-- Configurable batch processing and concurrency limits
+- **Multi-instance Support**: Connect to multiple Sonarr, Radarr, and Emby instances
+- **Media Tracking**: Track watched/unwatched status and play progress
+- **Smart Scoring**: Calculate deletion priority scores based on various factors
+- **Settings Management**: Centralized configuration for all your media services
+- **Database-driven**: SQLite database with Prisma ORM for reliable data storage
+- **Modern UI**: Built with Next.js, Tailwind CSS, and Radix UI components
 
-## Requirements
+## Prerequisites
 
-- Python 3.12+
-- Poetry (dependency management)
-- Node.js 18+ and npm
-- Emby server
-- Sonarr and Radarr (optional)
+Before you begin, ensure you have the following installed:
+
+- [Node.js](https://nodejs.org/) (v18 or higher)
+- [Bun](https://bun.sh/) (latest version)
+- Access to Sonarr, Radarr, and/or Emby instances with API access
 
 ## Installation
 
-1. Clone this repository:
-   ```bash
-   git clone https://github.com/yourusername/least-watched.git
+1. **Clone the repository:**
+   ```powershell
+   git clone <repository-url>
    cd least-watched
    ```
 
-2. Install dependencies:
-   ```bash
-   npm run install:all
+2. **Install dependencies:**
+   ```powershell
+   bun install
    ```
 
-   This will install:
-   - Root npm dependencies
-   - Backend Python dependencies using Poetry
-   - Frontend npm dependencies
+3. **Set up environment variables:**
+   Create a `.env` file in the root directory:
+   ```bash
+   DATABASE_URL="file:./dev.db"
+   ```
+
+4. **Initialize the database:**
+   ```powershell
+   bunx prisma migrate dev --name init
+   bunx prisma generate
+   ```
+
+## Database Setup
+
+The application uses SQLite with Prisma for data management. The database stores:
+
+- **Settings**: Configuration for Sonarr, Radarr, and Emby instances
+- **Media Items**: Metadata for tracking watched/unwatched content
+- **App Settings**: General application preferences
+
+### Database Commands
+
+```powershell
+# Generate Prisma client
+bunx prisma generate
+
+# Create new migration
+bunx prisma migrate dev --name migration_name
+
+# Reset database (development only)
+bunx prisma migrate reset
+
+# View database in browser
+bunx prisma studio
+```
+
+For detailed database information, see [DATABASE_SETUP.md](DATABASE_SETUP.md).
 
 ## Configuration
 
-Create a `.env` file in the `packages/backend` directory with the following variables:
+### 1. Start the Development Server
 
-```
-# Emby configuration
-EMBY_URL=http://your-emby-server:8096
-EMBY_TOKEN=your-emby-api-token
-
-# Sonarr configuration
-SONARR_URL=http://your-sonarr-server:8989
-SONARR_API_KEY=your-sonarr-api-key
-
-# Radarr configuration
-RADARR_URL=http://your-radarr-server:7878
-RADARR_API_KEY=your-radarr-api-key
-
-# Application settings
-UNWATCHED_DAYS_THRESHOLD=365  # Consider media unwatched if not watched in this many days
-IGNORE_NEWER_THAN_DAYS=270    # Ignore media added within this many days
-CONCURRENT_LIMIT=5            # Number of concurrent API requests
-BATCH_SIZE=40                 # Number of items to process in each batch
+```powershell
+bun dev
 ```
 
-### How to get API tokens:
+The application will be available at [http://localhost:3000](http://localhost:3000).
 
-- **Emby**: Go to Dashboard > API Keys > Create new API key
-- **Sonarr**: Go to Settings > General > API Key
-- **Radarr**: Go to Settings > General > API Key
+### 2. Configure Your Services
 
-## Running the Application
+1. Navigate to the **Settings** page
+2. Add your Sonarr, Radarr, and Emby instances:
+   - **Name**: A descriptive name for the instance
+   - **URL**: The base URL of your service (e.g., `http://localhost:8989`)
+   - **API Key**: Your service's API key
+   - **User ID**: (Emby only) Your Emby user ID
 
-You can run both the backend and frontend with a single command:
+### 3. Test Connections
 
-```bash
-npm start
-```
+Use the built-in connection testing to verify your configurations work correctly.
 
-Or run them separately:
+## Usage
 
-```bash
-# Run just the backend
-npm run start:backend
+### Scanning Media
 
-# Run just the frontend
-npm run start:frontend
-```
+1. Go to the **Scan** page
+2. Select which services to scan
+3. The application will fetch media data and calculate watch statistics
+4. Review the results on the **Least Watched** page
 
-The application will be available at:
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8000
+### Managing Settings
+
+- **Multiple Instances**: Add multiple instances of each service
+- **Enable/Disable**: Toggle instances on/off without deleting them
+- **Batch Operations**: Configure multiple services at once
 
 ## Development
 
-### Backend
+### Project Structure
 
-The backend is a Python FastAPI application that uses Poetry for dependency management.
-
-To activate the Poetry virtual environment:
-
-```bash
-cd packages/backend
-poetry shell
+```
+src/
+├── app/                    # Next.js app router pages
+│   ├── api/               # API routes
+│   ├── least-watched/     # Main media view
+│   ├── scan/             # Media scanning page
+│   └── settings/         # Settings management
+├── components/           # React components
+│   ├── settings/         # Settings-specific components
+│   └── ui/              # Reusable UI components
+├── lib/                 # Core utilities
+│   ├── actions/         # Server actions
+│   ├── database.ts      # Database services
+│   ├── media-processor.ts # Media processing logic
+│   └── api.ts          # API client
+└── hooks/              # Custom React hooks
 ```
 
-### Frontend
+### Available Scripts
 
-The frontend is a Next.js application with TypeScript and Tailwind CSS.
+```powershell
+# Development server with Turbopack
+bun dev
 
-To run the frontend in development mode:
+# Production build
+bun run build
 
-```bash
-cd packages/frontend
-npm run dev
+# Start production server
+bun start
+
+# Run linter
+bun run lint
+
+# Database CLI tool
+bun run scripts/db-cli.ts
 ```
 
-## Building for Production
+### Testing Database
 
-To build the frontend for production:
+Test your database setup:
 
-```bash
-npm run build:frontend
+```powershell
+bun run --bun src/lib/test-database.ts
 ```
 
-The backend can be deployed using various methods such as Gunicorn, Docker, or a WSGI server.
+This will verify database connectivity and run basic CRUD operations.
+
+## API Integration
+
+The application integrates with:
+
+- **Sonarr API**: For TV show management
+- **Radarr API**: For movie management  
+- **Emby API**: For watch status and user data
+
+All API keys are stored securely in the database and never exposed to the client.
+
+## Security Notes
+
+- **Read-Only**: The application only reads data from your services
+- **No Modifications**: It will never modify, delete, or add content to Sonarr, Radarr, or Emby
+- **Local Database**: All data is stored locally in SQLite
+- **API Key Protection**: API keys are server-side only
+
+## Troubleshooting
+
+### Database Issues
+
+1. **Migration Errors**: Reset the database with `bunx prisma migrate reset`
+2. **Connection Issues**: Verify your `DATABASE_URL` in `.env`
+3. **Missing Tables**: Run `bunx prisma migrate dev`
+
+### Service Connection Issues
+
+1. **Invalid API Keys**: Verify your API keys in the service settings
+2. **Network Issues**: Ensure the URLs are accessible from your server
+3. **CORS Errors**: Make sure your services allow requests from your Next.js app
+
+### Performance Issues
+
+1. **Large Libraries**: Consider implementing pagination for large media libraries
+2. **Slow Scans**: Media scanning can take time with large libraries
+3. **Database Performance**: SQLite is suitable for most use cases, but consider PostgreSQL for very large datasets
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
 
 ## License
 
-MIT
+This project is licensed under the MIT License.
+
+## Support
+
+For issues and questions:
+1. Check the troubleshooting section above
+2. Review the [DATABASE_SETUP.md](DATABASE_SETUP.md) for database-specific issues
+3. Create an issue in the repository
