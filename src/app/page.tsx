@@ -4,6 +4,7 @@ import {
   MediaTableSkeleton,
   MediaSummaryCardsSkeleton,
   MediaProcessingProgressSkeleton,
+  MediaProcessingProgressServer,
   MediaSummaryCardsServer,
   PageActionsServer,
   MediaPageServer,
@@ -37,9 +38,7 @@ export default function LeastWatchedPage() {
 
         {/* Dynamic Processing Progress - Streamed */}
         <Suspense fallback={<MediaProcessingProgressSkeleton />}>
-          <div>
-            {/* This will be conditionally rendered based on processing state */}
-          </div>
+          <MediaProcessingProgressServer />
         </Suspense>
 
         {/* Dynamic Folder Space Widget - Streamed */}

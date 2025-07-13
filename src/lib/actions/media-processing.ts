@@ -93,7 +93,8 @@ export async function getProcessingProgress(
       throw new Error('Progress ID is required');
     }
 
-    return MediaProcessor.getProgress(progressId);
+    const { ProgressStore } = await import('../progress-store');
+    return ProgressStore.getProgress(progressId);
   } catch (error) {
     console.error('Failed to get processing progress:', error);
     return null;
@@ -105,7 +106,8 @@ export async function getActiveMediaProcess(): Promise<{
   progress: MediaProcessingProgress;
 } | null> {
   try {
-    return MediaProcessor.getActiveProcess();
+    const { ProgressStore } = await import('../progress-store');
+    return ProgressStore.getActiveProcess();
   } catch (error) {
     console.error('Failed to get active media process:', error);
     return null;

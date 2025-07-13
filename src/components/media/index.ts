@@ -20,6 +20,7 @@ export { MediaFiltersServer } from './filters/MediaFiltersServer';
 export { MediaProcessingProgress } from './progress/MediaProcessingProgress';
 export { MediaProcessingProgressEnhanced } from './progress/MediaProcessingProgressEnhanced';
 export { MediaProcessingProgressSkeleton } from './progress/MediaProcessingProgressSkeleton';
+export { MediaProcessingProgressServer } from './progress/MediaProcessingProgressServer';
 
 // Action components
 export { PageActions } from './actions/PageActions';

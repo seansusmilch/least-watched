@@ -4,23 +4,17 @@ import {
   radarrSettingsService,
   embySettingsService,
 } from './database';
-import {
-  getEnhancedProcessingSettings,
-  type EnhancedProcessingSettings,
-  getDeletionScoreSettings,
-} from './actions/settings';
+import { type EnhancedProcessingSettings } from './actions/settings';
 import { deletionScoreCalculator } from './deletion-score-calculator';
 import { folderSpaceService } from './services/folder-space-service';
 import { type FolderSpaceData } from './types/media-processing';
+import { ProgressStore } from './progress-store';
 import path from 'path';
 
 // Configuration constants
 const TESTING_LIMIT = 25; // Limit number of items processed per instance for testing
 
 const prisma = new PrismaClient();
-
-// Global progress tracking
-const progressStore = new Map<string, MediaProcessingProgress>();
 
 // Type definitions
 interface MediaProcessingProgress {
@@ -222,6 +216,9 @@ export class MediaProcessor {
 
   private async ensureEnhancedSettings(): Promise<void> {
     if (!this.enhancedSettings) {
+      const { getEnhancedProcessingSettings } = await import(
+        './actions/settings'
+      );
       this.enhancedSettings = await getEnhancedProcessingSettings();
     }
   }
@@ -241,7 +238,7 @@ export class MediaProcessor {
     };
 
     // Store progress globally
-    progressStore.set(this.progressId, progress);
+    ProgressStore.setProgress(this.progressId, progress);
 
     // Call callback if provided
     if (this.onProgress) {
@@ -252,23 +249,18 @@ export class MediaProcessor {
   static getProgress(
     progressId: string = 'default'
   ): MediaProcessingProgress | null {
-    return progressStore.get(progressId) || null;
+    return ProgressStore.getProgress(progressId);
   }
 
   static clearProgress(progressId: string = 'default'): void {
-    progressStore.delete(progressId);
+    ProgressStore.clearProgress(progressId);
   }
 
   static getActiveProcess(): {
     progressId: string;
     progress: MediaProcessingProgress;
   } | null {
-    for (const [progressId, progress] of Array.from(progressStore.entries())) {
-      if (!progress.isComplete && !progress.error) {
-        return { progressId, progress };
-      }
-    }
-    return null;
+    return ProgressStore.getActiveProcess();
   }
 
   private getQualityScore(quality?: string): number {
@@ -419,7 +411,7 @@ export class MediaProcessor {
       percentage: 100,
       isComplete: true,
     };
-    progressStore.set(this.progressId, completedProgress);
+    ProgressStore.setProgress(this.progressId, completedProgress);
 
     return allProcessedItems;
   }
@@ -903,6 +895,7 @@ export class MediaProcessor {
     let totalStored = 0;
 
     // Get deletion score settings and folder space data for scoring
+    const { getDeletionScoreSettings } = await import('./actions/settings');
     const deletionScoreSettings = await getDeletionScoreSettings();
     const folderSpaceData = await folderSpaceService.getFolderSpaceData();
 
