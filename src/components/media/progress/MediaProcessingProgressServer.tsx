@@ -12,7 +12,7 @@ export async function MediaProcessingProgressServer() {
     <MediaProcessingProgressClient
       initialProgressId={activeProcess.progressId}
       autoRefresh={true}
-      refreshInterval={2000}
+      refreshInterval={3000}
     />
   );
 }
