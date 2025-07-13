@@ -85,24 +85,6 @@ async function processMediaInBackground(progressId: string): Promise<void> {
   }
 }
 
-// Keep the original function for backward compatibility but mark it as deprecated
-export async function processMediaLibrary(): Promise<MediaProcessingResult> {
-  console.warn(
-    'processMediaLibrary is deprecated. Use startMediaProcessing instead.'
-  );
-  const progressId = randomUUID();
-
-  processMediaInBackground(progressId).catch((error) => {
-    console.error('Background processing failed:', error);
-  });
-
-  return {
-    success: true,
-    message: 'Processing started',
-    progressId,
-  };
-}
-
 export async function getProcessingProgress(
   progressId: string
 ): Promise<MediaProcessingProgress | null> {
