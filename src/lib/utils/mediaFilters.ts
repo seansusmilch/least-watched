@@ -195,14 +195,17 @@ function applyRangeFilter(
 }
 
 function applyDateRangeFilter(
-  value: Date | undefined,
+  value: Date | string | undefined,
   range: { start?: Date; end?: Date }
 ): boolean {
   if (!range.start && !range.end) return true;
   if (value === undefined) return false;
 
-  if (range.start && value < range.start) return false;
-  if (range.end && value > range.end) return false;
+  // Convert string dates to Date objects for comparison
+  const dateValue = typeof value === 'string' ? new Date(value) : value;
+
+  if (range.start && dateValue < range.start) return false;
+  if (range.end && dateValue > range.end) return false;
 
   return true;
 }

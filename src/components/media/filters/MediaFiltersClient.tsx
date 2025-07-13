@@ -1,4 +1,6 @@
-import React, { useState, useMemo } from 'react';
+'use client';
+
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -30,18 +32,17 @@ import {
   Zap,
   Tv,
   HardDrive,
+  X,
 } from 'lucide-react';
-import { FilterOptions, QuickFilterOption } from '@/lib/types/media';
+import { QuickFilterOption } from '@/lib/types/media';
+import { useMediaFilterContext } from './MediaFilterProvider';
 
-interface MediaFiltersProps {
-  filters: FilterOptions;
-  onFilterChange: (filters: Partial<FilterOptions>) => void;
+interface MediaFiltersClientProps {
   availableGenres: string[];
   availableQualities: string[];
   availableSources: string[];
   availableFolders: string[];
   totalItems: number;
-  filteredItems: number;
 }
 
 // Quick filter presets
@@ -94,53 +95,83 @@ const quickFilters: QuickFilterOption[] = [
   },
 ];
 
-export const MediaFilters = ({
-  filters,
-  onFilterChange,
+// Range slider component
+interface RangeSliderProps {
+  label: string;
+  min: number;
+  max: number;
+  value: { min?: number; max?: number };
+  onValueChange: (value: { min?: number; max?: number }) => void;
+  formatValue: (value: number) => string;
+  unit: string;
+}
+
+const RangeSlider = ({
+  label,
+  min,
+  max,
+  value,
+  onValueChange,
+  formatValue,
+  unit,
+}: RangeSliderProps) => {
+  const [localValue, setLocalValue] = useState([
+    value.min ?? min,
+    value.max ?? max,
+  ]);
+
+  const handleSliderChange = (newValue: number[]) => {
+    setLocalValue(newValue);
+    onValueChange({
+      min: newValue[0] === min ? undefined : newValue[0],
+      max: newValue[1] === max ? undefined : newValue[1],
+    });
+  };
+
+  return (
+    <div className='space-y-2'>
+      <Label>{label}</Label>
+      <div className='px-2'>
+        <Slider
+          value={localValue}
+          onValueChange={handleSliderChange}
+          min={min}
+          max={max}
+          step={1}
+          className='w-full'
+        />
+        <div className='flex justify-between text-xs text-muted-foreground mt-1'>
+          <span>
+            {formatValue(localValue[0])}
+            {unit}
+          </span>
+          <span>
+            {formatValue(localValue[1])}
+            {unit}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export function MediaFiltersClient({
   availableGenres,
   availableQualities,
   availableSources,
   availableFolders,
   totalItems,
-  filteredItems,
-}: MediaFiltersProps) => {
+}: MediaFiltersClientProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const { filters, updateFilter, resetFilters, applyQuickFilter } =
+    useMediaFilterContext();
 
-  const applyQuickFilter = (quickFilter: QuickFilterOption) => {
-    onFilterChange(quickFilter.filters);
+  const applyQuickFilterHandler = (quickFilter: QuickFilterOption) => {
+    applyQuickFilter(quickFilter.filters);
   };
 
   const clearAllFilters = () => {
-    onFilterChange({
-      searchTerm: '',
-      searchType: 'contains',
-      mediaTypes: new Set(),
-      sources: new Set(),
-      watchStates: new Set(),
-      unwatchedDaysRange: {},
-      lastWatchedRange: {},
-      watchCountRange: {},
-      sizeRange: { unit: 'GB' },
-      qualities: new Set(),
-      qualityScoreRange: {},
-      sizePerHourRange: {},
-      yearRange: {},
-      genres: new Set(),
-      ratingRange: {},
-      runtimeRange: {},
-      completionRange: {},
-      seasonCountRange: {},
-      episodeCountRange: {},
-      monitored: undefined,
-      dateAddedRange: {},
-      folders: new Set(),
-      deletionScoreRange: {},
-      filterType: 'all',
-      minSize: '',
-      folderFilter: '',
-      filterMode: 'basic',
-      savedPresetId: undefined,
-    });
+    resetFilters();
   };
 
   const activeFilterCount = useMemo(() => {
@@ -170,79 +201,29 @@ export const MediaFilters = ({
   const setToArray = (set: Set<string>): string[] => Array.from(set);
   const arrayToSet = (array: string[]): Set<string> => new Set(array);
 
-  const RangeSlider = ({
-    label,
-    min,
-    max,
-    step = 1,
-    value,
-    onValueChange,
-    formatValue = (v: number) => v.toString(),
-    unit = '',
-  }: {
-    label: string;
-    min: number;
-    max: number;
-    step?: number;
-    value: { min?: number; max?: number };
-    onValueChange: (value: { min?: number; max?: number }) => void;
-    formatValue?: (value: number) => string;
-    unit?: string;
-  }) => {
-    const currentMin = value.min ?? min;
-    const currentMax = value.max ?? max;
-
-    const handleSliderChange = (values: number[]) => {
-      onValueChange({
-        min: values[0] === min ? undefined : values[0],
-        max: values[1] === max ? undefined : values[1],
-      });
-    };
-
-    return (
-      <div className='space-y-2'>
-        <div className='flex justify-between items-center'>
-          <Label>{label}</Label>
-          <span className='text-sm text-muted-foreground'>
-            {formatValue(currentMin)}
-            {unit} - {formatValue(currentMax)}
-            {unit}
-          </span>
-        </div>
-        <Slider
-          value={[currentMin, currentMax]}
-          onValueChange={handleSliderChange}
-          min={min}
-          max={max}
-          step={step}
-          className='w-full'
-        />
-      </div>
-    );
-  };
-
   return (
     <Card>
       <CardHeader>
-        <div className='flex items-center justify-between'>
-          <CardTitle className='flex items-center space-x-2'>
+        <CardTitle className='flex items-center justify-between'>
+          <div className='flex items-center gap-2'>
             <Filter className='h-5 w-5' />
-            <span>Filters</span>
-            {activeFilterCount > 0 && (
-              <Badge variant='secondary'>{activeFilterCount}</Badge>
-            )}
-          </CardTitle>
-          <div className='flex items-center space-x-2'>
-            <span className='text-sm text-muted-foreground'>
-              {filteredItems} of {totalItems} items
-            </span>
-            {activeFilterCount > 0 && (
-              <Button variant='outline' size='sm' onClick={clearAllFilters}>
-                Clear All
-              </Button>
-            )}
+            Filters
           </div>
-        </div>
+          <div className='flex items-center gap-2'>
+            {activeFilterCount > 0 && (
+              <Badge variant='secondary'>{activeFilterCount} active</Badge>
+            )}
+            <Button
+              variant='outline'
+              size='sm'
+              onClick={clearAllFilters}
+              className='h-8'
+            >
+              <X className='h-3 w-3 mr-1' />
+              Clear All
+            </Button>
+          </div>
+        </CardTitle>
       </CardHeader>
       <CardContent className='space-y-6'>
         {/* Quick Filters */}
@@ -254,7 +235,7 @@ export const MediaFilters = ({
                 key={quickFilter.id}
                 variant='outline'
                 size='sm'
-                onClick={() => applyQuickFilter(quickFilter)}
+                onClick={() => applyQuickFilterHandler(quickFilter)}
                 className='text-xs'
               >
                 <Zap className='h-3 w-3 mr-1' />
@@ -275,9 +256,7 @@ export const MediaFilters = ({
                   id='search'
                   placeholder='Search titles...'
                   value={filters.searchTerm}
-                  onChange={(e) =>
-                    onFilterChange({ searchTerm: e.target.value })
-                  }
+                  onChange={(e) => updateFilter({ searchTerm: e.target.value })}
                   className='pl-8'
                 />
               </div>
@@ -287,7 +266,7 @@ export const MediaFilters = ({
               <Select
                 value={filters.searchType}
                 onValueChange={(value: 'contains' | 'exact' | 'regex') =>
-                  onFilterChange({ searchType: value })
+                  updateFilter({ searchType: value })
                 }
               >
                 <SelectTrigger>
@@ -311,7 +290,7 @@ export const MediaFilters = ({
                   { label: 'TV Shows', value: 'tv' },
                 ]}
                 onValueChange={(values) =>
-                  onFilterChange({
+                  updateFilter({
                     mediaTypes: arrayToSet(values) as Set<'movie' | 'tv'>,
                   })
                 }
@@ -328,7 +307,7 @@ export const MediaFilters = ({
                   value: source,
                 }))}
                 onValueChange={(values) =>
-                  onFilterChange({ sources: arrayToSet(values) })
+                  updateFilter({ sources: arrayToSet(values) })
                 }
                 defaultValue={setToArray(filters.sources)}
                 placeholder='All sources'
@@ -369,7 +348,7 @@ export const MediaFilters = ({
                     { label: 'Partial', value: 'partial' },
                   ]}
                   onValueChange={(values) =>
-                    onFilterChange({
+                    updateFilter({
                       watchStates: arrayToSet(values) as Set<
                         'watched' | 'unwatched' | 'partial'
                       >,
@@ -382,27 +361,15 @@ export const MediaFilters = ({
               </div>
 
               <RangeSlider
-                label='Days Unwatched'
+                label='Unwatched Days'
                 min={0}
-                max={1095}
+                max={1000}
                 value={filters.unwatchedDaysRange}
                 onValueChange={(value) =>
-                  onFilterChange({ unwatchedDaysRange: value })
+                  updateFilter({ unwatchedDaysRange: value })
                 }
                 formatValue={(v) => v.toString()}
                 unit=' days'
-              />
-
-              <RangeSlider
-                label='Watch Count'
-                min={0}
-                max={50}
-                value={filters.watchCountRange}
-                onValueChange={(value) =>
-                  onFilterChange({ watchCountRange: value })
-                }
-                formatValue={(v) => v.toString()}
-                unit=' times'
               />
             </div>
 
@@ -412,50 +379,15 @@ export const MediaFilters = ({
                 <HardDrive className='h-4 w-4' />
                 <span>Quality & Size</span>
               </h4>
-              <div className='grid gap-4 md:grid-cols-2'>
-                <RangeSlider
-                  label='File Size'
-                  min={0}
-                  max={100}
-                  value={filters.sizeRange}
-                  onValueChange={(value) =>
-                    onFilterChange({
-                      sizeRange: { ...value, unit: filters.sizeRange.unit },
-                    })
-                  }
-                  formatValue={(v) => v.toFixed(1)}
-                  unit={` ${filters.sizeRange.unit}`}
-                />
-                <div className='space-y-2'>
-                  <Label>Size Unit</Label>
-                  <Select
-                    value={filters.sizeRange.unit}
-                    onValueChange={(value: 'GB' | 'MB') =>
-                      onFilterChange({
-                        sizeRange: { ...filters.sizeRange, unit: value },
-                      })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value='GB'>GB</SelectItem>
-                      <SelectItem value='MB'>MB</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
               <div className='space-y-2'>
-                <Label>Quality</Label>
+                <Label>Qualities</Label>
                 <MultiSelect
                   options={availableQualities.map((quality) => ({
                     label: quality,
                     value: quality,
                   }))}
                   onValueChange={(values) =>
-                    onFilterChange({ qualities: arrayToSet(values) })
+                    updateFilter({ qualities: arrayToSet(values) })
                   }
                   defaultValue={setToArray(filters.qualities)}
                   placeholder='All qualities'
@@ -469,14 +401,26 @@ export const MediaFilters = ({
                 max={100}
                 value={filters.qualityScoreRange}
                 onValueChange={(value) =>
-                  onFilterChange({ qualityScoreRange: value })
+                  updateFilter({ qualityScoreRange: value })
                 }
                 formatValue={(v) => v.toString()}
                 unit=''
               />
+
+              <RangeSlider
+                label='Size (GB)'
+                min={0}
+                max={100}
+                value={filters.sizeRange}
+                onValueChange={(value) =>
+                  updateFilter({ sizeRange: { ...value, unit: 'GB' } })
+                }
+                formatValue={(v) => v.toString()}
+                unit=' GB'
+              />
             </div>
 
-            {/* Content Filters */}
+            {/* Content Details */}
             <div className='space-y-4'>
               <h4 className='font-medium flex items-center space-x-2'>
                 <Star className='h-4 w-4' />
@@ -488,9 +432,7 @@ export const MediaFilters = ({
                   min={1900}
                   max={new Date().getFullYear()}
                   value={filters.yearRange}
-                  onValueChange={(value) =>
-                    onFilterChange({ yearRange: value })
-                  }
+                  onValueChange={(value) => updateFilter({ yearRange: value })}
                   formatValue={(v) => v.toString()}
                   unit=''
                 />
@@ -500,7 +442,7 @@ export const MediaFilters = ({
                   max={300}
                   value={filters.runtimeRange}
                   onValueChange={(value) =>
-                    onFilterChange({ runtimeRange: value })
+                    updateFilter({ runtimeRange: value })
                   }
                   formatValue={(v) => v.toString()}
                   unit=' min'
@@ -515,47 +457,16 @@ export const MediaFilters = ({
                     value: genre,
                   }))}
                   onValueChange={(values) =>
-                    onFilterChange({ genres: arrayToSet(values) })
+                    updateFilter({ genres: arrayToSet(values) })
                   }
                   defaultValue={setToArray(filters.genres)}
                   placeholder='All genres'
                   maxCount={3}
                 />
               </div>
-
-              <div className='grid gap-4 md:grid-cols-2'>
-                <RangeSlider
-                  label='IMDB Rating'
-                  min={0}
-                  max={10}
-                  step={0.1}
-                  value={filters.ratingRange.imdb || {}}
-                  onValueChange={(value) =>
-                    onFilterChange({
-                      ratingRange: { ...filters.ratingRange, imdb: value },
-                    })
-                  }
-                  formatValue={(v) => v.toFixed(1)}
-                  unit=''
-                />
-                <RangeSlider
-                  label='TMDB Rating'
-                  min={0}
-                  max={10}
-                  step={0.1}
-                  value={filters.ratingRange.tmdb || {}}
-                  onValueChange={(value) =>
-                    onFilterChange({
-                      ratingRange: { ...filters.ratingRange, tmdb: value },
-                    })
-                  }
-                  formatValue={(v) => v.toFixed(1)}
-                  unit=''
-                />
-              </div>
             </div>
 
-            {/* TV Show Specific Filters */}
+            {/* TV Show Specific */}
             <div className='space-y-4'>
               <h4 className='font-medium flex items-center space-x-2'>
                 <Tv className='h-4 w-4' />
@@ -568,7 +479,7 @@ export const MediaFilters = ({
                   max={100}
                   value={filters.completionRange}
                   onValueChange={(value) =>
-                    onFilterChange({ completionRange: value })
+                    updateFilter({ completionRange: value })
                   }
                   formatValue={(v) => v.toString()}
                   unit='%'
@@ -579,7 +490,7 @@ export const MediaFilters = ({
                   max={20}
                   value={filters.seasonCountRange}
                   onValueChange={(value) =>
-                    onFilterChange({ seasonCountRange: value })
+                    updateFilter({ seasonCountRange: value })
                   }
                   formatValue={(v) => v.toString()}
                   unit=' seasons'
@@ -591,7 +502,7 @@ export const MediaFilters = ({
                   id='monitored'
                   checked={filters.monitored === true}
                   onCheckedChange={(checked) =>
-                    onFilterChange({ monitored: checked ? true : undefined })
+                    updateFilter({ monitored: checked ? true : undefined })
                   }
                 />
                 <Label htmlFor='monitored'>Only Monitored Shows</Label>
@@ -612,7 +523,7 @@ export const MediaFilters = ({
                     value: folder,
                   }))}
                   onValueChange={(values) =>
-                    onFilterChange({ folders: arrayToSet(values) })
+                    updateFilter({ folders: arrayToSet(values) })
                   }
                   defaultValue={setToArray(filters.folders)}
                   placeholder='All folders'
@@ -626,7 +537,7 @@ export const MediaFilters = ({
                 max={100}
                 value={filters.deletionScoreRange}
                 onValueChange={(value) =>
-                  onFilterChange({ deletionScoreRange: value })
+                  updateFilter({ deletionScoreRange: value })
                 }
                 formatValue={(v) => v.toString()}
                 unit=''
@@ -634,7 +545,12 @@ export const MediaFilters = ({
             </div>
           </CollapsibleContent>
         </Collapsible>
+
+        {/* Filter Summary */}
+        <div className='text-sm text-muted-foreground'>
+          Showing filtered results from {totalItems} total items
+        </div>
       </CardContent>
     </Card>
   );
-};
+}

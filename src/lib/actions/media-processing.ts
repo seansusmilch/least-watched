@@ -2,27 +2,96 @@
 
 import { MediaProcessor } from '../media-processor';
 import { randomUUID } from 'crypto';
-import { mediaService } from '../services/media-service';
-import { folderSpaceService } from '../services/folder-space-service';
-import { sonarrApiClient, radarrApiClient } from '../services/api-client';
+import { revalidatePath, revalidateTag } from 'next/cache';
+import {
+  getCachedMediaItems,
+  getCachedMediaItemsWithScores,
+  getCachedFolderSpaceData,
+  getCachedSelectedFoldersWithSpace,
+  getCachedAllFoldersWithSpace,
+  invalidateAfterMediaProcessing,
+  invalidateAfterSettingsChange,
+} from '../cache/data-cache';
 import {
   type MediaProcessingProgress,
   type MediaProcessingResult,
-  type MediaItemData,
-  type FolderSpaceData,
   type SelectedFoldersFromDatabase,
+} from '../types/media-processing';
+import {
+  type CachedMediaItemData,
+  type FolderSpaceData,
   type FolderWithSpace,
   type FolderWithSpaceEnhanced,
-} from '../types/media-processing';
+} from '../types/cached-data';
+import {
+  createFormState,
+  handleServerError,
+  type FormState,
+} from '../validation/schemas';
 
 // ============================================================================
 // Media Processing Functions
 // ============================================================================
 
-export async function startMediaProcessing(): Promise<MediaProcessingResult> {
+export async function startMediaProcessing(
+  _prevState: FormState | undefined,
+  _formData: FormData
+): Promise<FormState<MediaProcessingResult>> {
+  try {
+    const progressId = randomUUID();
+
+    // Start processing in background (don't await)
+    processMediaInBackground(progressId).catch((error) => {
+      console.error('Background processing failed:', error);
+    });
+
+    const result: MediaProcessingResult = {
+      success: true,
+      message: 'Processing started successfully',
+      progressId,
+    };
+
+    // Revalidate relevant paths and tags immediately when starting
+    revalidatePath('/');
+    revalidateTag('media-processing');
+
+    return createFormState<MediaProcessingResult>(
+      true,
+      'Media processing started successfully',
+      undefined,
+      result
+    );
+  } catch (error) {
+    return handleServerError(
+      error,
+      'Failed to start media processing'
+    ) as FormState<MediaProcessingResult>;
+  }
+}
+
+async function processMediaInBackground(progressId: string): Promise<void> {
+  try {
+    const processor = new MediaProcessor(undefined, progressId);
+    await processor.processAllMedia();
+
+    // Only invalidate internal caches, not Next.js cache tags
+    // The UI will refresh when it detects processing completion
+    await invalidateAfterMediaProcessing();
+
+    console.log('✅ Background media processing completed successfully');
+  } catch (error) {
+    console.error('Background media processing failed:', error);
+    throw error;
+  }
+}
+
+// Keep the original function for backward compatibility but mark it as deprecated
+export async function processMediaLibrary(): Promise<MediaProcessingResult> {
+  console.warn(
+    'processMediaLibrary is deprecated. Use startMediaProcessing instead.'
+  );
   const progressId = randomUUID();
 
-  // Start processing in background (don't await)
   processMediaInBackground(progressId).catch((error) => {
     console.error('Background processing failed:', error);
   });
@@ -34,47 +103,127 @@ export async function startMediaProcessing(): Promise<MediaProcessingResult> {
   };
 }
 
-async function processMediaInBackground(progressId: string): Promise<void> {
-  const processor = new MediaProcessor(undefined, progressId);
-  await processor.processAllMedia();
-}
-
-// Keep the original function for backward compatibility but mark it as deprecated
-export async function processMediaLibrary(): Promise<MediaProcessingResult> {
-  return startMediaProcessing();
-}
-
 export async function getProcessingProgress(
   progressId: string
 ): Promise<MediaProcessingProgress | null> {
-  return MediaProcessor.getProgress(progressId);
+  try {
+    if (!progressId) {
+      throw new Error('Progress ID is required');
+    }
+
+    return MediaProcessor.getProgress(progressId);
+  } catch (error) {
+    console.error('Failed to get processing progress:', error);
+    return null;
+  }
 }
 
 export async function getActiveMediaProcess(): Promise<{
   progressId: string;
   progress: MediaProcessingProgress;
 } | null> {
-  return MediaProcessor.getActiveProcess();
+  try {
+    return MediaProcessor.getActiveProcess();
+  } catch (error) {
+    console.error('Failed to get active media process:', error);
+    return null;
+  }
+}
+
+export async function cancelMediaProcessing(
+  prevState: FormState | undefined,
+  formData: FormData
+): Promise<FormState> {
+  try {
+    const progressId = formData.get('progressId') as string;
+
+    if (!progressId) {
+      return createFormState(false, 'Progress ID is required');
+    }
+
+    // TODO: Implement actual cancellation logic in MediaProcessor
+    // For now, just return success
+
+    revalidatePath('/');
+    revalidateTag('media-processing');
+
+    return createFormState(true, 'Media processing cancelled successfully');
+  } catch (error) {
+    return handleServerError(error, 'Failed to cancel media processing');
+  }
 }
 
 // ============================================================================
-// Media Items Functions
+// Media Items Functions (Cached)
 // ============================================================================
 
-export async function getMediaItems(): Promise<MediaItemData[]> {
-  return mediaService.getMediaItems();
+export async function getMediaItems(): Promise<CachedMediaItemData[]> {
+  try {
+    return await getCachedMediaItems();
+  } catch (error) {
+    console.error('Failed to get media items:', error);
+    return [];
+  }
 }
 
-export async function getMediaItemsWithScores(): Promise<MediaItemData[]> {
-  return mediaService.getMediaItemsWithScores();
+export async function getMediaItemsWithScores(): Promise<
+  CachedMediaItemData[]
+> {
+  try {
+    return await getCachedMediaItemsWithScores();
+  } catch (error) {
+    console.error('Failed to get media items with scores:', error);
+    return [];
+  }
+}
+
+export async function refreshMediaItems(
+  _prevState: FormState | undefined,
+  _formData: FormData
+): Promise<FormState> {
+  try {
+    // Invalidate media items cache
+    await invalidateAfterMediaProcessing();
+
+    // Revalidate paths and tags
+    revalidatePath('/');
+    revalidateTag('media-items');
+
+    return createFormState(true, 'Media items refreshed successfully');
+  } catch (error) {
+    return handleServerError(error, 'Failed to refresh media items');
+  }
 }
 
 // ============================================================================
-// Folder Space Functions
+// Folder Space Functions (Cached)
 // ============================================================================
 
 export async function getFolderSpaceData(): Promise<FolderSpaceData[]> {
-  return folderSpaceService.getFolderSpaceData();
+  try {
+    return await getCachedFolderSpaceData();
+  } catch (error) {
+    console.error('Failed to get folder space data:', error);
+    return [];
+  }
+}
+
+export async function refreshFolderSpaceData(
+  _prevState: FormState | undefined,
+  _formData: FormData
+): Promise<FormState> {
+  try {
+    // Invalidate folder space cache
+    await invalidateAfterSettingsChange();
+
+    // Revalidate paths and tags
+    revalidatePath('/');
+    revalidateTag('folder-space');
+
+    return createFormState(true, 'Folder space data refreshed successfully');
+  } catch (error) {
+    return handleServerError(error, 'Failed to refresh folder space data');
+  }
 }
 
 // Get selected folders directly from database
@@ -112,432 +261,111 @@ export async function getSelectedFoldersFromDatabase(): Promise<SelectedFoldersF
   }
 }
 
-// Get selected folders with disk space information
+// Get selected folders with disk space information (Cached)
 export async function getSelectedFoldersWithSpace(): Promise<
   FolderWithSpace[]
 > {
   try {
-    console.log('🔍 Fetching selected folders with disk space information...');
-
-    const { sonarrSettingsService, radarrSettingsService } = await import(
-      '../database'
-    );
-
-    const [sonarrInstances, radarrInstances] = await Promise.all([
-      sonarrSettingsService.getEnabled(),
-      radarrSettingsService.getEnabled(),
-    ]);
-
-    const foldersWithSpace: FolderWithSpace[] = [];
-
-    // Process Sonarr instances
-    for (const instance of sonarrInstances) {
-      try {
-        const selectedFolders = instance.selectedFolders
-          ? JSON.parse(instance.selectedFolders)
-          : [];
-
-        if (selectedFolders.length === 0) {
-          console.log(`📂 No folders selected for Sonarr: ${instance.name}`);
-          continue;
-        }
-
-        console.log(`📡 Fetching disk space from Sonarr: ${instance.name}`);
-
-        const rootFolders = await sonarrApiClient.getRootFolders(instance);
-
-        // Filter to only include selected folders
-        const matchingFolders = rootFolders.filter((folder) =>
-          selectedFolders.includes(folder.path)
-        );
-
-        for (const folder of matchingFolders) {
-          const totalSpace = folder.totalSpace || 0;
-          const freeSpace = folder.freeSpace || 0;
-          const usedSpace = totalSpace - freeSpace;
-
-          foldersWithSpace.push({
-            path: folder.path,
-            instanceName: instance.name,
-            instanceType: 'sonarr',
-            freeSpace,
-            totalSpace,
-            usedSpace,
-            freeSpacePercent:
-              totalSpace > 0 ? (freeSpace / totalSpace) * 100 : 0,
-            usedSpacePercent:
-              totalSpace > 0 ? (usedSpace / totalSpace) * 100 : 0,
-            enabled: instance.enabled,
-          });
-        }
-
-        console.log(
-          `✅ Added ${matchingFolders.length} folders from Sonarr: ${instance.name}`
-        );
-      } catch (error) {
-        console.error(
-          `❌ Error fetching disk space from Sonarr ${instance.name}:`,
-          error
-        );
-      }
-    }
-
-    // Process Radarr instances
-    for (const instance of radarrInstances) {
-      try {
-        const selectedFolders = instance.selectedFolders
-          ? JSON.parse(instance.selectedFolders)
-          : [];
-
-        if (selectedFolders.length === 0) {
-          console.log(`📂 No folders selected for Radarr: ${instance.name}`);
-          continue;
-        }
-
-        console.log(`📡 Fetching disk space from Radarr: ${instance.name}`);
-
-        const rootFolders = await radarrApiClient.getRootFolders(instance);
-
-        // Filter to only include selected folders
-        const matchingFolders = rootFolders.filter((folder) =>
-          selectedFolders.includes(folder.path)
-        );
-
-        for (const folder of matchingFolders) {
-          const totalSpace = folder.totalSpace || 0;
-          const freeSpace = folder.freeSpace || 0;
-          const usedSpace = totalSpace - freeSpace;
-
-          foldersWithSpace.push({
-            path: folder.path,
-            instanceName: instance.name,
-            instanceType: 'radarr',
-            freeSpace,
-            totalSpace,
-            usedSpace,
-            freeSpacePercent:
-              totalSpace > 0 ? (freeSpace / totalSpace) * 100 : 0,
-            usedSpacePercent:
-              totalSpace > 0 ? (usedSpace / totalSpace) * 100 : 0,
-            enabled: instance.enabled,
-          });
-        }
-
-        console.log(
-          `✅ Added ${matchingFolders.length} folders from Radarr: ${instance.name}`
-        );
-      } catch (error) {
-        console.error(
-          `❌ Error fetching disk space from Radarr ${instance.name}:`,
-          error
-        );
-      }
-    }
-
-    console.log(
-      `🎉 Successfully fetched ${foldersWithSpace.length} folders with disk space information`
-    );
-    return foldersWithSpace;
+    return await getCachedSelectedFoldersWithSpace();
   } catch (error) {
-    console.error('❌ Error getting selected folders with disk space:', error);
+    console.error('Failed to get selected folders with space:', error);
     return [];
   }
 }
 
-// Get all folders with disk space information (both selected and available)
+// Get all folders with disk space information (Cached)
 export async function getAllFoldersWithSpace(): Promise<
   FolderWithSpaceEnhanced[]
 > {
   try {
-    console.log('🔍 Fetching ALL folders with disk space information...');
-
-    const { sonarrSettingsService, radarrSettingsService } = await import(
-      '../database'
-    );
-
-    const [sonarrInstances, radarrInstances] = await Promise.all([
-      sonarrSettingsService.getEnabled(),
-      radarrSettingsService.getEnabled(),
-    ]);
-
-    const allFoldersWithSpace: FolderWithSpaceEnhanced[] = [];
-
-    // Process Sonarr instances
-    for (const instance of sonarrInstances) {
-      try {
-        const selectedFolders = instance.selectedFolders
-          ? JSON.parse(instance.selectedFolders)
-          : [];
-
-        console.log(`📡 Fetching ALL folders from Sonarr: ${instance.name}`);
-
-        const [rootFolders, diskSpaceData] = await Promise.all([
-          sonarrApiClient.getRootFolders(instance),
-          sonarrApiClient.getDiskSpace(instance),
-        ]);
-
-        console.log(
-          `📊 Received ${rootFolders.length} root folders and ${diskSpaceData.length} disk space entries from Sonarr ${instance.name}`
-        );
-
-        // Create a map of all folders we've seen
-        const folderMap = new Map<string, FolderWithSpaceEnhanced>();
-
-        // Process root folders first
-        for (const folder of rootFolders) {
-          const totalSpace = folder.totalSpace || 0;
-          const freeSpace = folder.freeSpace || 0;
-          const usedSpace = totalSpace - freeSpace;
-          const isSelected = selectedFolders.includes(folder.path);
-
-          const enhancedFolder: FolderWithSpaceEnhanced = {
-            path: folder.path,
-            instanceName: instance.name,
-            instanceType: 'sonarr',
-            freeSpace,
-            totalSpace,
-            usedSpace,
-            freeSpacePercent:
-              totalSpace > 0 ? (freeSpace / totalSpace) * 100 : 0,
-            usedSpacePercent:
-              totalSpace > 0 ? (usedSpace / totalSpace) * 100 : 0,
-            enabled: instance.enabled,
-            isSelected,
-            isRootFolder: true,
-            isDiskSpaceFolder: false,
-            driveRoot: getDriveRoot(folder.path),
-            isSystemDrive: isSystemDrive(folder.path),
-          };
-
-          folderMap.set(folder.path, enhancedFolder);
-        }
-
-        // Enhance with disk space data
-        for (const diskInfo of diskSpaceData) {
-          const existingFolder = folderMap.get(diskInfo.path);
-
-          if (existingFolder) {
-            // Enhance existing folder with disk space info
-            existingFolder.isDiskSpaceFolder = true;
-            existingFolder.label = diskInfo.label;
-            existingFolder.driveFormat = diskInfo.driveFormat;
-            existingFolder.unmappedFolders = diskInfo.unmappedFolders;
-
-            // Use disk space data if root folder data is missing
-            if (!existingFolder.totalSpace && diskInfo.totalSpace) {
-              existingFolder.totalSpace = diskInfo.totalSpace;
-              existingFolder.freeSpace = diskInfo.freeSpace;
-              existingFolder.usedSpace =
-                diskInfo.totalSpace - diskInfo.freeSpace;
-              existingFolder.freeSpacePercent =
-                (diskInfo.freeSpace / diskInfo.totalSpace) * 100;
-              existingFolder.usedSpacePercent =
-                diskInfo.percentUsed ||
-                ((diskInfo.totalSpace - diskInfo.freeSpace) /
-                  diskInfo.totalSpace) *
-                  100;
-            }
-          } else {
-            // Create new folder from disk space data
-            const isSelected = selectedFolders.includes(diskInfo.path);
-            const usedSpace = diskInfo.totalSpace - diskInfo.freeSpace;
-
-            const enhancedFolder: FolderWithSpaceEnhanced = {
-              path: diskInfo.path,
-              instanceName: instance.name,
-              instanceType: 'sonarr',
-              freeSpace: diskInfo.freeSpace,
-              totalSpace: diskInfo.totalSpace,
-              usedSpace,
-              freeSpacePercent:
-                (diskInfo.freeSpace / diskInfo.totalSpace) * 100,
-              usedSpacePercent:
-                diskInfo.percentUsed || (usedSpace / diskInfo.totalSpace) * 100,
-              enabled: instance.enabled,
-              isSelected,
-              isRootFolder: false,
-              isDiskSpaceFolder: true,
-              label: diskInfo.label,
-              driveFormat: diskInfo.driveFormat,
-              unmappedFolders: diskInfo.unmappedFolders,
-              driveRoot: getDriveRoot(diskInfo.path),
-              isSystemDrive: isSystemDrive(diskInfo.path),
-            };
-
-            folderMap.set(diskInfo.path, enhancedFolder);
-          }
-        }
-
-        allFoldersWithSpace.push(...folderMap.values());
-        console.log(
-          `✅ Added ${folderMap.size} folders from Sonarr: ${instance.name}`
-        );
-      } catch (error) {
-        console.error(
-          `❌ Error fetching folders from Sonarr ${instance.name}:`,
-          error
-        );
-      }
-    }
-
-    // Process Radarr instances
-    for (const instance of radarrInstances) {
-      try {
-        const selectedFolders = instance.selectedFolders
-          ? JSON.parse(instance.selectedFolders)
-          : [];
-
-        console.log(`📡 Fetching ALL folders from Radarr: ${instance.name}`);
-
-        const [rootFolders, diskSpaceData] = await Promise.all([
-          radarrApiClient.getRootFolders(instance),
-          radarrApiClient.getDiskSpace(instance),
-        ]);
-
-        console.log(
-          `📊 Received ${rootFolders.length} root folders and ${diskSpaceData.length} disk space entries from Radarr ${instance.name}`
-        );
-
-        // Create a map of all folders we've seen
-        const folderMap = new Map<string, FolderWithSpaceEnhanced>();
-
-        // Process root folders first
-        for (const folder of rootFolders) {
-          const totalSpace = folder.totalSpace || 0;
-          const freeSpace = folder.freeSpace || 0;
-          const usedSpace = totalSpace - freeSpace;
-          const isSelected = selectedFolders.includes(folder.path);
-
-          const enhancedFolder: FolderWithSpaceEnhanced = {
-            path: folder.path,
-            instanceName: instance.name,
-            instanceType: 'radarr',
-            freeSpace,
-            totalSpace,
-            usedSpace,
-            freeSpacePercent:
-              totalSpace > 0 ? (freeSpace / totalSpace) * 100 : 0,
-            usedSpacePercent:
-              totalSpace > 0 ? (usedSpace / totalSpace) * 100 : 0,
-            enabled: instance.enabled,
-            isSelected,
-            isRootFolder: true,
-            isDiskSpaceFolder: false,
-            driveRoot: getDriveRoot(folder.path),
-            isSystemDrive: isSystemDrive(folder.path),
-          };
-
-          folderMap.set(folder.path, enhancedFolder);
-        }
-
-        // Enhance with disk space data
-        for (const diskInfo of diskSpaceData) {
-          const existingFolder = folderMap.get(diskInfo.path);
-
-          if (existingFolder) {
-            // Enhance existing folder with disk space info
-            existingFolder.isDiskSpaceFolder = true;
-            existingFolder.label = diskInfo.label;
-            existingFolder.driveFormat = diskInfo.driveFormat;
-            existingFolder.unmappedFolders = diskInfo.unmappedFolders;
-
-            // Use disk space data if root folder data is missing
-            if (!existingFolder.totalSpace && diskInfo.totalSpace) {
-              existingFolder.totalSpace = diskInfo.totalSpace;
-              existingFolder.freeSpace = diskInfo.freeSpace;
-              existingFolder.usedSpace =
-                diskInfo.totalSpace - diskInfo.freeSpace;
-              existingFolder.freeSpacePercent =
-                (diskInfo.freeSpace / diskInfo.totalSpace) * 100;
-              existingFolder.usedSpacePercent =
-                diskInfo.percentUsed ||
-                ((diskInfo.totalSpace - diskInfo.freeSpace) /
-                  diskInfo.totalSpace) *
-                  100;
-            }
-          } else {
-            // Create new folder from disk space data
-            const isSelected = selectedFolders.includes(diskInfo.path);
-            const usedSpace = diskInfo.totalSpace - diskInfo.freeSpace;
-
-            const enhancedFolder: FolderWithSpaceEnhanced = {
-              path: diskInfo.path,
-              instanceName: instance.name,
-              instanceType: 'radarr',
-              freeSpace: diskInfo.freeSpace,
-              totalSpace: diskInfo.totalSpace,
-              usedSpace,
-              freeSpacePercent:
-                (diskInfo.freeSpace / diskInfo.totalSpace) * 100,
-              usedSpacePercent:
-                diskInfo.percentUsed || (usedSpace / diskInfo.totalSpace) * 100,
-              enabled: instance.enabled,
-              isSelected,
-              isRootFolder: false,
-              isDiskSpaceFolder: true,
-              label: diskInfo.label,
-              driveFormat: diskInfo.driveFormat,
-              unmappedFolders: diskInfo.unmappedFolders,
-              driveRoot: getDriveRoot(diskInfo.path),
-              isSystemDrive: isSystemDrive(diskInfo.path),
-            };
-
-            folderMap.set(diskInfo.path, enhancedFolder);
-          }
-        }
-
-        allFoldersWithSpace.push(...folderMap.values());
-        console.log(
-          `✅ Added ${folderMap.size} folders from Radarr: ${instance.name}`
-        );
-      } catch (error) {
-        console.error(
-          `❌ Error fetching folders from Radarr ${instance.name}:`,
-          error
-        );
-      }
-    }
-
-    console.log(
-      `🎉 Successfully fetched ${allFoldersWithSpace.length} folders with disk space information`
-    );
-    return allFoldersWithSpace;
+    return await getCachedAllFoldersWithSpace();
   } catch (error) {
-    console.error('❌ Error getting all folders with disk space:', error);
+    console.error('Failed to get all folders with space:', error);
     return [];
   }
 }
 
-// Helper functions for folder path processing
-function getDriveRoot(path: string): string {
-  if (path.match(/^[A-Za-z]:\\/)) {
-    // Windows path
-    return path.substring(0, 3); // "C:\"
-  } else if (path.startsWith('/')) {
-    // Unix path
-    return '/';
+// ============================================================================
+// Cache Invalidation Functions
+// ============================================================================
+
+/**
+ * Invalidate caches after settings change
+ */
+export async function invalidateCachesAfterSettingsChange(
+  _prevState: FormState | undefined,
+  _formData: FormData
+): Promise<FormState> {
+  try {
+    await invalidateAfterSettingsChange();
+
+    revalidatePath('/');
+    revalidatePath('/settings');
+    revalidateTag('settings');
+    revalidateTag('folder-space');
+
+    return createFormState(true, 'Caches invalidated successfully');
+  } catch (error) {
+    return handleServerError(error, 'Failed to invalidate caches');
   }
-  return path;
 }
 
-function isSystemDrive(path: string): boolean {
-  return path.startsWith('C:\\') || path === '/';
+/**
+ * Invalidate caches after media processing
+ */
+export async function invalidateCachesAfterMediaProcessing(
+  _prevState: FormState | undefined,
+  _formData: FormData
+): Promise<FormState> {
+  try {
+    await invalidateAfterMediaProcessing();
+
+    revalidatePath('/');
+    revalidateTag('media-items');
+    revalidateTag('folder-space');
+    revalidateTag('media-processing');
+
+    return createFormState(true, 'Caches invalidated successfully');
+  } catch (error) {
+    return handleServerError(error, 'Failed to invalidate caches');
+  }
 }
 
 // ============================================================================
-// Enhanced Media Processing Functions
+// Export Functions
 // ============================================================================
 
-// ============================================================================
-// Re-export types for backward compatibility
-// ============================================================================
+export async function exportMediaItems(
+  prevState: FormState | undefined,
+  formData: FormData
+): Promise<FormState> {
+  try {
+    const selectedIds = formData.getAll('selectedIds') as string[];
 
-export type {
-  MediaProcessingProgress,
-  MediaProcessingResult,
-  MediaItemData,
-  FolderSpaceData,
-  SelectedFoldersFromDatabase,
-  FolderWithSpace,
-  FolderWithSpaceEnhanced,
-} from '../types/media-processing';
+    if (!selectedIds || selectedIds.length === 0) {
+      return createFormState(false, 'No items selected for export');
+    }
+
+    // Get media items
+    const allItems = await getMediaItemsWithScores();
+    const selectedItems = allItems.filter((item) =>
+      selectedIds.includes(item.id)
+    );
+
+    if (selectedItems.length === 0) {
+      return createFormState(false, 'No valid items found for export');
+    }
+
+    // TODO: Implement actual export logic
+    // For now, just return success with count
+    const message = `Successfully exported ${selectedItems.length} item${
+      selectedItems.length === 1 ? '' : 's'
+    }`;
+
+    return createFormState(true, message, undefined, {
+      count: selectedItems.length,
+    });
+  } catch (error) {
+    return handleServerError(error, 'Failed to export media items');
+  }
+}

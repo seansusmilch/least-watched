@@ -1,5 +1,15 @@
-export const formatDate = (date?: Date) => {
-  return date ? date.toLocaleDateString() : 'N/A';
+import { DateTime } from 'luxon';
+
+export const formatDate = (date?: Date | string) => {
+  if (!date) return 'N/A';
+
+  const luxonDate =
+    typeof date === 'string'
+      ? DateTime.fromISO(date)
+      : DateTime.fromJSDate(date);
+  return luxonDate.isValid
+    ? luxonDate.toLocaleString(DateTime.DATE_SHORT)
+    : 'N/A';
 };
 
 export const formatFileSize = (sizeInBytes: number) => {
@@ -8,11 +18,23 @@ export const formatFileSize = (sizeInBytes: number) => {
 };
 
 export const calculateUnwatchedDays = (
-  lastWatched?: Date,
-  dateAdded?: Date
+  lastWatched?: Date | string,
+  dateAdded?: Date | string
 ): number => {
-  const referenceDate = lastWatched || dateAdded || new Date();
-  const now = new Date();
-  const diffTime = Math.abs(now.getTime() - referenceDate.getTime());
-  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  // Handle both Date objects and ISO date strings from cached data
+  const parseDate = (date?: Date | string): DateTime => {
+    if (!date) return DateTime.now();
+    if (typeof date === 'string') {
+      const parsed = DateTime.fromISO(date);
+      return parsed.isValid ? parsed : DateTime.now();
+    }
+    return DateTime.fromJSDate(date);
+  };
+
+  const referenceLuxonDate =
+    parseDate(lastWatched) || parseDate(dateAdded) || DateTime.now();
+  const now = DateTime.now();
+
+  const diffDays = Math.abs(now.diff(referenceLuxonDate, 'days').days);
+  return Math.ceil(diffDays);
 };

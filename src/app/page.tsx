@@ -1,98 +1,23 @@
-'use client';
-
-import { useState, useMemo } from 'react';
+import { Suspense } from 'react';
 import { AppLayout } from '@/components/app-layout';
-import { FolderSpaceWidget } from '@/components/folder-space/folder-space-widget';
 import {
-  MediaProcessingProgress,
-  MediaSummaryCards,
-  MediaFilters,
-  MediaTable,
-  PageActions,
+  MediaTableSkeleton,
+  MediaSummaryCardsSkeleton,
+  MediaProcessingProgressSkeleton,
+  MediaSummaryCardsServer,
+  PageActionsServer,
+  MediaPageServer,
 } from '@/components/media';
-import { useMediaItems } from '@/hooks/useMediaItems';
-import { useMediaProcessing } from '@/hooks/useMediaProcessing';
-import { useColumnVisibility } from '@/hooks/useColumnVisibility';
-import { useMediaFilters } from '@/hooks/useMediaFilters';
 import {
-  filterAndSortMediaItems,
-  getUniqueFilterOptions,
-} from '@/lib/utils/mediaFilters';
+  FolderSpaceSkeleton,
+  FolderSpaceWidgetServer,
+} from '@/components/folder-space';
 
 export default function LeastWatchedPage() {
-  // Custom hooks
-  const { mediaItems, loading, refresh } = useMediaItems();
-  const { processing, progress, startProcessing, closeProgress } =
-    useMediaProcessing(refresh);
-  const {
-    filters,
-    sortCriteria,
-    updateFilter,
-    updateLegacyFilter,
-    handleSort,
-  } = useMediaFilters();
-  const {
-    columnVisibility,
-    tempColumnVisibility,
-    isColumnPopoverOpen,
-    setIsColumnPopoverOpen,
-    handleTempColumnVisibilityChange,
-    handleSaveColumnVisibility,
-    handleOpenColumnPopover,
-    handleResetColumnVisibility,
-    hasUnsavedChanges,
-  } = useColumnVisibility();
-
-  // Selection state
-  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
-
-  // Derived state
-  const filteredAndSortedItems = filterAndSortMediaItems(
-    mediaItems,
-    filters,
-    sortCriteria
-  );
-
-  // Get unique filter options from all media items
-  const filterOptions = useMemo(() => {
-    return getUniqueFilterOptions(mediaItems);
-  }, [mediaItems]);
-
-  // Event handlers
-  const handleFolderClick = (folderName: string) => {
-    updateLegacyFilter(
-      'folderFilter',
-      folderName === 'Unknown' ? '' : folderName
-    );
-  };
-
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedItems(new Set(filteredAndSortedItems.map((item) => item.id)));
-    } else {
-      setSelectedItems(new Set());
-    }
-  };
-
-  const handleSelectItem = (id: string, checked: boolean) => {
-    const newSelected = new Set(selectedItems);
-    if (checked) {
-      newSelected.add(id);
-    } else {
-      newSelected.delete(id);
-    }
-    setSelectedItems(newSelected);
-  };
-
-  const handleExport = () => {
-    // TODO: Implement export functionality
-    console.log('Export functionality not yet implemented');
-  };
-
   return (
     <AppLayout>
       <div className='space-y-6'>
-        {/* Page Header */}
+        {/* Static Page Header */}
         <div className='flex items-center justify-between'>
           <div>
             <h1 className='text-3xl font-bold tracking-tight'>Least Watched</h1>
@@ -100,66 +25,44 @@ export default function LeastWatchedPage() {
               Identify and manage your unwatched media content
             </p>
           </div>
-          <PageActions
-            processing={processing}
-            loading={loading}
-            selectedCount={selectedItems.size}
-            onProcess={startProcessing}
-            onRefresh={refresh}
-            onExport={handleExport}
-          />
+          {/* Dynamic Page Actions - Streamed */}
+          <Suspense
+            fallback={
+              <div className='h-9 w-32 bg-muted animate-pulse rounded' />
+            }
+          >
+            <PageActionsServer />
+          </Suspense>
         </div>
 
-        {/* Processing Progress */}
-        {processing && (
-          <MediaProcessingProgress
-            progress={progress}
-            onClose={closeProgress}
-          />
-        )}
+        {/* Dynamic Processing Progress - Streamed */}
+        <Suspense fallback={<MediaProcessingProgressSkeleton />}>
+          <div>
+            {/* This will be conditionally rendered based on processing state */}
+          </div>
+        </Suspense>
 
-        {/* Folder Space Widget */}
-        <FolderSpaceWidget
-          onFolderClick={handleFolderClick}
-          onRefresh={refresh}
-        />
+        {/* Dynamic Folder Space Widget - Streamed */}
+        <Suspense fallback={<FolderSpaceSkeleton />}>
+          <FolderSpaceWidgetServer />
+        </Suspense>
 
-        {/* Summary Cards */}
-        <MediaSummaryCards
-          filteredItems={filteredAndSortedItems}
-          totalItems={mediaItems.length}
-        />
+        {/* Dynamic Summary Cards - Streamed */}
+        <Suspense fallback={<MediaSummaryCardsSkeleton />}>
+          <MediaSummaryCardsServer />
+        </Suspense>
 
-        {/* Enhanced Filters */}
-        <MediaFilters
-          filters={filters}
-          onFilterChange={updateFilter}
-          availableGenres={filterOptions.genres}
-          availableQualities={filterOptions.qualities}
-          availableSources={filterOptions.sources}
-          availableFolders={filterOptions.folders}
-          totalItems={mediaItems.length}
-          filteredItems={filteredAndSortedItems.length}
-        />
-
-        {/* Media Table */}
-        <MediaTable
-          items={filteredAndSortedItems}
-          columnVisibility={columnVisibility}
-          onColumnVisibilityChange={handleOpenColumnPopover}
-          selectedItems={selectedItems}
-          onSelectionChange={handleSelectItem}
-          onSelectAll={handleSelectAll}
-          sortCriteria={sortCriteria}
-          onSort={handleSort}
-          hasUnsavedChanges={hasUnsavedChanges}
-          tempColumnVisibility={tempColumnVisibility}
-          onTempColumnVisibilityChange={handleTempColumnVisibilityChange}
-          onSaveColumnVisibility={handleSaveColumnVisibility}
-          onResetColumnVisibility={handleResetColumnVisibility}
-          isColumnPopoverOpen={isColumnPopoverOpen}
-          setIsColumnPopoverOpen={setIsColumnPopoverOpen}
-        />
+        {/* Dynamic Media Page (Filters + Table) - Streamed */}
+        <Suspense
+          fallback={
+            <div className='space-y-6'>
+              <div className='h-32 bg-muted animate-pulse rounded' />
+              <MediaTableSkeleton />
+            </div>
+          }
+        >
+          <MediaPageServer />
+        </Suspense>
       </div>
     </AppLayout>
   );

@@ -1,7 +1,7 @@
 'use client';
 
 import { formatFileSize } from './utils';
-import type { FolderSpaceData } from '@/lib/actions/media-processing';
+import type { FolderSpaceData } from '@/lib/types/media-processing';
 
 interface FolderSummaryStatsProps {
   folderSpaceData: FolderSpaceData[];

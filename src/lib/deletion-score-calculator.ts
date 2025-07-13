@@ -9,9 +9,6 @@ export interface MediaItemForScoring {
 }
 
 export class DeletionScoreCalculator {
-  private cache = new Map<string, number>();
-  private settingsHash: string | null = null;
-
   /**
    * Calculate deletion score for a single media item
    */
@@ -23,26 +20,7 @@ export class DeletionScoreCalculator {
       return 0;
     }
 
-    // Check if we need to invalidate cache due to settings change
-    const currentSettingsHash = this.hashSettings(settings);
-    if (this.settingsHash !== currentSettingsHash) {
-      this.invalidateCache();
-      this.settingsHash = currentSettingsHash;
-    }
-
-    // Check cache first
-    const cacheKey = this.generateCacheKey(item, settings);
-    if (this.cache.has(cacheKey)) {
-      return this.cache.get(cacheKey)!;
-    }
-
-    // Calculate score
-    const score = this.performCalculation(item, settings);
-
-    // Cache the result
-    this.cache.set(cacheKey, score);
-
-    return score;
+    return this.performCalculation(item, settings);
   }
 
   /**
@@ -63,20 +41,19 @@ export class DeletionScoreCalculator {
   }
 
   /**
-   * Invalidate the entire cache
+   * Invalidate cache - no-op since we don't have internal cache
    */
   invalidateCache(): void {
-    this.cache.clear();
-    this.settingsHash = null;
+    // No-op: Cache is handled by centralized cache system
   }
 
   /**
-   * Get cache statistics
+   * Get cache statistics - no-op since we don't have internal cache
    */
   getCacheStats(): { size: number; settingsHash: string | null } {
     return {
-      size: this.cache.size,
-      settingsHash: this.settingsHash,
+      size: 0,
+      settingsHash: null,
     };
   }
 
@@ -166,37 +143,6 @@ export class DeletionScoreCalculator {
     }
 
     return Math.min(score, 100); // Cap at 100
-  }
-
-  /**
-   * Generate a cache key for a media item and settings
-   */
-  private generateCacheKey(
-    item: MediaItemForScoring,
-    settings: DeletionScoreSettings
-  ): string {
-    const itemKey = `${item.id}-${
-      item.sizeOnDisk
-    }-${item.dateAdded?.getTime()}-${item.lastWatched?.getTime()}-${
-      item.folderRemainingSpacePercent
-    }`;
-    const settingsKey = this.hashSettings(settings);
-    return `${itemKey}-${settingsKey}`;
-  }
-
-  /**
-   * Generate a hash for the settings to detect changes
-   */
-  private hashSettings(settings: DeletionScoreSettings): string {
-    // Create a simple hash of the settings object
-    const settingsStr = JSON.stringify(settings);
-    let hash = 0;
-    for (let i = 0; i < settingsStr.length; i++) {
-      const char = settingsStr.charCodeAt(i);
-      hash = (hash << 5) - hash + char;
-      hash = hash & hash; // Convert to 32-bit integer
-    }
-    return hash.toString();
   }
 }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,24 +15,23 @@ import {
   Folder,
   Filter,
 } from 'lucide-react';
-import {
-  getAllFoldersWithSpace,
-  type FolderWithSpaceEnhanced,
-} from '@/lib/actions/media-processing';
+import { getAllFoldersWithSpace } from '@/lib/actions/media-processing';
+import type { FolderWithSpaceEnhanced } from '@/lib/types/media-processing';
 
-interface FolderSpaceWidgetProps {
+interface FolderSpaceWidgetClientProps {
+  initialData: FolderWithSpaceEnhanced[];
   onFolderClick?: (folderName: string) => void;
   onRefresh?: () => void;
 }
 
-export function FolderSpaceWidget({
+export function FolderSpaceWidgetClient({
+  initialData,
   onFolderClick,
   onRefresh,
-}: FolderSpaceWidgetProps) {
-  const [allFoldersWithSpace, setAllFoldersWithSpace] = useState<
-    FolderWithSpaceEnhanced[]
-  >([]);
-  const [loading, setLoading] = useState(true);
+}: FolderSpaceWidgetClientProps) {
+  const [allFoldersWithSpace, setAllFoldersWithSpace] =
+    useState<FolderWithSpaceEnhanced[]>(initialData);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hoveredFolderId, setHoveredFolderId] = useState<string | null>(null);
 
@@ -78,11 +77,6 @@ export function FolderSpaceWidget({
       setLoading(false);
     }
   };
-
-  // Load data on component mount
-  useEffect(() => {
-    fetchAllFoldersWithSpace();
-  }, []);
 
   const handleRefresh = () => {
     fetchAllFoldersWithSpace();
@@ -243,7 +237,7 @@ export function FolderSpaceWidget({
                   return (
                     <Card
                       key={folderId}
-                      className={`cursor-pointer flex-shrink-0 w-80 hover:bg-muted relative`}
+                      className='cursor-pointer flex-shrink-0 w-80 hover:bg-muted relative'
                       onClick={() => handleFolderClick(folder.path)}
                       onMouseEnter={() => setHoveredFolderId(folderId)}
                       onMouseLeave={() => setHoveredFolderId(null)}

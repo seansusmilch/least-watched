@@ -1,3 +1,5 @@
+'use client';
+
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -22,7 +24,7 @@ import { Film, Tv, Eye, Clock, SortAsc, SortDesc, Columns } from 'lucide-react';
 import { MediaItem, SortCriteria } from '@/lib/types/media';
 import { formatDate, formatFileSize } from '@/lib/utils/formatters';
 import { availableColumns } from '@/lib/utils/columnConfig';
-import { DeletionScoreBreakdown } from './DeletionScoreBreakdown';
+import { DeletionScoreBreakdown } from '../summary/DeletionScoreBreakdown';
 
 interface MediaTableProps {
   items: MediaItem[];

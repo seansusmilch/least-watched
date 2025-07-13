@@ -18,6 +18,7 @@ import {
   FolderOpen,
   Eye,
 } from 'lucide-react';
+import { DateTime } from 'luxon';
 import { MediaItem } from '@/lib/types/media';
 import { formatDate, formatFileSize } from '@/lib/utils/formatters';
 import {
@@ -104,9 +105,22 @@ export function DeletionScoreBreakdown({
     let totalScore = 0;
 
     // Days Unwatched calculation
-    const referenceDate = item.lastWatched || item.dateAdded || new Date();
+    const parseDate = (date?: Date | string): DateTime => {
+      if (!date) return DateTime.now();
+      if (typeof date === 'string') {
+        const parsed = DateTime.fromISO(date);
+        return parsed.isValid ? parsed : DateTime.now();
+      }
+      return DateTime.fromJSDate(date);
+    };
+
+    const referenceLuxonDate =
+      parseDate(item.lastWatched) ||
+      parseDate(item.dateAdded) ||
+      DateTime.now();
+    const now = DateTime.now();
     const daysSinceReference = Math.floor(
-      (Date.now() - referenceDate.getTime()) / (1000 * 60 * 60 * 24)
+      Math.abs(now.diff(referenceLuxonDate, 'days').days)
     );
 
     let daysUnwatchedPoints = 0;
@@ -170,9 +184,7 @@ export function DeletionScoreBreakdown({
 
     // Age Since Added calculation
     const daysSinceAdded = item.dateAdded
-      ? Math.floor(
-          (Date.now() - item.dateAdded.getTime()) / (1000 * 60 * 60 * 24)
-        )
+      ? Math.floor(Math.abs(now.diff(parseDate(item.dateAdded), 'days').days))
       : 0;
     let ageSinceAddedPoints = 0;
     let ageSinceAddedCategory = '';

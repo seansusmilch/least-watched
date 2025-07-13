@@ -6,7 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { HardDrive, Tv, Film } from 'lucide-react';
 import { formatFileSize } from './utils';
 import { DiskSpaceDetails } from './disk-space-details';
-import type { FolderSpaceData } from '@/lib/actions/media-processing';
+import type { FolderSpaceData } from '@/lib/types/media-processing';
 
 interface FolderCardProps {
   folder: FolderSpaceData;

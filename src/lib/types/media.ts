@@ -3,8 +3,8 @@ export interface MediaItem {
   title: string;
   type: string; // 'movie' | 'tv' but stored as string in database
   year?: number;
-  dateAdded?: Date;
-  lastWatched?: Date;
+  dateAdded?: Date | string; // Can be Date object or ISO string from cache
+  lastWatched?: Date | string; // Can be Date object or ISO string from cache
   sizeOnDisk?: number; // in bytes
   source?: string;
   mediaPath?: string;

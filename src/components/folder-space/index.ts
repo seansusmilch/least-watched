@@ -1,5 +1,9 @@
 export { FolderCard } from './folder-card';
-export { FolderSummaryStats } from './folder-summary-stats';
+export { FolderSpaceSkeleton } from './FolderSpaceSkeleton';
 export { EnhancedFolderDetails } from './enhanced-folder-details';
+export { FolderSummaryStats } from './folder-summary-stats';
 export { DiskSpaceDetails } from './disk-space-details';
-export { formatFileSize } from './utils';
+// Server components
+export { FolderSpaceWidgetServer } from './FolderSpaceWidgetServer';
+export { FolderSpaceWidgetClient } from './FolderSpaceWidgetClient';
+export * from './utils';

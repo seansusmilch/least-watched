@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { AlertTriangle } from 'lucide-react';
 import { formatFileSize } from './utils';
-import type { FolderSpaceData } from '@/lib/actions/media-processing';
+import type { FolderSpaceData } from '@/lib/types/media-processing';
 
 interface DiskSpaceDetailsProps {
   diskSpaceData: NonNullable<FolderSpaceData['diskSpaceData']>;

@@ -8,3 +8,5 @@ alwaysApply: true
 - use tanstack query for fetching data
 - use context7
 - if a component requires a skeleton, store the skeleton component within the same file
+- for importing files, prefer using the @/ alias
+- for naming files, prefer kebab case
