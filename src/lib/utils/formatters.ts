@@ -22,11 +22,11 @@ export const calculateUnwatchedDays = (
   dateAdded?: Date | string
 ): number => {
   // Handle both Date objects and ISO date strings from cached data
-  const parseDate = (date?: Date | string): DateTime => {
-    if (!date) return DateTime.now();
+  const parseDate = (date?: Date | string): DateTime | null => {
+    if (!date) return null;
     if (typeof date === 'string') {
       const parsed = DateTime.fromISO(date);
-      return parsed.isValid ? parsed : DateTime.now();
+      return parsed.isValid ? parsed : null;
     }
     return DateTime.fromJSDate(date);
   };
