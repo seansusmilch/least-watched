@@ -466,7 +466,11 @@ export const MediaTable = ({
                     <TableCell>
                       <Badge
                         variant={
-                          item.unwatchedDays > 365 ? 'destructive' : 'secondary'
+                          item.unwatchedDays > 365
+                            ? 'destructive'
+                            : item.unwatchedDays > 30
+                            ? 'secondary'
+                            : 'outline'
                         }
                       >
                         <Clock className='h-3 w-3 mr-1' />
