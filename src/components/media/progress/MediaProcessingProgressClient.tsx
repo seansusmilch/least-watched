@@ -14,7 +14,7 @@ import {
 } from '@/lib/actions/media-processing';
 import { MediaProcessingProgress } from '@/lib/types/media-processing';
 
-interface MediaProcessingProgressEnhancedProps {
+interface MediaProcessingProgressClientProps {
   initialProgressId?: string;
   onClose?: () => void;
   onComplete?: () => void;
@@ -29,13 +29,13 @@ interface OptimisticState {
   isPaused: boolean;
 }
 
-export function MediaProcessingProgressEnhanced({
+export function MediaProcessingProgressClient({
   initialProgressId,
   onClose,
   onComplete,
   autoRefresh = true,
   refreshInterval = 2000,
-}: MediaProcessingProgressEnhancedProps) {
+}: MediaProcessingProgressClientProps) {
   const [progress, setProgress] = useState<MediaProcessingProgress | null>(
     null
   );

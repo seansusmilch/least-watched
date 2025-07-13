@@ -1,5 +1,5 @@
 import { getActiveMediaProcess } from '@/lib/actions/media-processing';
-import { MediaProcessingProgressEnhanced } from './MediaProcessingProgressEnhanced';
+import { MediaProcessingProgressClient } from './MediaProcessingProgressClient';
 
 export async function MediaProcessingProgressServer() {
   const activeProcess = await getActiveMediaProcess();
@@ -9,7 +9,7 @@ export async function MediaProcessingProgressServer() {
   }
 
   return (
-    <MediaProcessingProgressEnhanced
+    <MediaProcessingProgressClient
       initialProgressId={activeProcess.progressId}
       autoRefresh={true}
       refreshInterval={2000}

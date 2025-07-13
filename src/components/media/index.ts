@@ -17,8 +17,7 @@ export { MediaFiltersClient } from './filters/MediaFiltersClient';
 export { MediaFiltersServer } from './filters/MediaFiltersServer';
 
 // Progress components
-export { MediaProcessingProgress } from './progress/MediaProcessingProgress';
-export { MediaProcessingProgressEnhanced } from './progress/MediaProcessingProgressEnhanced';
+export { MediaProcessingProgressClient } from './progress/MediaProcessingProgressClient';
 export { MediaProcessingProgressSkeleton } from './progress/MediaProcessingProgressSkeleton';
 export { MediaProcessingProgressServer } from './progress/MediaProcessingProgressServer';
 
