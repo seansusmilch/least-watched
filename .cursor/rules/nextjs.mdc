@@ -7,3 +7,4 @@ alwaysApply: true
 - keep files small and single purpose
 - use tanstack query for fetching data
 - use context7
+- if a component requires a skeleton, store the skeleton component within the same file
