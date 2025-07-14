@@ -1,7 +1,6 @@
 // Table components
 export { MediaTable } from './table/MediaTable';
-export { MediaTableClient } from './table/MediaTableClient';
-export { MediaTableServer } from './table/MediaTableServer';
+export { MediaTableWithData } from './table/MediaTableWithData';
 export { MediaTableSkeleton } from './table/MediaTableSkeleton';
 export { MediaTableWithFilters } from './table/MediaTableWithFilters';
 

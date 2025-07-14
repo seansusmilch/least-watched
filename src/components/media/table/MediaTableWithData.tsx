@@ -1,17 +1,17 @@
 'use client';
 
 import { useState, useContext } from 'react';
-import { MediaTable } from './MediaTable';
+import { MediaTable as MediaTableBase } from './MediaTableBase';
 import { MediaItem } from '@/lib/types/media';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 import { useMediaFilters } from '@/hooks/useMediaFilters';
 import { MediaFilterContext } from '../filters/MediaFilterProvider';
 
-interface MediaTableClientProps {
+interface MediaTableWithDataProps {
   items: MediaItem[];
 }
 
-export function MediaTableClient({ items }: MediaTableClientProps) {
+export function MediaTableWithData({ items }: MediaTableWithDataProps) {
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
 
   const {
@@ -52,7 +52,7 @@ export function MediaTableClient({ items }: MediaTableClientProps) {
   };
 
   return (
-    <MediaTable
+    <MediaTableBase
       items={items}
       columnVisibility={columnVisibility}
       onColumnVisibilityChange={handleOpenColumnPopover}

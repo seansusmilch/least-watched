@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { MediaTableClient } from './MediaTableClient';
+import { MediaTableWithData } from './MediaTableWithData';
 import { MediaItem } from '@/lib/types/media';
 import { useMediaFilterContext } from '../filters/MediaFilterProvider';
 import { filterAndSortMediaItems } from '@/lib/utils/mediaFilters';
@@ -18,5 +18,5 @@ export function MediaTableWithFilters({ items }: MediaTableWithFiltersProps) {
     return filterAndSortMediaItems(items, filters, sortCriteria);
   }, [items, filters, sortCriteria]);
 
-  return <MediaTableClient items={filteredAndSortedItems} />;
+  return <MediaTableWithData items={filteredAndSortedItems} />;
 }
