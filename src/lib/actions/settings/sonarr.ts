@@ -14,6 +14,7 @@ import {
   type FormState,
 } from '../../validation/schemas';
 import { ZodError } from 'zod';
+import { SonarrSettingsInput } from './types';
 
 // Sonarr Settings Actions
 export async function getSonarrSettings() {
@@ -26,19 +27,10 @@ export async function getSonarrSettings() {
 }
 
 export async function createSonarrSetting(
-  prevState: FormState | undefined,
-  formData: FormData
+  input: SonarrSettingsInput
 ): Promise<FormState> {
   try {
-    const rawData = {
-      name: formData.get('name') as string,
-      url: formData.get('url') as string,
-      apiKey: formData.get('apiKey') as string,
-      enabled: formData.get('enabled') === 'true',
-      selectedFolders: formData.getAll('selectedFolders') as string[],
-    };
-
-    const validatedData = SonarrSettingsCreateSchema.parse(rawData);
+    const validatedData = SonarrSettingsCreateSchema.parse(input);
 
     const setting = await sonarrSettingsService.create({
       name: validatedData.name,
@@ -68,22 +60,16 @@ export async function createSonarrSetting(
 }
 
 export async function updateSonarrSetting(
-  prevState: FormState | undefined,
-  formData: FormData
+  id: string,
+  input: Partial<SonarrSettingsInput>
 ): Promise<FormState> {
   try {
-    const rawData = {
-      id: formData.get('id') as string,
-      name: formData.get('name') as string,
-      url: formData.get('url') as string,
-      apiKey: formData.get('apiKey') as string,
-      enabled: formData.get('enabled') === 'true',
-      selectedFolders: formData.getAll('selectedFolders') as string[],
-    };
+    const validatedData = SonarrSettingsUpdateSchema.parse({
+      id,
+      ...input,
+    });
 
-    const validatedData = SonarrSettingsUpdateSchema.parse(rawData);
-
-    const setting = await sonarrSettingsService.update(validatedData.id, {
+    const setting = await sonarrSettingsService.update(id, {
       name: validatedData.name,
       url: validatedData.url,
       apiKey: validatedData.apiKey,
@@ -111,12 +97,8 @@ export async function updateSonarrSetting(
   }
 }
 
-export async function deleteSonarrSetting(
-  prevState: FormState | undefined,
-  formData: FormData
-): Promise<FormState> {
+export async function deleteSonarrSetting(id: string): Promise<FormState> {
   try {
-    const id = formData.get('id') as string;
     const validatedId = IdSchema.parse(id);
 
     await sonarrSettingsService.delete(validatedId);

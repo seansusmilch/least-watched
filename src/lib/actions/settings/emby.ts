@@ -14,6 +14,7 @@ import {
   type FormState,
 } from '../../validation/schemas';
 import { ZodError } from 'zod';
+import { EmbySettingsInput } from './types';
 
 // Emby Settings Actions
 export async function getEmbySettings() {
@@ -26,20 +27,10 @@ export async function getEmbySettings() {
 }
 
 export async function createEmbySetting(
-  prevState: FormState | undefined,
-  formData: FormData
+  input: EmbySettingsInput
 ): Promise<FormState> {
   try {
-    const rawData = {
-      name: formData.get('name') as string,
-      url: formData.get('url') as string,
-      apiKey: formData.get('apiKey') as string,
-      userId: formData.get('userId') as string,
-      enabled: formData.get('enabled') === 'true',
-      selectedFolders: formData.getAll('selectedFolders') as string[],
-    };
-
-    const validatedData = EmbySettingsCreateSchema.parse(rawData);
+    const validatedData = EmbySettingsCreateSchema.parse(input);
 
     const setting = await embySettingsService.create({
       name: validatedData.name,
@@ -70,23 +61,16 @@ export async function createEmbySetting(
 }
 
 export async function updateEmbySetting(
-  prevState: FormState | undefined,
-  formData: FormData
+  id: string,
+  input: Partial<EmbySettingsInput>
 ): Promise<FormState> {
   try {
-    const rawData = {
-      id: formData.get('id') as string,
-      name: formData.get('name') as string,
-      url: formData.get('url') as string,
-      apiKey: formData.get('apiKey') as string,
-      userId: formData.get('userId') as string,
-      enabled: formData.get('enabled') === 'true',
-      selectedFolders: formData.getAll('selectedFolders') as string[],
-    };
+    const validatedData = EmbySettingsUpdateSchema.parse({
+      id,
+      ...input,
+    });
 
-    const validatedData = EmbySettingsUpdateSchema.parse(rawData);
-
-    const setting = await embySettingsService.update(validatedData.id, {
+    const setting = await embySettingsService.update(id, {
       name: validatedData.name,
       url: validatedData.url,
       apiKey: validatedData.apiKey,
@@ -115,12 +99,8 @@ export async function updateEmbySetting(
   }
 }
 
-export async function deleteEmbySetting(
-  prevState: FormState | undefined,
-  formData: FormData
-): Promise<FormState> {
+export async function deleteEmbySetting(id: string): Promise<FormState> {
   try {
-    const id = formData.get('id') as string;
     const validatedId = IdSchema.parse(id);
 
     await embySettingsService.delete(validatedId);
@@ -148,6 +128,9 @@ export async function testEmbyConnection(id: string) {
     if (!setting) {
       return { success: false, error: 'Setting not found' };
     }
+
+    // Refresh API configuration to include this setting
+    await apiService.refreshConfig();
 
     // Find the index of this setting in the enabled settings
     const enabledSettings = await embySettingsService.getEnabled();
