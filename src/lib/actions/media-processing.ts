@@ -74,8 +74,7 @@ async function processMediaInBackground(progressId: string): Promise<void> {
     const processor = new MediaProcessor(undefined, progressId);
     await processor.processAllMedia();
 
-    // Only invalidate internal caches, not Next.js cache tags
-    // The UI will refresh when it detects processing completion
+    // Invalidate internal caches
     await invalidateAfterMediaProcessing();
 
     console.log('✅ Background media processing completed successfully');
@@ -351,5 +350,36 @@ export async function exportMediaItems(
     });
   } catch (error) {
     return handleServerError(error, 'Failed to export media items');
+  }
+}
+
+export async function checkProcessingComplete(
+  progressId: string
+): Promise<boolean> {
+  try {
+    const progress = await getProcessingProgress(progressId);
+
+    if (progress && progress.isComplete) {
+      return true;
+    }
+
+    return false;
+  } catch (error) {
+    console.error('Failed to check processing completion:', error);
+    return false;
+  }
+}
+
+export async function revalidateAfterProcessing(): Promise<void> {
+  'use server';
+
+  try {
+    // Safe to call revalidation from a server action
+    revalidatePath('/');
+    revalidateTag('media-items');
+    revalidateTag('folder-space');
+    revalidateTag('media-processing');
+  } catch (error) {
+    console.error('Failed to revalidate after processing:', error);
   }
 }
