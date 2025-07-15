@@ -135,7 +135,7 @@ export function RadarrSettings({ initialSettings }: RadarrSettingsProps) {
         resetForm();
         setShowAddDialog(false);
       } else {
-        toast.error(result.error || 'Failed to create Radarr instance');
+        toast.error(result.message || 'Failed to create Radarr instance');
       }
     });
   };
@@ -158,7 +158,7 @@ export function RadarrSettings({ initialSettings }: RadarrSettingsProps) {
         toast.success('Radarr instance updated successfully');
         resetForm();
       } else {
-        toast.error(result.error || 'Failed to update Radarr instance');
+        toast.error(result.message || 'Failed to update Radarr instance');
       }
     });
   };
@@ -175,7 +175,7 @@ export function RadarrSettings({ initialSettings }: RadarrSettingsProps) {
       if (result.success) {
         toast.success('Radarr instance deleted successfully');
       } else {
-        toast.error(result.error || 'Failed to delete Radarr instance');
+        toast.error(result.message || 'Failed to delete Radarr instance');
       }
     });
   };
@@ -203,15 +203,23 @@ export function RadarrSettings({ initialSettings }: RadarrSettingsProps) {
 
     const result = await testRadarrConnection(id);
 
+    const isConnected =
+      result.success && 'connected' in result && result.connected;
     setConnectionStatus((prev) => ({
       ...prev,
-      [id]: result.success && result.connected ? 'success' : 'error',
+      [id]: isConnected ? 'success' : 'error',
     }));
 
-    if (result.success && result.connected) {
+    if (isConnected) {
       toast.success('Connection successful');
     } else {
-      toast.error(result.error || 'Connection failed');
+      const errorMessage =
+        'error' in result
+          ? result.error
+          : 'message' in result
+          ? result.message
+          : 'Connection failed';
+      toast.error(errorMessage);
     }
   };
 
@@ -225,7 +233,7 @@ export function RadarrSettings({ initialSettings }: RadarrSettingsProps) {
       const result = await updateRadarrSetting(id, { enabled });
 
       if (!result.success) {
-        toast.error(result.error || 'Failed to update Radarr instance');
+        toast.error(result.message || 'Failed to update Radarr instance');
       }
     });
   };
@@ -255,7 +263,7 @@ export function RadarrSettings({ initialSettings }: RadarrSettingsProps) {
     if (result.success) {
       toast.success('Folder selection updated successfully');
     } else {
-      toast.error(result.error || 'Failed to update folder selection');
+      toast.error(result.message || 'Failed to update folder selection');
     }
   };
 

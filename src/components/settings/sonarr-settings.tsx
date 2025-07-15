@@ -134,7 +134,7 @@ export function SonarrSettings({ initialSettings }: SonarrSettingsProps) {
         resetForm();
         setShowAddDialog(false);
       } else {
-        toast.error(result.error || 'Failed to create Sonarr instance');
+        toast.error(result.message || 'Failed to create Sonarr instance');
       }
     });
   };
@@ -157,7 +157,7 @@ export function SonarrSettings({ initialSettings }: SonarrSettingsProps) {
         toast.success('Sonarr instance updated successfully');
         resetForm();
       } else {
-        toast.error(result.error || 'Failed to update Sonarr instance');
+        toast.error(result.message || 'Failed to update Sonarr instance');
       }
     });
   };
@@ -174,7 +174,7 @@ export function SonarrSettings({ initialSettings }: SonarrSettingsProps) {
       if (result.success) {
         toast.success('Sonarr instance deleted successfully');
       } else {
-        toast.error(result.error || 'Failed to delete Sonarr instance');
+        toast.error(result.message || 'Failed to delete Sonarr instance');
       }
     });
   };
@@ -202,15 +202,23 @@ export function SonarrSettings({ initialSettings }: SonarrSettingsProps) {
 
     const result = await testSonarrConnection(id);
 
+    const isConnected =
+      result.success && 'connected' in result && result.connected;
     setConnectionStatus((prev) => ({
       ...prev,
-      [id]: result.success && result.connected ? 'success' : 'error',
+      [id]: isConnected ? 'success' : 'error',
     }));
 
-    if (result.success && result.connected) {
+    if (isConnected) {
       toast.success('Connection successful');
     } else {
-      toast.error(result.error || 'Connection failed');
+      const errorMessage =
+        'error' in result
+          ? result.error
+          : 'message' in result
+          ? result.message
+          : 'Connection failed';
+      toast.error(errorMessage);
     }
   };
 
@@ -224,7 +232,7 @@ export function SonarrSettings({ initialSettings }: SonarrSettingsProps) {
       const result = await updateSonarrSetting(id, { enabled });
 
       if (!result.success) {
-        toast.error(result.error || 'Failed to update Sonarr instance');
+        toast.error(result.message || 'Failed to update Sonarr instance');
       }
     });
   };
@@ -254,7 +262,7 @@ export function SonarrSettings({ initialSettings }: SonarrSettingsProps) {
     if (result.success) {
       toast.success('Folder selection updated successfully');
     } else {
-      toast.error(result.error || 'Failed to update folder selection');
+      toast.error(result.message || 'Failed to update folder selection');
     }
   };
 

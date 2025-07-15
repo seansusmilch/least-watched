@@ -12,7 +12,7 @@ import { ProgressStore } from './progress-store';
 import path from 'path';
 
 // Configuration constants
-const TESTING_LIMIT = 25; // Limit number of items processed per instance for testing
+const TESTING_LIMIT = 9999; // Limit number of items processed per instance for testing
 
 const prisma = new PrismaClient();
 
