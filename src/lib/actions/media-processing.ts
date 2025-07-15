@@ -6,7 +6,6 @@ import { randomUUID } from 'crypto';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import {
   getCachedMediaItems,
-  getCachedMediaItemsWithScores,
   getCachedFolderSpaceData,
   getCachedSelectedFoldersWithSpace,
   getCachedAllFoldersWithSpace,
@@ -146,17 +145,6 @@ export async function getMediaItems(): Promise<CachedMediaItemData[]> {
     return await getCachedMediaItems();
   } catch (error) {
     console.error('Failed to get media items:', error);
-    return [];
-  }
-}
-
-export async function getMediaItemsWithScores(): Promise<
-  CachedMediaItemData[]
-> {
-  try {
-    return await getCachedMediaItemsWithScores();
-  } catch (error) {
-    console.error('Failed to get media items with scores:', error);
     return [];
   }
 }
@@ -331,7 +319,7 @@ export async function exportMediaItems(
     }
 
     // Get media items
-    const allItems = await getMediaItemsWithScores();
+    const allItems = await getMediaItems();
     const selectedItems = allItems.filter((item) =>
       selectedIds.includes(item.id)
     );
