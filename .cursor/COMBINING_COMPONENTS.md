@@ -119,20 +119,6 @@ Your instinct is correct - Next.js is designed to make this seamless. The excess
 
 Based on my analysis, here's a comprehensive list of places where you should **eliminate the server/client separation**:
 
-## 1. **Media Table Components**
-- **Remove**: `MediaTableServer.tsx`
-- **Keep/Refactor**: `MediaTableClient.tsx` → rename to `MediaTable.tsx`
-- **Why**: Server component only fetches data and passes it down. Client component can fetch using TanStack Query.
-
-## 2. **Media Summary Cards**
-- **Remove**: `MediaSummaryCardsServer.tsx`
-- **Keep**: `MediaSummaryCards.tsx` (add data fetching with TanStack Query)
-- **Why**: Just fetches and transforms data - no server-specific logic.
-
-## 3. **Media Filters**
-- **Remove**: `MediaFiltersServer.tsx`
-- **Keep/Refactor**: `MediaFiltersClient.tsx` → rename to `MediaFilters.tsx`
-- **Why**: Only extracts filter options from data - can be done client-side.
 
 ## 4. **Media Processing Progress**
 - **Remove**: `MediaProcessingProgressServer.tsx` AND `MediaProcessingProgressWrapper.tsx`
