@@ -38,12 +38,12 @@ export function MediaTableBase({ table }: MediaTableBaseProps) {
     overscan: 25,
   });
 
-  // Calculate total width needed for all columns
   const totalWidth = table
     .getVisibleLeafColumns()
     .reduce((sum, col) => sum + col.getSize(), 0);
 
-  // Sync header scroll with content scroll
+  const minTableWidth = Math.max(totalWidth, 1000);
+
   useEffect(() => {
     const container = tableContainerRef.current;
     const header = headerRef.current;
@@ -51,14 +51,17 @@ export function MediaTableBase({ table }: MediaTableBaseProps) {
     if (!container || !header) return;
 
     const handleScroll = () => {
-      header.scrollLeft = container.scrollLeft;
+      requestAnimationFrame(() => {
+        if (header.scrollLeft !== container.scrollLeft) {
+          header.scrollLeft = container.scrollLeft;
+        }
+      });
     };
 
-    container.addEventListener('scroll', handleScroll);
+    container.addEventListener('scroll', handleScroll, { passive: true });
     return () => container.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Listen for deletion breakdown events
   useEffect(() => {
     const handleOpenBreakdown = (event: CustomEvent) => {
       setBreakdownItem(event.detail.item);
@@ -116,7 +119,6 @@ export function MediaTableBase({ table }: MediaTableBaseProps) {
       </CardHeader>
       <CardContent>
         <div className='rounded-md border'>
-          {/* Fixed Header */}
           <div
             ref={headerRef}
             className='border-b bg-background sticky top-0 z-10 overflow-x-auto scrollbar-hide'
@@ -125,7 +127,7 @@ export function MediaTableBase({ table }: MediaTableBaseProps) {
               msOverflowStyle: 'none',
             }}
           >
-            <div style={{ minWidth: `${totalWidth}px` }}>
+            <div style={{ minWidth: `${minTableWidth}px` }}>
               {table.getHeaderGroups().map((headerGroup) => (
                 <div key={headerGroup.id} className='flex'>
                   {headerGroup.headers.map((header) => (
@@ -160,18 +162,20 @@ export function MediaTableBase({ table }: MediaTableBaseProps) {
             </div>
           </div>
 
-          {/* Virtual Content Container */}
           <div
             ref={tableContainerRef}
+            className='scrollbar-hide'
             style={{
               height: '550px',
               overflow: 'auto',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
             }}
           >
             <div
               style={{
                 height: `${virtualizer.getTotalSize()}px`,
-                minWidth: `${totalWidth}px`,
+                minWidth: `${minTableWidth}px`,
                 position: 'relative',
               }}
             >
@@ -217,7 +221,6 @@ export function MediaTableBase({ table }: MediaTableBaseProps) {
         </div>
       </CardContent>
 
-      {/* Deletion Score Breakdown Dialog */}
       {breakdownItem && (
         <DeletionScoreBreakdown
           item={breakdownItem}
