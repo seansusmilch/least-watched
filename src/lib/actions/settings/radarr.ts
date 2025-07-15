@@ -3,7 +3,6 @@
 import { revalidatePath } from 'next/cache';
 import { radarrSettingsService } from '../../database';
 import { apiService } from '../../api';
-import { invalidateAfterSettingsChange } from '../../cache/data-cache';
 import {
   RadarrSettingsCreateSchema,
   RadarrSettingsUpdateSchema,
@@ -43,7 +42,6 @@ export async function createRadarrSetting(
     await apiService.refreshConfig();
 
     revalidatePath('/settings');
-    await invalidateAfterSettingsChange();
 
     return createFormState(
       true,
@@ -81,7 +79,6 @@ export async function updateRadarrSetting(
     await apiService.refreshConfig();
 
     revalidatePath('/settings');
-    await invalidateAfterSettingsChange();
 
     return createFormState(
       true,
@@ -107,7 +104,6 @@ export async function deleteRadarrSetting(id: string): Promise<FormState> {
     await apiService.refreshConfig();
 
     revalidatePath('/settings');
-    await invalidateAfterSettingsChange();
 
     return createFormState(true, 'Radarr setting deleted successfully');
   } catch (error) {

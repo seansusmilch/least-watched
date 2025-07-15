@@ -3,7 +3,6 @@
 import { revalidatePath } from 'next/cache';
 import { embySettingsService } from '../../database';
 import { apiService } from '../../api';
-import { invalidateAfterSettingsChange } from '../../cache/data-cache';
 import {
   EmbySettingsCreateSchema,
   EmbySettingsUpdateSchema,
@@ -50,7 +49,6 @@ export async function createEmbySetting(
     await apiService.refreshConfig();
 
     revalidatePath('/settings');
-    await invalidateAfterSettingsChange();
 
     return createFormState(
       true,
@@ -89,7 +87,6 @@ export async function updateEmbySetting(
     await apiService.refreshConfig();
 
     revalidatePath('/settings');
-    await invalidateAfterSettingsChange();
 
     return createFormState(
       true,
@@ -115,7 +112,6 @@ export async function deleteEmbySetting(id: string): Promise<FormState> {
     await apiService.refreshConfig();
 
     revalidatePath('/settings');
-    await invalidateAfterSettingsChange();
 
     return createFormState(true, 'Emby setting deleted successfully');
   } catch (error) {

@@ -3,7 +3,6 @@
 import { revalidatePath } from 'next/cache';
 import { sonarrSettingsService } from '../../database';
 import { apiService } from '../../api';
-import { invalidateAfterSettingsChange } from '../../cache/data-cache';
 import {
   SonarrSettingsCreateSchema,
   SonarrSettingsUpdateSchema,
@@ -43,7 +42,6 @@ export async function createSonarrSetting(
     await apiService.refreshConfig();
 
     revalidatePath('/settings');
-    await invalidateAfterSettingsChange();
 
     return createFormState(
       true,
@@ -81,7 +79,6 @@ export async function updateSonarrSetting(
     await apiService.refreshConfig();
 
     revalidatePath('/settings');
-    await invalidateAfterSettingsChange();
 
     return createFormState(
       true,
@@ -107,7 +104,6 @@ export async function deleteSonarrSetting(id: string): Promise<FormState> {
     await apiService.refreshConfig();
 
     revalidatePath('/settings');
-    await invalidateAfterSettingsChange();
 
     return createFormState(true, 'Sonarr setting deleted successfully');
   } catch (error) {

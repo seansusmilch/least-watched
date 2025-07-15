@@ -9,8 +9,6 @@ import {
   getCachedFolderSpaceData,
   getCachedSelectedFoldersWithSpace,
   getCachedAllFoldersWithSpace,
-  invalidateAfterMediaProcessing,
-  invalidateAfterSettingsChange,
 } from '../cache/data-cache';
 import {
   type MediaProcessingProgress,
@@ -74,8 +72,7 @@ async function processMediaInBackground(progressId: string): Promise<void> {
     const processor = new MediaProcessor(undefined, progressId);
     await processor.processAllMedia();
 
-    // Invalidate internal caches
-    await invalidateAfterMediaProcessing();
+    // Cache invalidation is disabled
 
     console.log('✅ Background media processing completed successfully');
   } catch (error) {
@@ -154,8 +151,7 @@ export async function refreshMediaItems(
   _formData: FormData
 ): Promise<FormState> {
   try {
-    // Invalidate media items cache
-    await invalidateAfterMediaProcessing();
+    // Cache invalidation is disabled
 
     // Revalidate paths and tags
     revalidatePath('/');
@@ -185,8 +181,7 @@ export async function refreshFolderSpaceData(
   _formData: FormData
 ): Promise<FormState> {
   try {
-    // Invalidate folder space cache
-    await invalidateAfterSettingsChange();
+    // Cache invalidation is disabled
 
     // Revalidate paths and tags
     revalidatePath('/');
@@ -269,7 +264,7 @@ export async function invalidateCachesAfterSettingsChange(
   _formData: FormData
 ): Promise<FormState> {
   try {
-    await invalidateAfterSettingsChange();
+    // Cache invalidation is disabled
 
     revalidatePath('/');
     revalidatePath('/settings');
@@ -290,7 +285,7 @@ export async function invalidateCachesAfterMediaProcessing(
   _formData: FormData
 ): Promise<FormState> {
   try {
-    await invalidateAfterMediaProcessing();
+    // Cache invalidation is disabled
 
     revalidatePath('/');
     revalidateTag('media-items');

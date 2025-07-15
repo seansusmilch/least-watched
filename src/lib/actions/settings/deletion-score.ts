@@ -1,7 +1,6 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { invalidateMediaItemsCache } from '../../cache/data-cache';
 import { getAppSetting, setAppSetting } from './app-settings';
 import type { DeletionScoreSettings } from './types';
 
@@ -94,7 +93,6 @@ export async function setDeletionScoreSettings(
     }
 
     revalidatePath('/settings');
-    await invalidateMediaItemsCache();
     return {
       success: true,
       message:

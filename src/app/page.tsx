@@ -14,6 +14,9 @@ import {
   FolderSpaceWidgetServer,
 } from '@/components/folder-space';
 
+// Force dynamic rendering - no caching
+export const dynamic = 'force-dynamic';
+
 export default function LeastWatchedPage() {
   return (
     <AppLayout>
