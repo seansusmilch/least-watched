@@ -9,7 +9,6 @@ import { MediaItem } from '@/lib/types/media';
 import { formatFileSize } from '@/lib/utils/formatters';
 import { DeletionScoreBreakdown } from '../summary/DeletionScoreBreakdown';
 import { ColumnVisibilityDropdown } from './ColumnVisibilityDropdown';
-import { GlobalFilter } from './GlobalFilter';
 import { useVirtualizer } from '@tanstack/react-virtual';
 
 interface MediaTableBaseProps {
@@ -103,7 +102,6 @@ export function MediaTableBase({ table }: MediaTableBaseProps) {
             <span>Media Items</span>
           </CardTitle>
           <div className='flex items-center space-x-2'>
-            <GlobalFilter table={table} />
             {selectedRows.length > 0 && (
               <Badge variant='secondary'>
                 {selectedRows.length} selected ({formatFileSize(selectedSize)})
@@ -164,13 +162,7 @@ export function MediaTableBase({ table }: MediaTableBaseProps) {
 
           <div
             ref={tableContainerRef}
-            className='scrollbar-hide'
-            style={{
-              height: '550px',
-              overflow: 'auto',
-              scrollbarWidth: 'none',
-              msOverflowStyle: 'none',
-            }}
+            className='h-[70vh] scrollbar-hide overflow-auto'
           >
             <div
               style={{
