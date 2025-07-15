@@ -16,6 +16,12 @@ import {
 import { ZodError } from 'zod';
 import { EmbySettingsInput } from './types';
 
+export interface ConnectionTestResult {
+  success: boolean;
+  connected: boolean;
+  error?: string;
+}
+
 // Emby Settings Actions
 export async function getEmbySettings() {
   try {
@@ -120,13 +126,15 @@ export async function deleteEmbySetting(id: string): Promise<FormState> {
   }
 }
 
-export async function testEmbyConnection(id: string) {
+export async function testEmbyConnection(
+  id: string
+): Promise<ConnectionTestResult> {
   try {
     const validatedId = IdSchema.parse(id);
 
     const setting = await embySettingsService.getById(validatedId);
     if (!setting) {
-      return { success: false, error: 'Setting not found' };
+      return { success: false, connected: false, error: 'Setting not found' };
     }
 
     // Refresh API configuration to include this setting
@@ -137,12 +145,24 @@ export async function testEmbyConnection(id: string) {
     const configIndex = enabledSettings.findIndex((s) => s.id === validatedId);
 
     if (configIndex === -1) {
-      return { success: false, error: 'Setting not enabled' };
+      return { success: false, connected: false, error: 'Setting not enabled' };
     }
 
     const isConnected = await apiService.testEmbyConnection(configIndex);
-    return { success: isConnected, connected: isConnected };
+    return {
+      success: true,
+      connected: isConnected,
+      error: isConnected ? undefined : 'Connection failed',
+    };
   } catch (error) {
-    return handleServerError(error, 'Failed to test Emby connection');
+    console.error('Failed to test Emby connection:', error);
+    return {
+      success: false,
+      connected: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Failed to test Emby connection',
+    };
   }
 }

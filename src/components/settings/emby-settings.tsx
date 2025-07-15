@@ -36,6 +36,7 @@ import {
   deleteEmbySetting,
   testEmbyConnection,
   type EmbySettingsInput,
+  type ConnectionTestResult,
 } from '@/lib/actions/settings';
 
 type EmbySetting = {
@@ -136,7 +137,7 @@ export function EmbySettings({ initialSettings }: EmbySettingsProps) {
         resetForm();
         setShowAddDialog(false);
       } else {
-        toast.error(result.error || 'Failed to create Emby instance');
+        toast.error(result.errors?.[0] || 'Failed to create Emby instance');
       }
     });
   };
@@ -159,7 +160,7 @@ export function EmbySettings({ initialSettings }: EmbySettingsProps) {
         toast.success('Emby instance updated successfully');
         resetForm();
       } else {
-        toast.error(result.error || 'Failed to update Emby instance');
+        toast.error(result.errors?.[0] || 'Failed to update Emby instance');
       }
     });
   };
@@ -176,7 +177,7 @@ export function EmbySettings({ initialSettings }: EmbySettingsProps) {
       if (result.success) {
         toast.success('Emby instance deleted successfully');
       } else {
-        toast.error(result.error || 'Failed to delete Emby instance');
+        toast.error(result.errors?.[0] || 'Failed to delete Emby instance');
       }
     });
   };
@@ -202,14 +203,14 @@ export function EmbySettings({ initialSettings }: EmbySettingsProps) {
   const handleTestConnection = async (id: string) => {
     setConnectionStatus((prev) => ({ ...prev, [id]: 'testing' }));
 
-    const result = await testEmbyConnection(id);
+    const result: ConnectionTestResult = await testEmbyConnection(id);
 
     setConnectionStatus((prev) => ({
       ...prev,
-      [id]: result.success && result.connected ? 'success' : 'error',
+      [id]: result.connected ? 'success' : 'error',
     }));
 
-    if (result.success && result.connected) {
+    if (result.connected) {
       toast.success('Connection successful');
     } else {
       toast.error(result.error || 'Connection failed');
@@ -226,7 +227,7 @@ export function EmbySettings({ initialSettings }: EmbySettingsProps) {
       const result = await updateEmbySetting(id, { enabled });
 
       if (!result.success) {
-        toast.error(result.error || 'Failed to update Emby instance');
+        toast.error(result.errors?.[0] || 'Failed to update Emby instance');
       }
     });
   };
