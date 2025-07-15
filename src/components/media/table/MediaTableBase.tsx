@@ -10,6 +10,7 @@ import { formatFileSize } from '@/lib/utils/formatters';
 import { DeletionScoreBreakdown } from '../summary/DeletionScoreBreakdown';
 import { ColumnVisibilityDropdown } from './ColumnVisibilityDropdown';
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { cn } from '@/lib/utils';
 
 interface MediaTableBaseProps {
   table: TanStackTable<MediaItem>;
@@ -145,33 +146,43 @@ export function MediaTableBase({ table }: MediaTableBaseProps) {
             <div style={{ minWidth: `${minTableWidth}px` }}>
               {table.getHeaderGroups().map((headerGroup) => (
                 <div key={headerGroup.id} className='flex'>
-                  {headerGroup.headers.map((header) => (
-                    <div
-                      key={header.id}
-                      className={`flex items-center px-4 py-2 font-medium text-left ${
-                        header.column.getCanSort()
-                          ? 'cursor-pointer select-none hover:bg-muted/50'
-                          : ''
-                      }`}
-                      onClick={header.column.getToggleSortingHandler()}
-                      style={{
-                        width: `${header.column.getSize()}px`,
-                        minWidth: `${header.column.getSize()}px`,
-                        maxWidth: `${header.column.getSize()}px`,
-                        flex: 'none',
-                      }}
-                    >
-                      {header.isPlaceholder ? null : (
-                        <div className='flex items-center'>
-                          {flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                          {getSortIcon(header.column.getIsSorted())}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                  {headerGroup.headers.map((header) => {
+                    const isTitle = header.column.id === 'title';
+
+                    return (
+                      <div
+                        key={header.id}
+                        className={cn(
+                          'flex items-center px-4 py-2 font-medium text-left',
+                          isTitle && 'flex-1 min-w-[200px]',
+                          header.column.getCanSort()
+                            ? 'cursor-pointer select-none hover:bg-muted/50'
+                            : ''
+                        )}
+                        onClick={header.column.getToggleSortingHandler()}
+                        style={
+                          isTitle
+                            ? {}
+                            : {
+                                width: `${header.column.getSize()}px`,
+                                minWidth: `${header.column.getSize()}px`,
+                                maxWidth: `${header.column.getSize()}px`,
+                                flex: 'none',
+                              }
+                        }
+                      >
+                        {header.isPlaceholder ? null : (
+                          <div className='flex items-center'>
+                            {flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
+                            {getSortIcon(header.column.getIsSorted())}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               ))}
             </div>
@@ -205,23 +216,34 @@ export function MediaTableBase({ table }: MediaTableBaseProps) {
                       transform: `translateY(${virtualRow.start}px)`,
                     }}
                   >
-                    {row.getVisibleCells().map((cell) => (
-                      <div
-                        key={cell.id}
-                        className='flex items-center px-4 py-2'
-                        style={{
-                          width: `${cell.column.getSize()}px`,
-                          minWidth: `${cell.column.getSize()}px`,
-                          maxWidth: `${cell.column.getSize()}px`,
-                          flex: 'none',
-                        }}
-                      >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
-                      </div>
-                    ))}
+                    {row.getVisibleCells().map((cell) => {
+                      const isTitle = cell.column.id === 'title';
+
+                      return (
+                        <div
+                          key={cell.id}
+                          className={cn(
+                            'flex items-center px-4 py-2',
+                            isTitle && 'flex-1 min-w-[200px]'
+                          )}
+                          style={
+                            isTitle
+                              ? {}
+                              : {
+                                  width: `${cell.column.getSize()}px`,
+                                  minWidth: `${cell.column.getSize()}px`,
+                                  maxWidth: `${cell.column.getSize()}px`,
+                                  flex: 'none',
+                                }
+                          }
+                        >
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 );
               })}
