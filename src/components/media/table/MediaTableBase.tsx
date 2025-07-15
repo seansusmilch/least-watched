@@ -49,7 +49,7 @@ export function MediaTableBase({ table }: MediaTableBaseProps) {
 
     if (!container || !header) return;
 
-    const handleScroll = () => {
+    const handleContainerScroll = () => {
       requestAnimationFrame(() => {
         if (header.scrollLeft !== container.scrollLeft) {
           header.scrollLeft = container.scrollLeft;
@@ -57,8 +57,23 @@ export function MediaTableBase({ table }: MediaTableBaseProps) {
       });
     };
 
-    container.addEventListener('scroll', handleScroll, { passive: true });
-    return () => container.removeEventListener('scroll', handleScroll);
+    const handleHeaderScroll = () => {
+      requestAnimationFrame(() => {
+        if (container.scrollLeft !== header.scrollLeft) {
+          container.scrollLeft = header.scrollLeft;
+        }
+      });
+    };
+
+    container.addEventListener('scroll', handleContainerScroll, {
+      passive: true,
+    });
+    header.addEventListener('scroll', handleHeaderScroll, { passive: true });
+
+    return () => {
+      container.removeEventListener('scroll', handleContainerScroll);
+      header.removeEventListener('scroll', handleHeaderScroll);
+    };
   }, []);
 
   useEffect(() => {
