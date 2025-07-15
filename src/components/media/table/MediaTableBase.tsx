@@ -49,26 +49,28 @@ export function MediaTableBase({ table }: MediaTableBaseProps) {
 
     if (!container || !header) return;
 
-    const handleContainerScroll = () => {
-      requestAnimationFrame(() => {
-        if (header.scrollLeft !== container.scrollLeft) {
-          header.scrollLeft = container.scrollLeft;
-        }
-      });
+    let lastScrollTime = 0;
+
+    const syncScroll = (source: HTMLElement, target: HTMLElement) => {
+      const now = Date.now();
+      if (now - lastScrollTime < 10) return;
+
+      lastScrollTime = now;
+
+      if (target.scrollLeft !== source.scrollLeft) {
+        target.scrollLeft = source.scrollLeft;
+      }
     };
 
-    const handleHeaderScroll = () => {
-      requestAnimationFrame(() => {
-        if (container.scrollLeft !== header.scrollLeft) {
-          container.scrollLeft = header.scrollLeft;
-        }
-      });
-    };
+    const handleContainerScroll = () => syncScroll(container, header);
+    const handleHeaderScroll = () => syncScroll(header, container);
 
     container.addEventListener('scroll', handleContainerScroll, {
       passive: true,
     });
-    header.addEventListener('scroll', handleHeaderScroll, { passive: true });
+    header.addEventListener('scroll', handleHeaderScroll, {
+      passive: true,
+    });
 
     return () => {
       container.removeEventListener('scroll', handleContainerScroll);
