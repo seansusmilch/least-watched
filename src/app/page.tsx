@@ -4,9 +4,9 @@ import {
   MediaTableSkeleton,
   MediaSummaryCardsSkeleton,
   MediaProcessingProgressSkeleton,
-  MediaProcessingProgressServer,
+  MediaProcessingProgress,
   MediaSummaryCardsServer,
-  PageActionsServer,
+  PageActionsEnhanced,
   MediaPageServer,
 } from '@/components/media';
 import {
@@ -29,19 +29,13 @@ export default function LeastWatchedPage() {
               Identify and manage your unwatched media content
             </p>
           </div>
-          {/* Dynamic Page Actions - Streamed */}
-          <Suspense
-            fallback={
-              <div className='h-9 w-32 bg-muted animate-pulse rounded' />
-            }
-          >
-            <PageActionsServer />
-          </Suspense>
+          {/* Dynamic Page Actions - Now client-side */}
+          <PageActionsEnhanced />
         </div>
 
-        {/* Dynamic Processing Progress - Streamed */}
+        {/* Dynamic Processing Progress - Now client-side */}
         <Suspense fallback={<MediaProcessingProgressSkeleton />}>
-          <MediaProcessingProgressServer />
+          <MediaProcessingProgress />
         </Suspense>
 
         {/* Dynamic Folder Space Widget - Streamed */}

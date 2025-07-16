@@ -1,35 +1,29 @@
 import { type MediaProcessingProgress } from './media-processor/';
-import { PrismaClient } from '../generated/prisma';
 
-const prisma = new PrismaClient();
+interface ProgressRecord {
+  progress: MediaProcessingProgress;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 export class ProgressStore {
+  private static progressMap = new Map<string, ProgressRecord>();
+
   static async setProgress(
     progressId: string,
     progress: MediaProcessingProgress
   ): Promise<void> {
     try {
-      await prisma.mediaProcessingProgress.upsert({
-        where: { progressId },
-        update: {
-          phase: progress.phase,
-          current: progress.current,
-          total: progress.total,
-          currentItem: progress.currentItem,
-          percentage: progress.percentage,
+      const now = new Date();
+      const existing = this.progressMap.get(progressId);
+
+      this.progressMap.set(progressId, {
+        progress: {
+          ...progress,
           isComplete: progress.isComplete || false,
-          error: progress.error || null,
         },
-        create: {
-          progressId,
-          phase: progress.phase,
-          current: progress.current,
-          total: progress.total,
-          currentItem: progress.currentItem,
-          percentage: progress.percentage,
-          isComplete: progress.isComplete || false,
-          error: progress.error || null,
-        },
+        createdAt: existing?.createdAt || now,
+        updatedAt: now,
       });
     } catch (error) {
       console.error('Failed to set progress:', error);
@@ -40,22 +34,15 @@ export class ProgressStore {
     progressId: string
   ): Promise<MediaProcessingProgress | null> {
     try {
-      const record = await prisma.mediaProcessingProgress.findUnique({
-        where: { progressId },
-      });
+      const record = this.progressMap.get(progressId);
 
       if (!record) {
         return null;
       }
 
       return {
-        phase: record.phase,
-        current: record.current,
-        total: record.total,
-        currentItem: record.currentItem,
-        percentage: record.percentage,
-        isComplete: record.isComplete,
-        error: record.error || undefined,
+        ...record.progress,
+        error: record.progress.error || undefined,
       };
     } catch (error) {
       console.error('Failed to get progress:', error);
@@ -65,9 +52,7 @@ export class ProgressStore {
 
   static async clearProgress(progressId: string): Promise<void> {
     try {
-      await prisma.mediaProcessingProgress.delete({
-        where: { progressId },
-      });
+      this.progressMap.delete(progressId);
     } catch (error) {
       console.error('Failed to clear progress:', error);
     }
@@ -78,30 +63,32 @@ export class ProgressStore {
     progress: MediaProcessingProgress;
   } | null> {
     try {
-      const record = await prisma.mediaProcessingProgress.findFirst({
-        where: {
-          isComplete: false,
-          error: null,
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-      });
+      // Find the most recent active (not complete, no error) process
+      let mostRecentActive: {
+        progressId: string;
+        record: ProgressRecord;
+      } | null = null;
 
-      if (!record) {
+      for (const [progressId, record] of this.progressMap.entries()) {
+        if (!record.progress.isComplete && !record.progress.error) {
+          if (
+            !mostRecentActive ||
+            record.updatedAt > mostRecentActive.record.updatedAt
+          ) {
+            mostRecentActive = { progressId, record };
+          }
+        }
+      }
+
+      if (!mostRecentActive) {
         return null;
       }
 
       return {
-        progressId: record.progressId,
+        progressId: mostRecentActive.progressId,
         progress: {
-          phase: record.phase,
-          current: record.current,
-          total: record.total,
-          currentItem: record.currentItem,
-          percentage: record.percentage,
-          isComplete: record.isComplete,
-          error: record.error || undefined,
+          ...mostRecentActive.record.progress,
+          error: mostRecentActive.record.progress.error || undefined,
         },
       };
     } catch (error) {
@@ -112,18 +99,12 @@ export class ProgressStore {
 
   static async getAllProgress(): Promise<Map<string, MediaProcessingProgress>> {
     try {
-      const records = await prisma.mediaProcessingProgress.findMany();
       const progressMap = new Map<string, MediaProcessingProgress>();
 
-      for (const record of records) {
-        progressMap.set(record.progressId, {
-          phase: record.phase,
-          current: record.current,
-          total: record.total,
-          currentItem: record.currentItem,
-          percentage: record.percentage,
-          isComplete: record.isComplete,
-          error: record.error || undefined,
+      for (const [progressId, record] of this.progressMap.entries()) {
+        progressMap.set(progressId, {
+          ...record.progress,
+          error: record.progress.error || undefined,
         });
       }
 
@@ -138,13 +119,12 @@ export class ProgressStore {
     try {
       // Delete progress records older than 24 hours
       const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-      await prisma.mediaProcessingProgress.deleteMany({
-        where: {
-          createdAt: {
-            lt: twentyFourHoursAgo,
-          },
-        },
-      });
+
+      for (const [progressId, record] of this.progressMap.entries()) {
+        if (record.createdAt < twentyFourHoursAgo) {
+          this.progressMap.delete(progressId);
+        }
+      }
     } catch (error) {
       console.error('Failed to cleanup old progress:', error);
     }

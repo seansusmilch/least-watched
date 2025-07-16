@@ -16,15 +16,12 @@ export { MediaFiltersClient } from './filters/MediaFiltersClient';
 export { MediaFiltersServer } from './filters/MediaFiltersServer';
 
 // Progress components
-export { MediaProcessingProgressClient } from './progress/MediaProcessingProgressClient';
+export { MediaProcessingProgress } from './progress/MediaProcessingProgress';
 export { MediaProcessingProgressSkeleton } from './progress/MediaProcessingProgressSkeleton';
-export { MediaProcessingProgressServer } from './progress/MediaProcessingProgressServer';
-export { MediaProcessingProgressWrapper } from './progress/MediaProcessingProgressWrapper';
 
 // Action components
 export { PageActions } from './actions/PageActions';
 export { PageActionsEnhanced } from './actions/PageActionsEnhanced';
-export { PageActionsServer } from './actions/PageActionsServer';
 
 // Page components
 export { MediaPageContent } from './page/MediaPageContent';

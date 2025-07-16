@@ -1,20 +1,23 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, CheckCircle, X, AlertCircle, Pause } from 'lucide-react';
 import { useActionState, useOptimistic } from 'react';
+import { toast } from 'sonner';
 import {
   getProcessingProgress,
   getActiveMediaProcess,
   cancelMediaProcessing,
+  revalidateAfterProcessing,
 } from '@/lib/actions/media-processing';
-import { MediaProcessingProgress } from '@/lib/media-processor/';
+import { type MediaProcessingProgress as MediaProcessingProgressType } from '@/lib/media-processor/';
 
-interface MediaProcessingProgressClientProps {
+interface MediaProcessingProgressProps {
   initialProgressId?: string;
   onClose?: () => void;
   onComplete?: () => void;
@@ -23,20 +26,21 @@ interface MediaProcessingProgressClientProps {
 }
 
 interface OptimisticState {
-  progress: MediaProcessingProgress | null;
+  progress: MediaProcessingProgressType | null;
   isLoading: boolean;
   error: string | null;
   isPaused: boolean;
 }
 
-export function MediaProcessingProgressClient({
+export function MediaProcessingProgress({
   initialProgressId,
   onClose,
   onComplete,
   autoRefresh = true,
   refreshInterval = 2000,
-}: MediaProcessingProgressClientProps) {
-  const [progress, setProgress] = useState<MediaProcessingProgress | null>(
+}: MediaProcessingProgressProps) {
+  const router = useRouter();
+  const [progress, setProgress] = useState<MediaProcessingProgressType | null>(
     null
   );
   const [progressId, setProgressId] = useState<string | null>(
@@ -45,6 +49,7 @@ export function MediaProcessingProgressClient({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const [hasCompleted, setHasCompleted] = useState(false);
 
   // Optimistic state for UI updates
   const [optimisticState, addOptimisticUpdate] = useOptimistic<
@@ -65,6 +70,41 @@ export function MediaProcessingProgressClient({
     cancelMediaProcessing,
     undefined
   );
+
+  // Handle completion with router refresh and revalidation
+  const handleComplete = useCallback(async () => {
+    // Prevent multiple completion calls
+    if (hasCompleted) return;
+
+    setHasCompleted(true);
+
+    // Show success message
+    toast.success('Media processing completed successfully!');
+
+    // Call custom completion handler if provided
+    if (onComplete) {
+      onComplete();
+    }
+
+    try {
+      // First, trigger server-side revalidation
+      await revalidateAfterProcessing();
+
+      // Then refresh the router to update components
+      router.refresh();
+    } catch (error) {
+      console.error('Failed to refresh after processing:', error);
+      // Fallback to just router refresh
+      router.refresh();
+    }
+  }, [router, hasCompleted, onComplete]);
+
+  // Reset completion state when progressId changes
+  useEffect(() => {
+    if (initialProgressId) {
+      setHasCompleted(false);
+    }
+  }, [initialProgressId]);
 
   // Fetch progress data
   const fetchProgress = useCallback(async () => {
@@ -95,8 +135,8 @@ export function MediaProcessingProgressClient({
         setLastUpdate(new Date());
 
         // Check if processing is complete
-        if (progressData.phase === 'Complete' && onComplete) {
-          onComplete();
+        if (progressData.phase === 'Complete') {
+          handleComplete();
         }
       } else {
         setError('Progress data not found');
@@ -109,7 +149,7 @@ export function MediaProcessingProgressClient({
     } finally {
       setIsLoading(false);
     }
-  }, [progressId, onComplete]);
+  }, [progressId, handleComplete]);
 
   // Auto-refresh effect
   useEffect(() => {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Play, Download, AlertCircle } from 'lucide-react';
 import { useActionState, useOptimistic, useTransition } from 'react';
@@ -10,6 +10,7 @@ import {
   refreshMediaItems,
   exportMediaItems,
   refreshFolderSpaceData,
+  getActiveMediaProcess,
 } from '@/lib/actions/media-processing';
 
 interface PageActionsEnhancedProps {
@@ -36,6 +37,28 @@ export function PageActionsEnhanced({
 }: PageActionsEnhancedProps) {
   const [lastAction, setLastAction] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [hasActiveProcess, setHasActiveProcess] = useState(false);
+
+  // Check for active processes
+  useEffect(() => {
+    const checkActiveProcess = async () => {
+      try {
+        const activeProcess = await getActiveMediaProcess();
+        setHasActiveProcess(activeProcess !== null);
+      } catch (error) {
+        console.error('Failed to check active process:', error);
+        setHasActiveProcess(false);
+      }
+    };
+
+    // Check immediately
+    checkActiveProcess();
+
+    // Then check every 2 seconds
+    const interval = setInterval(checkActiveProcess, 2000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   // Optimistic state for immediate UI feedback
   const [optimisticState, addOptimisticUpdate] = useOptimistic<
@@ -193,12 +216,15 @@ export function PageActionsEnhanced({
   const isExporting = optimisticState.exporting || exportPending;
   const hasError = !!optimisticState.error;
 
+  // Disable actions if there's an active process or if explicitly disabled
+  const shouldDisable = disabled || hasActiveProcess;
+
   return (
     <div className='flex items-center space-x-2'>
       {/* Process Media Button */}
       <Button
         onClick={handleProcess}
-        disabled={disabled || isProcessing || isRefreshing || isPending}
+        disabled={shouldDisable || isProcessing || isRefreshing || isPending}
         size='sm'
         className='relative'
       >
@@ -220,7 +246,7 @@ export function PageActionsEnhanced({
         variant='outline'
         size='sm'
         onClick={handleRefresh}
-        disabled={disabled || isRefreshing || isProcessing || isPending}
+        disabled={shouldDisable || isRefreshing || isProcessing || isPending}
         className='relative'
       >
         {isRefreshing ? (
@@ -236,7 +262,10 @@ export function PageActionsEnhanced({
         variant='outline'
         size='sm'
         disabled={
-          disabled || selectedItems.length === 0 || isExporting || isPending
+          shouldDisable ||
+          selectedItems.length === 0 ||
+          isExporting ||
+          isPending
         }
         onClick={handleExport}
         className='relative'
