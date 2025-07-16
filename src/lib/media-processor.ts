@@ -5,6 +5,7 @@ import {
   embySettingsService,
 } from './database';
 import { type EnhancedProcessingSettings } from './actions/settings';
+import { type DeletionScoreSettings } from './actions/settings/types';
 import { deletionScoreCalculator } from './deletion-score-calculator';
 import { folderSpaceService } from './services/folder-space-service';
 import { type FolderSpaceData } from './types/media-processing';
@@ -348,6 +349,12 @@ export class MediaProcessor {
 
     let processedItemCount = 0;
 
+    // Get deletion score settings and folder space data for scoring (load once)
+    const { getDeletionScoreSettings } = await import('./actions/settings');
+    const deletionScoreSettings: DeletionScoreSettings =
+      await getDeletionScoreSettings();
+    const folderSpaceData = await folderSpaceService.getFolderSpaceData();
+
     // Process Sonarr instances
     for (const sonarrInstance of sonarrInstances) {
       try {
@@ -355,7 +362,9 @@ export class MediaProcessor {
           sonarrInstance,
           embyInstances,
           processedItemCount,
-          totalItems
+          totalItems,
+          deletionScoreSettings,
+          folderSpaceData
         );
         allProcessedItems.push(...sonarrItems);
         processedItemCount += sonarrItems.length;
@@ -374,7 +383,9 @@ export class MediaProcessor {
           radarrInstance,
           embyInstances,
           processedItemCount,
-          totalItems
+          totalItems,
+          deletionScoreSettings,
+          folderSpaceData
         );
         allProcessedItems.push(...radarrItems);
         processedItemCount += radarrItems.length;
@@ -385,22 +396,6 @@ export class MediaProcessor {
         );
       }
     }
-
-    // Store all processed items
-    this.updateProgress(
-      'Storing Data',
-      processedItemCount,
-      totalItems,
-      'Saving to database...'
-    );
-    await this.storeProcessedItems(allProcessedItems);
-
-    this.updateProgress(
-      'Items Stored',
-      processedItemCount,
-      totalItems,
-      `Processed ${allProcessedItems.length} items`
-    );
 
     // Mark as complete
     const completedProgress: MediaProcessingProgress = {
@@ -420,7 +415,9 @@ export class MediaProcessor {
     sonarrInstance: SonarrInstance,
     embyInstances: EmbyInstance[],
     processedItemCount: number,
-    totalItems: number
+    totalItems: number,
+    deletionScoreSettings: DeletionScoreSettings,
+    folderSpaceData: FolderSpaceData[]
   ): Promise<ProcessedMediaItem[]> {
     const processedItems: ProcessedMediaItem[] = [];
 
@@ -570,6 +567,12 @@ export class MediaProcessor {
           }
         }
 
+        // Store the item immediately
+        await this.storeProcessedItem(
+          processedItem,
+          deletionScoreSettings,
+          folderSpaceData
+        );
         processedItems.push(processedItem);
         console.log(
           `   ✅ Processed item:`,
@@ -593,7 +596,9 @@ export class MediaProcessor {
     radarrInstance: RadarrInstance,
     embyInstances: EmbyInstance[],
     processedItemCount: number,
-    totalItems: number
+    totalItems: number,
+    deletionScoreSettings: DeletionScoreSettings,
+    folderSpaceData: FolderSpaceData[]
   ): Promise<ProcessedMediaItem[]> {
     const processedItems: ProcessedMediaItem[] = [];
 
@@ -735,6 +740,12 @@ export class MediaProcessor {
           }
         }
 
+        // Store the item immediately
+        await this.storeProcessedItem(
+          processedItem,
+          deletionScoreSettings,
+          folderSpaceData
+        );
         processedItems.push(processedItem);
         console.log(
           `   ✅ Processed item:`,
@@ -888,167 +899,144 @@ export class MediaProcessor {
     return null;
   }
 
-  private async storeProcessedItems(
-    items: ProcessedMediaItem[]
+  private async storeProcessedItem(
+    item: ProcessedMediaItem,
+    deletionScoreSettings: DeletionScoreSettings,
+    folderSpaceData: FolderSpaceData[]
   ): Promise<void> {
-    console.log(`📦 Starting to store ${items.length} items`);
-    let totalStored = 0;
+    try {
+      console.log(`📦 Storing item: ${item.title}`);
 
-    // Get deletion score settings and folder space data for scoring
-    const { getDeletionScoreSettings } = await import('./actions/settings');
-    const deletionScoreSettings = await getDeletionScoreSettings();
-    const folderSpaceData = await folderSpaceService.getFolderSpaceData();
+      // Safely convert sizeOnDisk to BigInt
+      const sizeOnDisk = item.sizeOnDisk
+        ? BigInt(Math.max(0, item.sizeOnDisk))
+        : null;
 
-    for (const item of items) {
-      try {
-        // Build WHERE condition based on what IDs are available
-        const whereConditions = [];
+      // Calculate deletion score
+      const folderRemainingSpacePercent =
+        this.calculateFolderRemainingSpacePercent(
+          item.parentFolder,
+          folderSpaceData
+        );
 
-        if (item.sonarrId) {
-          whereConditions.push({
-            sonarrId: item.sonarrId,
-            source: item.source,
-          });
-        }
+      const deletionScore = deletionScoreSettings.enabled
+        ? deletionScoreCalculator.calculateScore(
+            {
+              id: 'temp', // No existing item for new items
+              sizeOnDisk: sizeOnDisk,
+              dateAdded: item.dateAdded,
+              lastWatched: item.lastWatched,
+              folderRemainingSpacePercent,
+            },
+            deletionScoreSettings
+          )
+        : null;
 
-        if (item.radarrId) {
-          whereConditions.push({
-            radarrId: item.radarrId,
-            source: item.source,
-          });
-        }
+      const itemData = {
+        title: item.title,
+        type: item.type,
+        tmdbId: item.tmdbId,
+        imdbId: item.imdbId,
+        year: item.year,
+        mediaPath: item.mediaPath,
+        parentFolder: item.parentFolder,
+        sizeOnDisk: sizeOnDisk,
+        dateAdded: item.dateAdded,
+        source: item.source,
+        embyId: item.embyId,
+        lastWatched: item.lastWatched,
+        watchCount: item.watchCount || 0,
 
-        // Fallback to title and type if no specific IDs
-        if (whereConditions.length === 0) {
-          whereConditions.push({
-            title: item.title,
-            type: item.type,
-            source: item.source,
-          });
-        }
+        // Enhanced fields
+        quality: item.quality,
+        qualityScore: item.qualityScore,
 
-        // Check if item already exists
-        const existingItem = await prisma.mediaItem.findFirst({
-          where: {
-            OR: whereConditions,
-          },
+        // TV Show specific
+        episodesOnDisk: item.episodesOnDisk,
+        totalEpisodes: item.totalEpisodes,
+        seasonCount: item.seasonCount,
+        completionPercentage: item.completionPercentage,
+
+        // Monitoring and availability
+        monitored: item.monitored,
+
+        // Ratings
+        imdbRating: item.imdbRating,
+        tmdbRating: item.tmdbRating,
+
+        // Play progress
+        playProgress: item.playProgress,
+        fullyWatched: item.fullyWatched,
+
+        // Size efficiency
+        runtime: item.runtime,
+        sizePerHour: item.sizePerHour,
+
+        // Metadata
+        genres: item.genres ? JSON.stringify(item.genres) : null,
+        overview: item.overview,
+
+        // Deletion score
+        deletionScore: deletionScore,
+      };
+
+      // Note: For true upsert efficiency, we would need unique constraints in the schema
+      // For now, we'll use a hybrid approach with findFirst + upsert
+
+      // Create a deterministic composite key for finding existing items
+      const findConditions = [];
+
+      if (item.sonarrId) {
+        findConditions.push({
+          sonarrId: item.sonarrId,
+          source: item.source,
         });
+      }
 
-        // Safely convert sizeOnDisk to BigInt
-        const sizeOnDisk = item.sizeOnDisk
-          ? BigInt(Math.max(0, item.sizeOnDisk))
-          : null;
+      if (item.radarrId) {
+        findConditions.push({
+          radarrId: item.radarrId,
+          source: item.source,
+        });
+      }
 
-        // Calculate deletion score
-        const folderRemainingSpacePercent =
-          this.calculateFolderRemainingSpacePercent(
-            item.parentFolder,
-            folderSpaceData
-          );
-
-        const deletionScore = deletionScoreSettings.enabled
-          ? deletionScoreCalculator.calculateScore(
-              {
-                id: existingItem?.id || 'temp',
-                sizeOnDisk: sizeOnDisk,
-                dateAdded: item.dateAdded,
-                lastWatched: item.lastWatched,
-                folderRemainingSpacePercent,
-              },
-              deletionScoreSettings
-            )
-          : null;
-
-        const itemData = {
+      // Fallback to title and type if no specific IDs
+      if (findConditions.length === 0) {
+        findConditions.push({
           title: item.title,
           type: item.type,
-          tmdbId: item.tmdbId,
-          imdbId: item.imdbId,
-          year: item.year,
-          mediaPath: item.mediaPath,
-          parentFolder: item.parentFolder,
-          sizeOnDisk: sizeOnDisk,
-          dateAdded: item.dateAdded,
           source: item.source,
-          embyId: item.embyId,
-          lastWatched: item.lastWatched,
-          watchCount: item.watchCount || 0,
-
-          // Enhanced fields
-          quality: item.quality,
-          qualityScore: item.qualityScore,
-
-          // TV Show specific
-          episodesOnDisk: item.episodesOnDisk,
-          totalEpisodes: item.totalEpisodes,
-          seasonCount: item.seasonCount,
-          completionPercentage: item.completionPercentage,
-
-          // Monitoring and availability
-          monitored: item.monitored,
-
-          // Ratings
-          imdbRating: item.imdbRating,
-          tmdbRating: item.tmdbRating,
-
-          // Play progress
-          playProgress: item.playProgress,
-          fullyWatched: item.fullyWatched,
-
-          // Size efficiency
-          runtime: item.runtime,
-          sizePerHour: item.sizePerHour,
-
-          // Metadata
-          genres: item.genres ? JSON.stringify(item.genres) : null,
-          overview: item.overview,
-
-          // Deletion score
-          deletionScore: deletionScore,
-        };
-
-        if (existingItem) {
-          // Update existing item
-          console.log(
-            `🔄 Updating existing item: ${item.title} (ID: ${existingItem.id})`
-          );
-          await prisma.mediaItem.update({
-            where: { id: existingItem.id },
-            data: itemData,
-          });
-          console.log(`✅ Successfully updated: ${item.title}`);
-        } else {
-          // Create new item
-          console.log(`➕ Creating new item: ${item.title}`);
-          const newItem = await prisma.mediaItem.create({
-            data: {
-              ...itemData,
-              sonarrId: item.sonarrId,
-              radarrId: item.radarrId,
-            },
-          });
-          console.log(
-            `✅ Successfully created: ${item.title} (ID: ${newItem.id})`
-          );
-        }
-
-        totalStored++;
-        this.updateProgress(
-          'Storing Data',
-          totalStored,
-          items.length,
-          item.title
-        );
-      } catch (error) {
-        console.error(`❌ Error storing item ${item.title}:`, error);
-        console.error(`   Item data:`, JSON.stringify(item, null, 2));
-        continue;
+        });
       }
-    }
 
-    console.log(
-      `🎉 Finished storing all items. Total stored: ${totalStored}/${items.length}`
-    );
+      // Try to find existing item
+      const existingItem = await prisma.mediaItem.findFirst({
+        where: {
+          OR: findConditions,
+        },
+      });
+
+      const result = await prisma.mediaItem.upsert({
+        where: {
+          id: existingItem?.id || 'nonexistent-id', // Use existing ID or dummy ID for create
+        },
+        update: itemData,
+        create: {
+          ...itemData,
+          sonarrId: item.sonarrId,
+          radarrId: item.radarrId,
+        },
+      });
+
+      console.log(
+        `✅ ${existingItem ? 'Updated' : 'Created'} item: ${item.title} (ID: ${
+          result.id
+        })`
+      );
+    } catch (error) {
+      console.error(`❌ Error storing item ${item.title}:`, error);
+      console.error(`   Item data:`, JSON.stringify(item, null, 2));
+    }
   }
 
   async getStoredMediaItems(): Promise<StoredMediaItem[]> {
