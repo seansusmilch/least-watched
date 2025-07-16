@@ -18,56 +18,19 @@ import {
   FolderOpen,
   Eye,
 } from 'lucide-react';
-import { DateTime } from 'luxon';
 import { MediaItem } from '@/lib/types/media';
 import { formatDate, formatFileSize } from '@/lib/utils/formatters';
+import { getDeletionScoreSettings } from '@/lib/actions/settings';
 import {
-  getDeletionScoreSettings,
-  type DeletionScoreSettings,
-} from '@/lib/actions/settings';
+  deletionScoreCalculator,
+  type ScoreBreakdownData,
+  type MediaItemForScoring,
+} from '@/lib/deletion-score-calculator';
 
 interface DeletionScoreBreakdownProps {
   item: MediaItem;
   open: boolean;
   onClose: () => void;
-}
-
-interface ScoreBreakdownData {
-  daysUnwatched: {
-    enabled: boolean;
-    daysSince: number;
-    pointsEarned: number;
-    maxPoints: number;
-    category: string;
-  };
-  neverWatched: {
-    enabled: boolean;
-    applies: boolean;
-    pointsEarned: number;
-    maxPoints: number;
-  };
-  sizeOnDisk: {
-    enabled: boolean;
-    sizeInGB: number;
-    pointsEarned: number;
-    maxPoints: number;
-    category: string;
-  };
-  ageSinceAdded: {
-    enabled: boolean;
-    daysSince: number;
-    pointsEarned: number;
-    maxPoints: number;
-    category: string;
-  };
-  folderSpace: {
-    enabled: boolean;
-    remainingPercent: number | null;
-    pointsEarned: number;
-    maxPoints: number;
-    category: string;
-  };
-  totalScore: number;
 }
 
 export function DeletionScoreBreakdown({
@@ -83,7 +46,19 @@ export function DeletionScoreBreakdown({
       setLoading(true);
       const deletionSettings = await getDeletionScoreSettings();
 
-      const breakdownData = calculateBreakdown(item, deletionSettings);
+      // Convert MediaItem to MediaItemForScoring format
+      const itemForScoring: MediaItemForScoring = {
+        id: item.id,
+        sizeOnDisk: item.sizeOnDisk ? BigInt(item.sizeOnDisk) : null,
+        dateAdded: item.dateAdded ? new Date(item.dateAdded) : null,
+        lastWatched: item.lastWatched ? new Date(item.lastWatched) : null,
+        folderRemainingSpacePercent: item.folderRemainingSpacePercent ?? null,
+      };
+
+      const breakdownData = deletionScoreCalculator.calculateScoreBreakdown(
+        itemForScoring,
+        deletionSettings
+      );
       setBreakdown(breakdownData);
     } catch (error) {
       console.error('Error loading deletion score breakdown:', error);
@@ -97,179 +72,6 @@ export function DeletionScoreBreakdown({
       loadSettingsAndCalculateBreakdown();
     }
   }, [open, loadSettingsAndCalculateBreakdown]);
-
-  const calculateBreakdown = (
-    item: MediaItem,
-    settings: DeletionScoreSettings
-  ): ScoreBreakdownData => {
-    let totalScore = 0;
-
-    // Days Unwatched calculation
-    const parseDate = (date?: Date | string): DateTime => {
-      if (!date) return DateTime.now();
-      if (typeof date === 'string') {
-        const parsed = DateTime.fromISO(date);
-        return parsed.isValid ? parsed : DateTime.now();
-      }
-      return DateTime.fromJSDate(date);
-    };
-
-    const referenceLuxonDate =
-      parseDate(item.lastWatched) ||
-      parseDate(item.dateAdded) ||
-      DateTime.now();
-    const now = DateTime.now();
-    const daysSinceReference = Math.floor(
-      Math.abs(now.diff(referenceLuxonDate, 'days').days)
-    );
-
-    let daysUnwatchedPoints = 0;
-    let daysUnwatchedCategory = '';
-
-    if (settings.daysUnwatchedEnabled) {
-      if (daysSinceReference <= 30) {
-        daysUnwatchedPoints = settings.daysUnwatched30Days;
-        daysUnwatchedCategory = '≤30 days';
-      } else if (daysSinceReference <= 90) {
-        daysUnwatchedPoints = settings.daysUnwatched90Days;
-        daysUnwatchedCategory = '31-90 days';
-      } else if (daysSinceReference <= 180) {
-        daysUnwatchedPoints = settings.daysUnwatched180Days;
-        daysUnwatchedCategory = '91-180 days';
-      } else if (daysSinceReference <= 365) {
-        daysUnwatchedPoints = settings.daysUnwatched365Days;
-        daysUnwatchedCategory = '181-365 days';
-      } else {
-        daysUnwatchedPoints = settings.daysUnwatchedOver365;
-        daysUnwatchedCategory = '>365 days';
-      }
-      totalScore += daysUnwatchedPoints;
-    }
-
-    // Never Watched calculation
-    const neverWatchedApplies = !item.lastWatched;
-    let neverWatchedPoints = 0;
-    if (settings.neverWatchedEnabled && neverWatchedApplies) {
-      neverWatchedPoints = settings.neverWatchedPoints;
-      totalScore += neverWatchedPoints;
-    }
-
-    // Size on Disk calculation
-    const sizeInGB = (item.sizeOnDisk || 0) / (1024 * 1024 * 1024);
-    let sizeOnDiskPoints = 0;
-    let sizeOnDiskCategory = '';
-
-    if (settings.sizeOnDiskEnabled && item.sizeOnDisk) {
-      if (sizeInGB < 1) {
-        sizeOnDiskPoints = settings.sizeOnDisk1GB;
-        sizeOnDiskCategory = '<1GB';
-      } else if (sizeInGB < 5) {
-        sizeOnDiskPoints = settings.sizeOnDisk5GB;
-        sizeOnDiskCategory = '1-5GB';
-      } else if (sizeInGB < 10) {
-        sizeOnDiskPoints = settings.sizeOnDisk10GB;
-        sizeOnDiskCategory = '5-10GB';
-      } else if (sizeInGB < 20) {
-        sizeOnDiskPoints = settings.sizeOnDisk20GB;
-        sizeOnDiskCategory = '10-20GB';
-      } else if (sizeInGB < 50) {
-        sizeOnDiskPoints = settings.sizeOnDisk50GB;
-        sizeOnDiskCategory = '20-50GB';
-      } else {
-        sizeOnDiskPoints = settings.sizeOnDiskOver50GB;
-        sizeOnDiskCategory = '≥50GB';
-      }
-      totalScore += sizeOnDiskPoints;
-    }
-
-    // Age Since Added calculation
-    const daysSinceAdded = item.dateAdded
-      ? Math.floor(Math.abs(now.diff(parseDate(item.dateAdded), 'days').days))
-      : 0;
-    let ageSinceAddedPoints = 0;
-    let ageSinceAddedCategory = '';
-
-    if (settings.ageSinceAddedEnabled && item.dateAdded) {
-      if (daysSinceAdded > 730) {
-        ageSinceAddedPoints = settings.ageSinceAddedOver730;
-        ageSinceAddedCategory = '>730 days';
-      } else if (daysSinceAdded > 365) {
-        ageSinceAddedPoints = settings.ageSinceAdded365Days;
-        ageSinceAddedCategory = '365-730 days';
-      } else if (daysSinceAdded > 180) {
-        ageSinceAddedPoints = settings.ageSinceAdded180Days;
-        ageSinceAddedCategory = '180-365 days';
-      } else {
-        ageSinceAddedCategory = '≤180 days';
-      }
-      totalScore += ageSinceAddedPoints;
-    }
-
-    // Folder Space calculation
-    let folderSpacePoints = 0;
-    let folderSpaceCategory = '';
-
-    if (
-      settings.folderSpaceEnabled &&
-      item.folderRemainingSpacePercent !== null &&
-      item.folderRemainingSpacePercent !== undefined
-    ) {
-      if (item.folderRemainingSpacePercent < 10) {
-        folderSpacePoints = settings.folderSpace10Percent;
-        folderSpaceCategory = '<10% remaining';
-      } else if (item.folderRemainingSpacePercent < 20) {
-        folderSpacePoints = settings.folderSpace20Percent;
-        folderSpaceCategory = '10-20% remaining';
-      } else if (item.folderRemainingSpacePercent < 30) {
-        folderSpacePoints = settings.folderSpace30Percent;
-        folderSpaceCategory = '20-30% remaining';
-      } else if (item.folderRemainingSpacePercent < 50) {
-        folderSpacePoints = settings.folderSpace50Percent;
-        folderSpaceCategory = '30-50% remaining';
-      } else {
-        folderSpaceCategory = '≥50% remaining';
-      }
-      totalScore += folderSpacePoints;
-    }
-
-    return {
-      daysUnwatched: {
-        enabled: settings.daysUnwatchedEnabled,
-        daysSince: daysSinceReference,
-        pointsEarned: daysUnwatchedPoints,
-        maxPoints: settings.daysUnwatchedMaxPoints,
-        category: daysUnwatchedCategory,
-      },
-      neverWatched: {
-        enabled: settings.neverWatchedEnabled,
-        applies: neverWatchedApplies,
-        pointsEarned: neverWatchedPoints,
-        maxPoints: settings.neverWatchedPoints,
-      },
-      sizeOnDisk: {
-        enabled: settings.sizeOnDiskEnabled,
-        sizeInGB,
-        pointsEarned: sizeOnDiskPoints,
-        maxPoints: settings.sizeOnDiskMaxPoints,
-        category: sizeOnDiskCategory,
-      },
-      ageSinceAdded: {
-        enabled: settings.ageSinceAddedEnabled,
-        daysSince: daysSinceAdded,
-        pointsEarned: ageSinceAddedPoints,
-        maxPoints: settings.ageSinceAddedMaxPoints,
-        category: ageSinceAddedCategory,
-      },
-      folderSpace: {
-        enabled: settings.folderSpaceEnabled,
-        remainingPercent: item.folderRemainingSpacePercent ?? null,
-        pointsEarned: folderSpacePoints,
-        maxPoints: settings.folderSpaceMaxPoints,
-        category: folderSpaceCategory,
-      },
-      totalScore: Math.min(totalScore, 100),
-    };
-  };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>

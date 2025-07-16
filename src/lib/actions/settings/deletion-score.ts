@@ -73,12 +73,6 @@ export async function setDeletionScoreSettings(
         'Deletion score calculation settings for media prioritization',
     });
 
-    // Invalidate deletion score cache when settings change
-    const { deletionScoreCalculator } = await import(
-      '../../deletion-score-calculator'
-    );
-    deletionScoreCalculator.invalidateCache();
-
     // Trigger recalculation in the background if deletion scoring is enabled
     if (settings.enabled) {
       // Import and trigger recalculation without waiting for completion
