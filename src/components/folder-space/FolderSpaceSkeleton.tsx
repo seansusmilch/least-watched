@@ -13,7 +13,7 @@ export function FolderSpaceSkeleton() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className='flex flex-row gap-4'>
+        <div className='flex flex-row gap-4 overflow-x-auto flex-nowrap pb-2'>
           {Array.from({ length: 3 }).map((_, idx) => (
             <Card
               key={idx}

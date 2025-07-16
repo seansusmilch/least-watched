@@ -94,7 +94,7 @@ export function FolderSpaceWidget({ initialData }: FolderSpaceWidgetProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className='flex flex-row gap-4'>
+          <div className='flex flex-row gap-4 overflow-x-auto flex-nowrap pb-2'>
             {Array.from({ length: 3 }).map((_, idx) => (
               <Card
                 key={idx}
@@ -220,7 +220,7 @@ export function FolderSpaceWidget({ initialData }: FolderSpaceWidgetProps) {
           {Object.entries(groupedFolders).map(([driveRoot, folders]) => (
             <div key={driveRoot} className='space-y-3'>
               {/* Folders in this drive */}
-              <div className='flex flex-row gap-4'>
+              <div className='flex flex-row gap-4 overflow-x-auto flex-nowrap pb-2'>
                 {folders.map((folder, index) => {
                   const folderId = `${folder.instanceType}-${folder.instanceName}-${folder.path}-${index}`;
                   return (
