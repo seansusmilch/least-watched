@@ -13,8 +13,16 @@ export const formatDate = (date?: Date | string) => {
 };
 
 export const formatFileSize = (sizeInBytes: number) => {
-  const gb = sizeInBytes / (1024 * 1024 * 1024);
-  return `${gb.toFixed(1)} GB`;
+  const TB = 1024 * 1024 * 1024 * 1024;
+  const GB = 1024 * 1024 * 1024;
+
+  if (sizeInBytes >= TB) {
+    const tb = sizeInBytes / TB;
+    return `${tb.toFixed(2)} TB`;
+  } else {
+    const gb = sizeInBytes / GB;
+    return `${gb.toFixed(1)} GB`;
+  }
 };
 
 export const calculateUnwatchedDays = (
