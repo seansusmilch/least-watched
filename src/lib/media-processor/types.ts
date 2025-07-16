@@ -189,4 +189,52 @@ export interface EmbyPlaybackInfo {
   lastWatched?: Date;
   watchCount?: number;
   embyId?: string;
+  metadata?: EmbyMetadata;
+}
+
+export interface EmbyMetadata {
+  id: string;
+  name?: string;
+  originalTitle?: string;
+  type?: string;
+  year?: number;
+  runtime?: number | null;
+  genres: string[];
+  rating?: number;
+  officialRating?: string;
+  overview?: string;
+  taglines: string[];
+  people: Array<{
+    name: string;
+    role?: string;
+    type?: string;
+    primaryImageTag?: string;
+  }>;
+  studios: Array<{
+    name: string;
+    id?: string;
+  }>;
+  dateCreated?: string;
+  premiereDate?: string;
+  path?: string;
+  fileName?: string;
+  mediaType?: string;
+  isFolder?: boolean;
+  parentId?: string;
+  seriesId?: string;
+  seasonId?: string;
+  episodeNumber?: number;
+  seasonNumber?: number;
+  seriesName?: string;
+  seasonName?: string;
+  providerIds: Record<string, string>;
+  userData: {
+    playbackPositionTicks?: number;
+    playCount?: number;
+    isFavorite?: boolean;
+    played?: boolean;
+    lastPlayedDate?: string;
+  };
+  embyInstance: string;
+  rawData?: unknown;
 }

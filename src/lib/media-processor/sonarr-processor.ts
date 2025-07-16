@@ -136,10 +136,10 @@ export class SonarrProcessor {
         // Try to get playback information from Emby
         if (enhancedSettings?.enablePlaybackProgress) {
           console.log(`   🎬 Querying Emby for playback info...`);
-          const embyData = await EmbyProcessor.getPlaybackInfo(
-            series.title,
-            embyInstances
-          );
+          const embyData = await EmbyProcessor.getEmbyMediaData({
+            title: series.title,
+            embyInstances,
+          });
           if (embyData) {
             console.log(
               `   ✅ Found Emby data:`,

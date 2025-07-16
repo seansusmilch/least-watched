@@ -126,10 +126,10 @@ export class RadarrProcessor {
         // Try to get playback information from Emby
         if (enhancedSettings?.enablePlaybackProgress) {
           console.log(`   🎬 Querying Emby for playback info...`);
-          const embyData = await EmbyProcessor.getPlaybackInfo(
-            movie.title,
-            embyInstances
-          );
+          const embyData = await EmbyProcessor.getEmbyMediaData({
+            title: movie.title,
+            embyInstances,
+          });
           if (embyData) {
             console.log(
               `   ✅ Found Emby data:`,
