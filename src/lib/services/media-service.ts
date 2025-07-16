@@ -1,43 +1,5 @@
-import { MediaProcessor } from '../media-processor';
+import { MediaProcessor, type StoredMediaItem } from '../media-processor/';
 import { type MediaItemData } from '../types/media-processing';
-
-interface StoredMediaItem {
-  id: string;
-  title: string;
-  type: string;
-  tmdbId?: number | null;
-  imdbId?: string | null;
-  year?: number | null;
-  lastWatched?: Date | null;
-  watchCount: number;
-  sonarrId?: number | null;
-  radarrId?: number | null;
-  embyId?: string | null;
-  mediaPath?: string | null;
-  parentFolder?: string | null;
-  sizeOnDisk?: bigint | null;
-  dateAdded?: Date | null;
-  source?: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-  quality?: string | null;
-  qualityScore?: number | null;
-  episodesOnDisk?: number | null;
-  totalEpisodes?: number | null;
-  seasonCount?: number | null;
-  completionPercentage?: number | null;
-  monitored?: boolean | null;
-  imdbRating?: number | null;
-  tmdbRating?: number | null;
-  playProgress?: number | null;
-  fullyWatched?: boolean | null;
-  runtime?: number | null;
-  sizePerHour?: number | null;
-  genres?: string | null;
-  overview?: string | null;
-  folderRemainingSpacePercent?: number | null;
-  deletionScore?: number | null;
-}
 
 export class MediaService {
   private processor: MediaProcessor;

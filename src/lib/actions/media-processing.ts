@@ -1,7 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 'use server';
 
-import { MediaProcessor } from '../media-processor';
+import {
+  MediaProcessor,
+  type MediaProcessingProgress,
+} from '../media-processor/';
 import { randomUUID } from 'crypto';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import {
@@ -11,7 +14,6 @@ import {
   getCachedAllFoldersWithSpace,
 } from '../cache/data-cache';
 import {
-  type MediaProcessingProgress,
   type MediaProcessingResult,
   type SelectedFoldersFromDatabase,
 } from '../types/media-processing';

@@ -1,13 +1,3 @@
-export interface MediaProcessingProgress {
-  phase: string;
-  current: number;
-  total: number;
-  currentItem: string;
-  percentage: number;
-  isComplete?: boolean;
-  error?: string;
-}
-
 export interface MediaProcessingResult {
   success: boolean;
   message: string;
