@@ -57,19 +57,3 @@ model MediaItem {
 
   @@map("media_items")
 }
-
-model MediaProcessingProgress {
-  id           String    @id @default(cuid())
-  progressId   String    @unique
-  phase        String
-  current      Int
-  total        Int
-  currentItem  String    @default("")
-  percentage   Int
-  isComplete   Boolean   @default(false)
-  error        String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-
-  @@map("media_processing_progress")
-}
