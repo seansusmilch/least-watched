@@ -13,36 +13,24 @@ import {
   Tv,
   Film,
   Folder,
-  Filter,
 } from 'lucide-react';
 import { getAllFoldersWithSpace } from '@/lib/actions/media-processing';
 import type { FolderWithSpaceEnhanced } from '@/lib/types/media-processing';
+import { formatBytes } from '@/lib/utils/formatters';
 
 interface FolderSpaceWidgetClientProps {
   initialData: FolderWithSpaceEnhanced[];
-  onFolderClick?: (folderName: string) => void;
   onRefresh?: () => void;
 }
 
 export function FolderSpaceWidgetClient({
   initialData,
-  onFolderClick,
   onRefresh,
 }: FolderSpaceWidgetClientProps) {
   const [allFoldersWithSpace, setAllFoldersWithSpace] =
     useState<FolderWithSpaceEnhanced[]>(initialData);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [hoveredFolderId, setHoveredFolderId] = useState<string | null>(null);
-
-  // Helper function to format bytes to human readable format
-  const formatBytes = (bytes: number): string => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-  };
 
   // Group folders by drive root for better organization
   const groupFoldersByDrive = (folders: FolderWithSpaceEnhanced[]) => {
@@ -81,10 +69,6 @@ export function FolderSpaceWidgetClient({
   const handleRefresh = () => {
     fetchAllFoldersWithSpace();
     onRefresh?.();
-  };
-
-  const handleFolderClick = (folderPath: string) => {
-    onFolderClick?.(folderPath);
   };
 
   // Filter to show only selected folders
@@ -238,9 +222,6 @@ export function FolderSpaceWidgetClient({
                     <Card
                       key={folderId}
                       className='cursor-pointer flex-shrink-0 w-80 hover:bg-muted relative'
-                      onClick={() => handleFolderClick(folder.path)}
-                      onMouseEnter={() => setHoveredFolderId(folderId)}
-                      onMouseLeave={() => setHoveredFolderId(null)}
                     >
                       <CardHeader className='flex items-center justify-between px-4'>
                         <CardTitle className='flex items-center space-x-2'>
@@ -269,69 +250,52 @@ export function FolderSpaceWidgetClient({
                         </div>
                       </CardHeader>
                       <CardContent className='px-4'>
-                        <div className=''>
-                          {/* Hover badge */}
-                          {hoveredFolderId === folderId && (
-                            <div className='absolute bottom-2 right-2 z-10'>
-                              <Badge
-                                variant='secondary'
-                                className='text-xs flex items-center space-x-1'
-                              >
-                                <Filter className='h-3 w-3' />
-                                <span>Click to add to filters</span>
-                              </Badge>
-                            </div>
+                        {/* Space usage progress bar */}
+                        <div className='space-y-2'>
+                          <div className='flex items-center justify-between text-sm'>
+                            <span className='text-muted-foreground'>
+                              {folder.usedSpacePercent.toFixed(1)}% used
+                            </span>
+                            <span className='text-muted-foreground'>
+                              {formatBytes(folder.usedSpace)} /{' '}
+                              {formatBytes(folder.totalSpace)}
+                            </span>
+                          </div>
+                          <Progress
+                            value={folder.usedSpacePercent}
+                            className='h-2'
+                          />
+                        </div>
+
+                        {/* Space details */}
+                        <div className='grid grid-cols-3 gap-4 text-sm'>
+                          <div>
+                            <p className='text-muted-foreground'>Used</p>
+                            <p className='font-medium'>
+                              {formatBytes(folder.usedSpace)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className='text-muted-foreground'>Free</p>
+                            <p className='font-medium'>
+                              {formatBytes(folder.freeSpace)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className='text-muted-foreground'>Total</p>
+                            <p className='font-medium'>
+                              {formatBytes(folder.totalSpace)}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Additional metadata */}
+                        <div className='flex items-center space-x-4 text-xs text-muted-foreground'>
+                          {folder.driveFormat && (
+                            <span>Format: {folder.driveFormat}</span>
                           )}
-
-                          {/* Space usage progress bar */}
-                          <div className='space-y-2'>
-                            <div className='flex items-center justify-between text-sm'>
-                              <span className='text-muted-foreground'>
-                                {folder.usedSpacePercent.toFixed(1)}% used
-                              </span>
-                              <span className='text-muted-foreground'>
-                                {formatBytes(folder.usedSpace)} /{' '}
-                                {formatBytes(folder.totalSpace)}
-                              </span>
-                            </div>
-                            <Progress
-                              value={folder.usedSpacePercent}
-                              className='h-2'
-                            />
-                          </div>
-
-                          {/* Space details */}
-                          <div className='grid grid-cols-3 gap-4 text-sm'>
-                            <div>
-                              <p className='text-muted-foreground'>Used</p>
-                              <p className='font-medium'>
-                                {formatBytes(folder.usedSpace)}
-                              </p>
-                            </div>
-                            <div>
-                              <p className='text-muted-foreground'>Free</p>
-                              <p className='font-medium'>
-                                {formatBytes(folder.freeSpace)}
-                              </p>
-                            </div>
-                            <div>
-                              <p className='text-muted-foreground'>Total</p>
-                              <p className='font-medium'>
-                                {formatBytes(folder.totalSpace)}
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Additional metadata */}
-                          <div className='flex items-center space-x-4 text-xs text-muted-foreground'>
-                            {folder.driveFormat && (
-                              <span>Format: {folder.driveFormat}</span>
-                            )}
-                            {folder.isRootFolder && <span>Root Folder</span>}
-                            {folder.isDiskSpaceFolder && (
-                              <span>Disk Space</span>
-                            )}
-                          </div>
+                          {folder.isRootFolder && <span>Root Folder</span>}
+                          {folder.isDiskSpaceFolder && <span>Disk Space</span>}
                         </div>
                       </CardContent>
                     </Card>
