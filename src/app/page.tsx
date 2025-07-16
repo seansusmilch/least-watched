@@ -11,7 +11,7 @@ import {
 } from '@/components/media';
 import {
   FolderSpaceSkeleton,
-  FolderSpaceWidgetServer,
+  FolderSpaceWidgetWithInitialData,
 } from '@/components/folder-space';
 
 // Force dynamic rendering - no caching
@@ -46,7 +46,7 @@ export default function LeastWatchedPage() {
 
         {/* Dynamic Folder Space Widget - Streamed */}
         <Suspense fallback={<FolderSpaceSkeleton />}>
-          <FolderSpaceWidgetServer />
+          <FolderSpaceWidgetWithInitialData />
         </Suspense>
 
         {/* Dynamic Summary Cards - Streamed */}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,19 +18,17 @@ import { getAllFoldersWithSpace } from '@/lib/actions/media-processing';
 import type { FolderWithSpaceEnhanced } from '@/lib/types/media-processing';
 import { formatBytes } from '@/lib/utils/formatters';
 
-interface FolderSpaceWidgetClientProps {
-  initialData: FolderWithSpaceEnhanced[];
-  onRefresh?: () => void;
+interface FolderSpaceWidgetProps {
+  initialData?: FolderWithSpaceEnhanced[];
 }
 
-export function FolderSpaceWidgetClient({
-  initialData,
-  onRefresh,
-}: FolderSpaceWidgetClientProps) {
-  const [allFoldersWithSpace, setAllFoldersWithSpace] =
-    useState<FolderWithSpaceEnhanced[]>(initialData);
-  const [loading, setLoading] = useState(false);
+export function FolderSpaceWidget({ initialData }: FolderSpaceWidgetProps) {
+  const [allFoldersWithSpace, setAllFoldersWithSpace] = useState<
+    FolderWithSpaceEnhanced[]
+  >(initialData || []);
+  const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState<string | null>(null);
+  const [initialLoad, setInitialLoad] = useState(!initialData);
 
   // Group folders by drive root for better organization
   const groupFoldersByDrive = (folders: FolderWithSpaceEnhanced[]) => {
@@ -47,7 +45,7 @@ export function FolderSpaceWidgetClient({
     return groups;
   };
 
-  // Fetch all folders with disk space from the new API
+  // Fetch all folders with disk space from the API
   const fetchAllFoldersWithSpace = async () => {
     try {
       setLoading(true);
@@ -63,12 +61,19 @@ export function FolderSpaceWidgetClient({
       setError('Failed to fetch all folder disk space information');
     } finally {
       setLoading(false);
+      setInitialLoad(false);
     }
   };
 
+  // Load data on mount if no initial data provided
+  useEffect(() => {
+    if (initialLoad) {
+      fetchAllFoldersWithSpace();
+    }
+  }, [initialLoad]);
+
   const handleRefresh = () => {
     fetchAllFoldersWithSpace();
-    onRefresh?.();
   };
 
   // Filter to show only selected folders
@@ -79,7 +84,7 @@ export function FolderSpaceWidgetClient({
   // Group selected folders by drive
   const groupedFolders = groupFoldersByDrive(selectedFolders);
 
-  if (loading) {
+  if (loading && initialLoad) {
     return (
       <Card>
         <CardHeader>
