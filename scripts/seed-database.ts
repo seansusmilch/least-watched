@@ -1,4 +1,9 @@
 import { PrismaClient } from '../src/generated/prisma';
+import {
+  sonarrSettingsService,
+  radarrSettingsService,
+  embySettingsService,
+} from '../src/lib/database';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 
@@ -257,31 +262,30 @@ function transformMediaItemForDatabase(item: SeedConfig['mediaItems'][0]) {
   };
 }
 
-function transformSonarrSettingForDatabase(
-  setting: SeedConfig['sonarrSettings'][0]
-) {
-  return {
-    ...setting,
-    selectedFolders: JSON.stringify(setting.selectedFolders),
-  };
-}
+async function clearExistingSettings() {
+  console.log('🗑️ Clearing existing settings...');
 
-function transformRadarrSettingForDatabase(
-  setting: SeedConfig['radarrSettings'][0]
-) {
-  return {
-    ...setting,
-    selectedFolders: JSON.stringify(setting.selectedFolders),
-  };
-}
+  // Get all existing settings and delete them
+  const [sonarrSettings, radarrSettings, embySettings] = await Promise.all([
+    sonarrSettingsService.getAll(),
+    radarrSettingsService.getAll(),
+    embySettingsService.getAll(),
+  ]);
 
-function transformEmbySettingForDatabase(
-  setting: SeedConfig['embySettings'][0]
-) {
-  return {
-    ...setting,
-    selectedFolders: JSON.stringify(setting.selectedFolders),
-  };
+  // Delete all existing settings
+  await Promise.all([
+    ...sonarrSettings.map((setting) =>
+      sonarrSettingsService.delete(setting.id)
+    ),
+    ...radarrSettings.map((setting) =>
+      radarrSettingsService.delete(setting.id)
+    ),
+    ...embySettings.map((setting) => embySettingsService.delete(setting.id)),
+  ]);
+
+  console.log(
+    `🗑️ Cleared ${sonarrSettings.length} Sonarr, ${radarrSettings.length} Radarr, and ${embySettings.length} Emby settings`
+  );
 }
 
 async function seedDatabase() {
@@ -294,28 +298,48 @@ async function seedDatabase() {
     // Clear existing data (optional - remove if you want to keep existing data)
     await prisma.mediaItem.deleteMany();
     await prisma.appSettings.deleteMany();
-    await prisma.embySettings.deleteMany();
-    await prisma.radarrSettings.deleteMany();
-    await prisma.sonarrSettings.deleteMany();
+    await clearExistingSettings();
     console.log('🗑️ Cleared existing data');
 
-    // Seed Sonarr Settings
-    const sonarrSettings = await prisma.sonarrSettings.createMany({
-      data: config.sonarrSettings.map(transformSonarrSettingForDatabase),
-    });
-    console.log(`📺 Created ${sonarrSettings.count} Sonarr instances`);
+    // Seed Sonarr Settings using the new prefixed settings service
+    const sonarrPromises = config.sonarrSettings.map((setting) =>
+      sonarrSettingsService.create({
+        name: setting.name,
+        url: setting.url,
+        apiKey: setting.apiKey,
+        enabled: setting.enabled,
+        selectedFolders: setting.selectedFolders,
+      })
+    );
+    const sonarrSettings = await Promise.all(sonarrPromises);
+    console.log(`📺 Created ${sonarrSettings.length} Sonarr instances`);
 
-    // Seed Radarr Settings
-    const radarrSettings = await prisma.radarrSettings.createMany({
-      data: config.radarrSettings.map(transformRadarrSettingForDatabase),
-    });
-    console.log(`🎬 Created ${radarrSettings.count} Radarr instances`);
+    // Seed Radarr Settings using the new prefixed settings service
+    const radarrPromises = config.radarrSettings.map((setting) =>
+      radarrSettingsService.create({
+        name: setting.name,
+        url: setting.url,
+        apiKey: setting.apiKey,
+        enabled: setting.enabled,
+        selectedFolders: setting.selectedFolders,
+      })
+    );
+    const radarrSettings = await Promise.all(radarrPromises);
+    console.log(`🎬 Created ${radarrSettings.length} Radarr instances`);
 
-    // Seed Emby Settings
-    const embySettings = await prisma.embySettings.createMany({
-      data: config.embySettings.map(transformEmbySettingForDatabase),
-    });
-    console.log(`🎭 Created ${embySettings.count} Emby instances`);
+    // Seed Emby Settings using the new prefixed settings service
+    const embyPromises = config.embySettings.map((setting) =>
+      embySettingsService.create({
+        name: setting.name,
+        url: setting.url,
+        apiKey: setting.apiKey,
+        userId: setting.userId,
+        enabled: setting.enabled,
+        selectedFolders: setting.selectedFolders,
+      })
+    );
+    const embySettings = await Promise.all(embyPromises);
+    console.log(`🎭 Created ${embySettings.length} Emby instances`);
 
     // Seed App Settings
     const appSettings = await prisma.appSettings.createMany({
@@ -333,9 +357,9 @@ async function seedDatabase() {
 
     // Print summary
     console.log('\n📊 Seeding Summary:');
-    console.log(`   • Sonarr instances: ${sonarrSettings.count}`);
-    console.log(`   • Radarr instances: ${radarrSettings.count}`);
-    console.log(`   • Emby instances: ${embySettings.count}`);
+    console.log(`   • Sonarr instances: ${sonarrSettings.length}`);
+    console.log(`   • Radarr instances: ${radarrSettings.length}`);
+    console.log(`   • Emby instances: ${embySettings.length}`);
     console.log(`   • App settings: ${appSettings.count}`);
     console.log(`   • Media items: ${mediaItems.count}`);
   } catch (error) {

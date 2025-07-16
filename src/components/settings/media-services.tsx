@@ -3,43 +3,16 @@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Monitor, Globe, Database } from 'lucide-react';
+import type { ServiceSettings } from '@/lib/utils/prefixed-settings';
 
 import { SonarrSettings } from './sonarr-settings';
 import { RadarrSettings } from './radarr-settings';
 import { EmbySettings } from './emby-settings';
 
 interface MediaServicesProps {
-  sonarrSettings: Array<{
-    id: string;
-    name: string;
-    url: string;
-    apiKey: string;
-    enabled: boolean;
-    selectedFolders: string | null;
-    createdAt: Date;
-    updatedAt: Date;
-  }>;
-  radarrSettings: Array<{
-    id: string;
-    name: string;
-    url: string;
-    apiKey: string;
-    enabled: boolean;
-    selectedFolders: string | null;
-    createdAt: Date;
-    updatedAt: Date;
-  }>;
-  embySettings: Array<{
-    id: string;
-    name: string;
-    url: string;
-    apiKey: string;
-    userId?: string | null;
-    enabled: boolean;
-    selectedFolders: string | null;
-    createdAt: Date;
-    updatedAt: Date;
-  }>;
+  sonarrSettings: ServiceSettings[];
+  radarrSettings: ServiceSettings[];
+  embySettings: ServiceSettings[];
 }
 
 export function MediaServices({

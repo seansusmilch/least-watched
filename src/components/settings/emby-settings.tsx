@@ -38,22 +38,12 @@ import {
   type EmbySettingsInput,
   type ConnectionTestResult,
 } from '@/lib/actions/settings';
-
-type EmbySetting = {
-  id: string;
-  name: string;
-  url: string;
-  apiKey: string;
-  userId?: string | null;
-  enabled: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-};
+import type { ServiceSettings } from '@/lib/utils/prefixed-settings';
 
 type ConnectionStatus = 'idle' | 'testing' | 'success' | 'error';
 
 interface EmbySettingsProps {
-  initialSettings: EmbySetting[];
+  initialSettings: ServiceSettings[];
 }
 
 export function EmbySettings({ initialSettings }: EmbySettingsProps) {
@@ -63,12 +53,12 @@ export function EmbySettings({ initialSettings }: EmbySettingsProps) {
       state,
       action: {
         type: 'add' | 'update' | 'delete';
-        payload: Partial<EmbySetting> & { id: string };
+        payload: Partial<ServiceSettings> & { id: string };
       }
     ) => {
       switch (action.type) {
         case 'add':
-          return [...state, action.payload as EmbySetting];
+          return [...state, action.payload as ServiceSettings];
         case 'update':
           return state.map((s) =>
             s.id === action.payload.id ? { ...s, ...action.payload } : s
@@ -89,9 +79,8 @@ export function EmbySettings({ initialSettings }: EmbySettingsProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [instanceToDelete, setInstanceToDelete] = useState<EmbySetting | null>(
-    null
-  );
+  const [instanceToDelete, setInstanceToDelete] =
+    useState<ServiceSettings | null>(null);
 
   const [formData, setFormData] = useState<EmbySettingsInput>({
     name: '',
@@ -182,7 +171,7 @@ export function EmbySettings({ initialSettings }: EmbySettingsProps) {
     });
   };
 
-  const openDeleteConfirmation = (setting: EmbySetting) => {
+  const openDeleteConfirmation = (setting: ServiceSettings) => {
     setInstanceToDelete(setting);
     setDeleteConfirmOpen(true);
   };
@@ -232,7 +221,7 @@ export function EmbySettings({ initialSettings }: EmbySettingsProps) {
     });
   };
 
-  const startEdit = (setting: EmbySetting) => {
+  const startEdit = (setting: ServiceSettings) => {
     setFormData({
       name: setting.name,
       url: setting.url,

@@ -77,6 +77,10 @@ async function processMediaInBackground(progressId: string): Promise<void> {
     // Cache invalidation is disabled
 
     console.log('✅ Background media processing completed successfully');
+
+    // Clean up old progress records
+    const { ProgressStore } = await import('../progress-store');
+    await ProgressStore.cleanupOldProgress();
   } catch (error) {
     console.error('Background media processing failed:', error);
     throw error;
@@ -92,7 +96,7 @@ export async function getProcessingProgress(
     }
 
     const { ProgressStore } = await import('../progress-store');
-    return ProgressStore.getProgress(progressId);
+    return await ProgressStore.getProgress(progressId);
   } catch (error) {
     console.error('Failed to get processing progress:', error);
     return null;
@@ -105,7 +109,7 @@ export async function getActiveMediaProcess(): Promise<{
 } | null> {
   try {
     const { ProgressStore } = await import('../progress-store');
-    return ProgressStore.getActiveProcess();
+    return await ProgressStore.getActiveProcess();
   } catch (error) {
     console.error('Failed to get active media process:', error);
     return null;
@@ -209,17 +213,13 @@ export async function getSelectedFoldersFromDatabase(): Promise<SelectedFoldersF
 
     const sonarrFolders = sonarrInstances.map((instance) => ({
       instanceName: instance.name,
-      folders: instance.selectedFolders
-        ? JSON.parse(instance.selectedFolders)
-        : [],
+      folders: instance.selectedFolders || [],
       enabled: instance.enabled,
     }));
 
     const radarrFolders = radarrInstances.map((instance) => ({
       instanceName: instance.name,
-      folders: instance.selectedFolders
-        ? JSON.parse(instance.selectedFolders)
-        : [],
+      folders: instance.selectedFolders || [],
       enabled: instance.enabled,
     }));
 

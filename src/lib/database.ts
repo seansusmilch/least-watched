@@ -1,4 +1,5 @@
 import { PrismaClient } from '../generated/prisma';
+import { prefixedSettingsService } from './utils/prefixed-settings';
 
 // Global instance to avoid multiple connections
 const globalForPrisma = globalThis as unknown as {
@@ -9,24 +10,18 @@ export const prisma = globalForPrisma.prisma ?? new PrismaClient();
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
-// Sonarr Settings
+// Sonarr Settings (now using prefixed settings)
 export const sonarrSettingsService = {
   async getAll() {
-    return await prisma.sonarrSettings.findMany({
-      orderBy: { name: 'asc' },
-    });
+    return await prefixedSettingsService.getAll('sonarr');
   },
 
   async getById(id: string) {
-    return await prisma.sonarrSettings.findUnique({
-      where: { id },
-    });
+    return await prefixedSettingsService.getById('sonarr', id);
   },
 
   async getByName(name: string) {
-    return await prisma.sonarrSettings.findUnique({
-      where: { name },
-    });
+    return await prefixedSettingsService.getByName('sonarr', name);
   },
 
   async create(data: {
@@ -36,14 +31,7 @@ export const sonarrSettingsService = {
     enabled?: boolean;
     selectedFolders?: string[];
   }) {
-    return await prisma.sonarrSettings.create({
-      data: {
-        ...data,
-        selectedFolders: data.selectedFolders
-          ? JSON.stringify(data.selectedFolders)
-          : null,
-      },
-    });
+    return await prefixedSettingsService.create('sonarr', data);
   },
 
   async update(
@@ -56,52 +44,30 @@ export const sonarrSettingsService = {
       selectedFolders?: string[];
     }
   ) {
-    return await prisma.sonarrSettings.update({
-      where: { id },
-      data: {
-        ...data,
-        selectedFolders:
-          data.selectedFolders !== undefined
-            ? data.selectedFolders
-              ? JSON.stringify(data.selectedFolders)
-              : null
-            : undefined,
-      },
-    });
+    return await prefixedSettingsService.update('sonarr', id, data);
   },
 
   async delete(id: string) {
-    return await prisma.sonarrSettings.delete({
-      where: { id },
-    });
+    return await prefixedSettingsService.delete('sonarr', id);
   },
 
   async getEnabled() {
-    return await prisma.sonarrSettings.findMany({
-      where: { enabled: true },
-      orderBy: { name: 'asc' },
-    });
+    return await prefixedSettingsService.getEnabled('sonarr');
   },
 };
 
-// Radarr Settings
+// Radarr Settings (now using prefixed settings)
 export const radarrSettingsService = {
   async getAll() {
-    return await prisma.radarrSettings.findMany({
-      orderBy: { name: 'asc' },
-    });
+    return await prefixedSettingsService.getAll('radarr');
   },
 
   async getById(id: string) {
-    return await prisma.radarrSettings.findUnique({
-      where: { id },
-    });
+    return await prefixedSettingsService.getById('radarr', id);
   },
 
   async getByName(name: string) {
-    return await prisma.radarrSettings.findUnique({
-      where: { name },
-    });
+    return await prefixedSettingsService.getByName('radarr', name);
   },
 
   async create(data: {
@@ -111,14 +77,7 @@ export const radarrSettingsService = {
     enabled?: boolean;
     selectedFolders?: string[];
   }) {
-    return await prisma.radarrSettings.create({
-      data: {
-        ...data,
-        selectedFolders: data.selectedFolders
-          ? JSON.stringify(data.selectedFolders)
-          : null,
-      },
-    });
+    return await prefixedSettingsService.create('radarr', data);
   },
 
   async update(
@@ -131,52 +90,30 @@ export const radarrSettingsService = {
       selectedFolders?: string[];
     }
   ) {
-    return await prisma.radarrSettings.update({
-      where: { id },
-      data: {
-        ...data,
-        selectedFolders:
-          data.selectedFolders !== undefined
-            ? data.selectedFolders
-              ? JSON.stringify(data.selectedFolders)
-              : null
-            : undefined,
-      },
-    });
+    return await prefixedSettingsService.update('radarr', id, data);
   },
 
   async delete(id: string) {
-    return await prisma.radarrSettings.delete({
-      where: { id },
-    });
+    return await prefixedSettingsService.delete('radarr', id);
   },
 
   async getEnabled() {
-    return await prisma.radarrSettings.findMany({
-      where: { enabled: true },
-      orderBy: { name: 'asc' },
-    });
+    return await prefixedSettingsService.getEnabled('radarr');
   },
 };
 
-// Emby Settings
+// Emby Settings (now using prefixed settings)
 export const embySettingsService = {
   async getAll() {
-    return await prisma.embySettings.findMany({
-      orderBy: { name: 'asc' },
-    });
+    return await prefixedSettingsService.getAll('emby');
   },
 
   async getById(id: string) {
-    return await prisma.embySettings.findUnique({
-      where: { id },
-    });
+    return await prefixedSettingsService.getById('emby', id);
   },
 
   async getByName(name: string) {
-    return await prisma.embySettings.findUnique({
-      where: { name },
-    });
+    return await prefixedSettingsService.getByName('emby', name);
   },
 
   async create(data: {
@@ -187,14 +124,7 @@ export const embySettingsService = {
     enabled?: boolean;
     selectedFolders?: string[];
   }) {
-    return await prisma.embySettings.create({
-      data: {
-        ...data,
-        selectedFolders: data.selectedFolders
-          ? JSON.stringify(data.selectedFolders)
-          : null,
-      },
-    });
+    return await prefixedSettingsService.create('emby', data);
   },
 
   async update(
@@ -208,31 +138,15 @@ export const embySettingsService = {
       selectedFolders?: string[];
     }
   ) {
-    return await prisma.embySettings.update({
-      where: { id },
-      data: {
-        ...data,
-        selectedFolders:
-          data.selectedFolders !== undefined
-            ? data.selectedFolders
-              ? JSON.stringify(data.selectedFolders)
-              : null
-            : undefined,
-      },
-    });
+    return await prefixedSettingsService.update('emby', id, data);
   },
 
   async delete(id: string) {
-    return await prisma.embySettings.delete({
-      where: { id },
-    });
+    return await prefixedSettingsService.delete('emby', id);
   },
 
   async getEnabled() {
-    return await prisma.embySettings.findMany({
-      where: { enabled: true },
-      orderBy: { name: 'asc' },
-    });
+    return await prefixedSettingsService.getEnabled('emby');
   },
 };
 

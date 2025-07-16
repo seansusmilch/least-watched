@@ -40,7 +40,7 @@ export class MediaProcessor {
     }
   }
 
-  private updateProgress(
+  private async updateProgress(
     phase: string,
     current: number,
     total: number,
@@ -55,7 +55,7 @@ export class MediaProcessor {
     };
 
     // Store progress globally
-    ProgressStore.setProgress(this.progressId, progress);
+    await ProgressStore.setProgress(this.progressId, progress);
 
     // Call callback if provided
     if (this.onProgress) {
@@ -63,27 +63,32 @@ export class MediaProcessor {
     }
   }
 
-  static getProgress(
+  static async getProgress(
     progressId: string = 'default'
-  ): MediaProcessingProgress | null {
-    return ProgressStore.getProgress(progressId);
+  ): Promise<MediaProcessingProgress | null> {
+    return await ProgressStore.getProgress(progressId);
   }
 
-  static clearProgress(progressId: string = 'default'): void {
-    ProgressStore.clearProgress(progressId);
+  static async clearProgress(progressId: string = 'default'): Promise<void> {
+    await ProgressStore.clearProgress(progressId);
   }
 
-  static getActiveProcess(): {
+  static async getActiveProcess(): Promise<{
     progressId: string;
     progress: MediaProcessingProgress;
-  } | null {
-    return ProgressStore.getActiveProcess();
+  } | null> {
+    return await ProgressStore.getActiveProcess();
   }
 
   async processAllMedia(): Promise<ProcessedMediaItem[]> {
     const allProcessedItems: ProcessedMediaItem[] = [];
 
-    this.updateProgress('Initializing', 0, 100, 'Starting media processing...');
+    await this.updateProgress(
+      'Initializing',
+      0,
+      100,
+      'Starting media processing...'
+    );
 
     // Ensure settings are loaded
     await this.ensureEnhancedSettings();
@@ -98,7 +103,7 @@ export class MediaProcessor {
     );
 
     // Calculate total items across all instances
-    this.updateProgress(
+    await this.updateProgress(
       'Calculating total items',
       0,
       100,
@@ -202,7 +207,7 @@ export class MediaProcessor {
       percentage: 100,
       isComplete: true,
     };
-    ProgressStore.setProgress(this.progressId, completedProgress);
+    await ProgressStore.setProgress(this.progressId, completedProgress);
 
     return allProcessedItems;
   }
@@ -227,7 +232,7 @@ export class MediaProcessor {
       const item = processedItems[i];
       const currentItemIndex = processedItemCount + i + 1;
 
-      this.updateProgress(
+      await this.updateProgress(
         'Processing TV Shows',
         currentItemIndex,
         totalItems,
@@ -265,7 +270,7 @@ export class MediaProcessor {
       const item = processedItems[i];
       const currentItemIndex = processedItemCount + i + 1;
 
-      this.updateProgress(
+      await this.updateProgress(
         'Processing Movies',
         currentItemIndex,
         totalItems,

@@ -8,47 +8,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model SonarrSettings {
-  id              String   @id @default(cuid())
-  name            String   @unique
-  url             String
-  apiKey          String
-  enabled         Boolean  @default(true)
-  selectedFolders String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-
-  @@map("sonarr_settings")
-}
-
-model RadarrSettings {
-  id                     String   @id @default(cuid())
-  name                   String   @unique
-  url                    String
-  apiKey                 String
-  enabled                Boolean  @default(true)
-  selectedFolders        String?
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
-
-  @@map("radarr_settings")
-}
-
-model EmbySettings {
-  id              String   @id @default(cuid())
-  name            String   @unique
-  url             String
-  apiKey          String
-  userId          String?
-  enabled         Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  selectedFolders String?
-
-  @@map("emby_settings")
-}
-
 model AppSettings {
   id          String   @id @default(cuid())
   key         String   @unique
@@ -97,4 +56,20 @@ model MediaItem {
   updatedAt            DateTime  @updatedAt
 
   @@map("media_items")
+}
+
+model MediaProcessingProgress {
+  id           String    @id @default(cuid())
+  progressId   String    @unique
+  phase        String
+  current      Int
+  total        Int
+  currentItem  String    @default("")
+  percentage   Int
+  isComplete   Boolean   @default(false)
+  error        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@map("media_processing_progress")
 }

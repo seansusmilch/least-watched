@@ -12,7 +12,7 @@ import {
   getActiveMediaProcess,
   cancelMediaProcessing,
 } from '@/lib/actions/media-processing';
-import { MediaProcessingProgress } from '@/lib/types/media-processing';
+import { MediaProcessingProgress } from '@/lib/media-processor/';
 
 interface MediaProcessingProgressClientProps {
   initialProgressId?: string;

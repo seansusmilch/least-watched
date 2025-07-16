@@ -8,25 +8,6 @@ import {
   type FolderWithSpaceEnhanced,
 } from '../types/cached-data';
 
-// Cache tags are kept for compatibility but not used
-export const CACHE_TAGS = {
-  MEDIA_ITEMS: 'media-items',
-  FOLDER_SPACE: 'folder-space',
-  FOLDER_SPACE_ENHANCED: 'folder-space-enhanced',
-  FOLDER_SPACE_SELECTED: 'folder-space-selected',
-  SONARR_DATA: 'sonarr-data',
-  RADARR_DATA: 'radarr-data',
-  EMBY_DATA: 'emby-data',
-} as const;
-
-// Cache duration constants are kept for compatibility but not used
-export const CACHE_DURATION = {
-  MEDIA_ITEMS: 0,
-  FOLDER_SPACE: 0,
-  API_DATA: 0,
-  SETTINGS: 0,
-} as const;
-
 // ============================================================================
 // Media Items - Direct Database Calls (No Caching)
 // ============================================================================
@@ -124,9 +105,7 @@ export const getCachedSelectedFoldersWithSpace = async (): Promise<
   // Process Sonarr instances
   for (const instance of sonarrInstances) {
     try {
-      const selectedFolders = instance.selectedFolders
-        ? JSON.parse(instance.selectedFolders)
-        : [];
+      const selectedFolders = instance.selectedFolders || [];
 
       if (selectedFolders.length === 0) continue;
 
@@ -163,9 +142,7 @@ export const getCachedSelectedFoldersWithSpace = async (): Promise<
   // Process Radarr instances
   for (const instance of radarrInstances) {
     try {
-      const selectedFolders = instance.selectedFolders
-        ? JSON.parse(instance.selectedFolders)
-        : [];
+      const selectedFolders = instance.selectedFolders || [];
 
       if (selectedFolders.length === 0) continue;
 
@@ -237,9 +214,7 @@ export const getCachedAllFoldersWithSpace = async (): Promise<
   // Process Sonarr instances
   for (const instance of sonarrInstances) {
     try {
-      const selectedFolders = instance.selectedFolders
-        ? JSON.parse(instance.selectedFolders)
-        : [];
+      const selectedFolders = instance.selectedFolders || [];
 
       const [rootFolders, diskSpaceData] = await Promise.all([
         sonarrApiClient.getRootFolders(instance),
@@ -338,9 +313,7 @@ export const getCachedAllFoldersWithSpace = async (): Promise<
   // Process Radarr instances (similar logic)
   for (const instance of radarrInstances) {
     try {
-      const selectedFolders = instance.selectedFolders
-        ? JSON.parse(instance.selectedFolders)
-        : [];
+      const selectedFolders = instance.selectedFolders || [];
 
       const [rootFolders, diskSpaceData] = await Promise.all([
         radarrApiClient.getRootFolders(instance),

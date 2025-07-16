@@ -38,24 +38,14 @@ import {
   testRadarrConnection,
   type RadarrSettingsInput,
 } from '@/lib/actions/settings';
-import { getSelectedFolders } from '@/lib/utils';
-import { FolderSelectionDialog } from './folder-selection-dialog';
 
-type RadarrSetting = {
-  id: string;
-  name: string;
-  url: string;
-  apiKey: string;
-  enabled: boolean;
-  selectedFolders: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-};
+import { FolderSelectionDialog } from './folder-selection-dialog';
+import type { ServiceSettings } from '@/lib/utils/prefixed-settings';
 
 type ConnectionStatus = 'idle' | 'testing' | 'success' | 'error';
 
 interface RadarrSettingsProps {
-  initialSettings: RadarrSetting[];
+  initialSettings: ServiceSettings[];
 }
 
 export function RadarrSettings({ initialSettings }: RadarrSettingsProps) {
@@ -64,11 +54,11 @@ export function RadarrSettings({ initialSettings }: RadarrSettingsProps) {
     (state, action: { type: string; payload: unknown }) => {
       switch (action.type) {
         case 'add':
-          return [...state, action.payload as RadarrSetting];
+          return [...state, action.payload as ServiceSettings];
         case 'update':
           return state.map((s) =>
-            s.id === (action.payload as Partial<RadarrSetting>).id
-              ? { ...s, ...(action.payload as Partial<RadarrSetting>) }
+            s.id === (action.payload as Partial<ServiceSettings>).id
+              ? { ...s, ...(action.payload as Partial<ServiceSettings>) }
               : s
           );
         case 'delete':
@@ -88,10 +78,10 @@ export function RadarrSettings({ initialSettings }: RadarrSettingsProps) {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [folderDialogOpen, setFolderDialogOpen] = useState(false);
   const [selectedInstanceForFolders, setSelectedInstanceForFolders] =
-    useState<RadarrSetting | null>(null);
+    useState<ServiceSettings | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [instanceToDelete, setInstanceToDelete] =
-    useState<RadarrSetting | null>(null);
+    useState<ServiceSettings | null>(null);
 
   const [formData, setFormData] = useState<RadarrSettingsInput>({
     name: '',
@@ -180,7 +170,7 @@ export function RadarrSettings({ initialSettings }: RadarrSettingsProps) {
     });
   };
 
-  const openDeleteConfirmation = (setting: RadarrSetting) => {
+  const openDeleteConfirmation = (setting: ServiceSettings) => {
     setInstanceToDelete(setting);
     setDeleteConfirmOpen(true);
   };
@@ -238,7 +228,7 @@ export function RadarrSettings({ initialSettings }: RadarrSettingsProps) {
     });
   };
 
-  const startEdit = (setting: RadarrSetting) => {
+  const startEdit = (setting: ServiceSettings) => {
     setFormData({
       name: setting.name,
       url: setting.url,
@@ -248,7 +238,7 @@ export function RadarrSettings({ initialSettings }: RadarrSettingsProps) {
     setEditingId(setting.id);
   };
 
-  const handleConfigureFolders = (setting: RadarrSetting) => {
+  const handleConfigureFolders = (setting: ServiceSettings) => {
     setSelectedInstanceForFolders(setting);
     setFolderDialogOpen(true);
   };
@@ -525,9 +515,9 @@ export function RadarrSettings({ initialSettings }: RadarrSettingsProps) {
           instanceId={selectedInstanceForFolders.id}
           instanceName={selectedInstanceForFolders.name}
           instanceType='radarr'
-          currentSelectedFolders={getSelectedFolders(
-            selectedInstanceForFolders.selectedFolders
-          )}
+          currentSelectedFolders={
+            selectedInstanceForFolders.selectedFolders || []
+          }
           onSave={handleFolderSelectionSave}
         />
       )}

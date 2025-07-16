@@ -1,12 +1,11 @@
 import {
   sonarrApiClient,
   radarrApiClient,
-  type ApiInstance,
   type DiskSpaceInfo,
   type RootFolderInfo,
 } from './api-client';
+import type { ServiceSettings } from '../utils/prefixed-settings';
 import { type FolderSpaceData } from '../types/media-processing';
-import { getSelectedFolders } from '../utils';
 
 export class FolderSpaceService {
   async getFolderSpaceData(): Promise<FolderSpaceData[]> {
@@ -43,7 +42,7 @@ export class FolderSpaceService {
   }
 
   private async processSonarrInstances(
-    instances: ApiInstance[]
+    instances: ServiceSettings[]
   ): Promise<FolderSpaceData[]> {
     const results: FolderSpaceData[] = [];
 
@@ -63,9 +62,8 @@ export class FolderSpaceService {
           `💾 Received ${diskSpaceData.length} disk space entries from Sonarr ${instance.name}`
         );
 
-        const selectedFolders = getSelectedFolders(
-          instance.selectedFolders ?? null
-        );
+        // ServiceSettings has selectedFolders as string[] | undefined
+        const selectedFolders = instance.selectedFolders || [];
         const folderData = this.createFolderSpaceData(
           rootFolders,
           diskSpaceData,
@@ -87,7 +85,7 @@ export class FolderSpaceService {
   }
 
   private async processRadarrInstances(
-    instances: ApiInstance[]
+    instances: ServiceSettings[]
   ): Promise<FolderSpaceData[]> {
     const results: FolderSpaceData[] = [];
 
@@ -107,9 +105,8 @@ export class FolderSpaceService {
           `💾 Received ${diskSpaceData.length} disk space entries from Radarr ${instance.name}`
         );
 
-        const selectedFolders = getSelectedFolders(
-          instance.selectedFolders ?? null
-        );
+        // ServiceSettings has selectedFolders as string[] | undefined
+        const selectedFolders = instance.selectedFolders || [];
         const folderData = this.createFolderSpaceData(
           rootFolders,
           diskSpaceData,

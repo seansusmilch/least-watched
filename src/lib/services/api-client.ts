@@ -1,10 +1,4 @@
-export interface ApiInstance {
-  id: string;
-  name: string;
-  url: string;
-  apiKey: string;
-  selectedFolders?: string | null;
-}
+import type { ServiceSettings } from '../utils/prefixed-settings';
 
 export interface RootFolderInfo {
   path: string;
@@ -70,7 +64,7 @@ abstract class BaseApiClient {
 }
 
 export class SonarrApiClient extends BaseApiClient {
-  async getRootFolders(instance: ApiInstance): Promise<RootFolderInfo[]> {
+  async getRootFolders(instance: ServiceSettings): Promise<RootFolderInfo[]> {
     return this.safeApiCall(
       () =>
         this.fetchWithAuth(
@@ -82,7 +76,7 @@ export class SonarrApiClient extends BaseApiClient {
     );
   }
 
-  async getDiskSpace(instance: ApiInstance): Promise<DiskSpaceInfo[]> {
+  async getDiskSpace(instance: ServiceSettings): Promise<DiskSpaceInfo[]> {
     return this.safeApiCall(
       () =>
         this.fetchWithAuth(`${instance.url}/api/v3/diskspace`, instance.apiKey),
@@ -93,7 +87,7 @@ export class SonarrApiClient extends BaseApiClient {
 }
 
 export class RadarrApiClient extends BaseApiClient {
-  async getRootFolders(instance: ApiInstance): Promise<RootFolderInfo[]> {
+  async getRootFolders(instance: ServiceSettings): Promise<RootFolderInfo[]> {
     return this.safeApiCall(
       () =>
         this.fetchWithAuth(
@@ -105,7 +99,7 @@ export class RadarrApiClient extends BaseApiClient {
     );
   }
 
-  async getDiskSpace(instance: ApiInstance): Promise<DiskSpaceInfo[]> {
+  async getDiskSpace(instance: ServiceSettings): Promise<DiskSpaceInfo[]> {
     return this.safeApiCall(
       () =>
         this.fetchWithAuth(`${instance.url}/api/v3/diskspace`, instance.apiKey),
@@ -114,7 +108,7 @@ export class RadarrApiClient extends BaseApiClient {
     );
   }
 
-  async getMovies(instance: ApiInstance): Promise<RadarrMovie[]> {
+  async getMovies(instance: ServiceSettings): Promise<RadarrMovie[]> {
     return this.safeApiCall(
       () => this.fetchWithAuth(`${instance.url}/api/v3/movie`, instance.apiKey),
       [],
