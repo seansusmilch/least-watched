@@ -55,7 +55,7 @@ export class MediaProcessor {
     };
 
     // Store progress globally
-    await ProgressStore.setProgress(this.progressId, progress);
+    await ProgressStore.setProgress(progress);
 
     // Call callback if provided
     if (this.onProgress) {
@@ -63,20 +63,15 @@ export class MediaProcessor {
     }
   }
 
-  static async getProgress(
-    progressId: string = 'default'
-  ): Promise<MediaProcessingProgress | null> {
-    return await ProgressStore.getProgress(progressId);
+  static async getProgress(): Promise<MediaProcessingProgress | null> {
+    return await ProgressStore.getProgress();
   }
 
-  static async clearProgress(progressId: string = 'default'): Promise<void> {
-    await ProgressStore.clearProgress(progressId);
+  static async clearProgress(): Promise<void> {
+    await ProgressStore.clearProgress();
   }
 
-  static async getActiveProcess(): Promise<{
-    progressId: string;
-    progress: MediaProcessingProgress;
-  } | null> {
+  static async getActiveProcess(): Promise<MediaProcessingProgress | null> {
     return await ProgressStore.getActiveProcess();
   }
 
@@ -207,7 +202,7 @@ export class MediaProcessor {
       percentage: 100,
       isComplete: true,
     };
-    await ProgressStore.setProgress(this.progressId, completedProgress);
+    await ProgressStore.setProgress(completedProgress);
 
     return allProcessedItems;
   }

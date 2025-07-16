@@ -18,7 +18,6 @@ import {
 import { type MediaProcessingProgress as MediaProcessingProgressType } from '@/lib/media-processor/';
 
 interface MediaProcessingProgressProps {
-  initialProgressId?: string;
   onClose?: () => void;
   onComplete?: () => void;
   autoRefresh?: boolean;
@@ -33,7 +32,6 @@ interface OptimisticState {
 }
 
 export function MediaProcessingProgress({
-  initialProgressId,
   onClose,
   onComplete,
   autoRefresh = true,
@@ -43,9 +41,7 @@ export function MediaProcessingProgress({
   const [progress, setProgress] = useState<MediaProcessingProgressType | null>(
     null
   );
-  const [progressId, setProgressId] = useState<string | null>(
-    initialProgressId || null
-  );
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
@@ -99,37 +95,32 @@ export function MediaProcessingProgress({
     }
   }, [router, hasCompleted, onComplete]);
 
-  // Reset completion state when progressId changes
+  // Reset completion state on mount
   useEffect(() => {
-    if (initialProgressId) {
-      setHasCompleted(false);
-    }
-  }, [initialProgressId]);
+    setHasCompleted(false);
+  }, []);
 
   // Fetch progress data
   const fetchProgress = useCallback(async () => {
-    if (!progressId) {
-      // Try to get active process if no specific ID
-      try {
-        const activeProcess = await getActiveMediaProcess();
-        if (activeProcess) {
-          setProgressId(activeProcess.progressId);
-          setProgress(activeProcess.progress);
-          setLastUpdate(new Date());
-          return;
-        }
-      } catch (error) {
-        console.error('Failed to get active process:', error);
-      }
-      return;
-    }
-
     try {
       setIsLoading(true);
       setError(null);
 
-      const progressData = await getProcessingProgress(progressId);
+      // Try to get active process first
+      const activeProcess = await getActiveMediaProcess();
+      if (activeProcess) {
+        setProgress(activeProcess);
+        setLastUpdate(new Date());
 
+        // Check if processing is complete
+        if (activeProcess.phase === 'Complete') {
+          handleComplete();
+        }
+        return;
+      }
+
+      // Fall back to getting current progress
+      const progressData = await getProcessingProgress();
       if (progressData) {
         setProgress(progressData);
         setLastUpdate(new Date());
@@ -138,9 +129,11 @@ export function MediaProcessingProgress({
         if (progressData.phase === 'Complete') {
           handleComplete();
         }
-      } else {
-        setError('Progress data not found');
+        return;
       }
+
+      // No progress data found - clear progress to hide widget
+      setProgress(null);
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : 'Failed to fetch progress';
@@ -149,11 +142,11 @@ export function MediaProcessingProgress({
     } finally {
       setIsLoading(false);
     }
-  }, [progressId, handleComplete]);
+  }, [handleComplete]);
 
   // Auto-refresh effect
   useEffect(() => {
-    if (!autoRefresh || !progressId) return;
+    if (!autoRefresh) return;
 
     const interval = setInterval(fetchProgress, refreshInterval);
 
@@ -161,7 +154,7 @@ export function MediaProcessingProgress({
     fetchProgress();
 
     return () => clearInterval(interval);
-  }, [fetchProgress, autoRefresh, refreshInterval, progressId]);
+  }, [fetchProgress, autoRefresh, refreshInterval]);
 
   // Handle manual refresh
   const handleRefresh = useCallback(() => {
@@ -171,14 +164,11 @@ export function MediaProcessingProgress({
 
   // Handle cancel processing
   const handleCancel = useCallback(() => {
-    if (!progressId) return;
-
     addOptimisticUpdate({ isPaused: true });
 
     const formData = new FormData();
-    formData.append('progressId', progressId);
     cancelAction(formData);
-  }, [progressId, cancelAction, addOptimisticUpdate]);
+  }, [cancelAction, addOptimisticUpdate]);
 
   // Handle close
   const handleClose = useCallback(() => {

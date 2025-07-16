@@ -6,7 +6,7 @@ import {
   type MediaProcessingProgress,
 } from '../media-processor/';
 import { randomUUID } from 'crypto';
-import { revalidatePath, revalidateTag } from 'next/cache';
+import { revalidatePath } from 'next/cache';
 import {
   getCachedMediaItems,
   getCachedFolderSpaceData,
@@ -53,7 +53,6 @@ export async function startMediaProcessing(
 
     // Revalidate relevant paths and tags immediately when starting
     revalidatePath('/');
-    revalidateTag('media-processing');
 
     return createFormState<MediaProcessingResult>(
       true,
@@ -87,26 +86,17 @@ async function processMediaInBackground(progressId: string): Promise<void> {
   }
 }
 
-export async function getProcessingProgress(
-  progressId: string
-): Promise<MediaProcessingProgress | null> {
+export async function getProcessingProgress(): Promise<MediaProcessingProgress | null> {
   try {
-    if (!progressId) {
-      throw new Error('Progress ID is required');
-    }
-
     const { ProgressStore } = await import('../progress-store');
-    return await ProgressStore.getProgress(progressId);
+    return await ProgressStore.getProgress();
   } catch (error) {
     console.error('Failed to get processing progress:', error);
     return null;
   }
 }
 
-export async function getActiveMediaProcess(): Promise<{
-  progressId: string;
-  progress: MediaProcessingProgress;
-} | null> {
+export async function getActiveMediaProcess(): Promise<MediaProcessingProgress | null> {
   try {
     const { ProgressStore } = await import('../progress-store');
     return await ProgressStore.getActiveProcess();
@@ -121,17 +111,10 @@ export async function cancelMediaProcessing(
   formData: FormData
 ): Promise<FormState> {
   try {
-    const progressId = formData.get('progressId') as string;
-
-    if (!progressId) {
-      return createFormState(false, 'Progress ID is required');
-    }
-
     // TODO: Implement actual cancellation logic in MediaProcessor
     // For now, just return success
 
     revalidatePath('/');
-    revalidateTag('media-processing');
 
     return createFormState(true, 'Media processing cancelled successfully');
   } catch (error) {
@@ -161,7 +144,6 @@ export async function refreshMediaItems(
 
     // Revalidate paths and tags
     revalidatePath('/');
-    revalidateTag('media-items');
 
     return createFormState(true, 'Media items refreshed successfully');
   } catch (error) {
@@ -191,7 +173,6 @@ export async function refreshFolderSpaceData(
 
     // Revalidate paths and tags
     revalidatePath('/');
-    revalidateTag('folder-space');
 
     return createFormState(true, 'Folder space data refreshed successfully');
   } catch (error) {
@@ -270,8 +251,6 @@ export async function invalidateCachesAfterSettingsChange(
 
     revalidatePath('/');
     revalidatePath('/settings');
-    revalidateTag('settings');
-    revalidateTag('folder-space');
 
     return createFormState(true, 'Caches invalidated successfully');
   } catch (error) {
@@ -290,9 +269,6 @@ export async function invalidateCachesAfterMediaProcessing(
     // Cache invalidation is disabled
 
     revalidatePath('/');
-    revalidateTag('media-items');
-    revalidateTag('folder-space');
-    revalidateTag('media-processing');
 
     return createFormState(true, 'Caches invalidated successfully');
   } catch (error) {
@@ -339,11 +315,9 @@ export async function exportMediaItems(
   }
 }
 
-export async function checkProcessingComplete(
-  progressId: string
-): Promise<boolean> {
+export async function checkProcessingComplete(): Promise<boolean> {
   try {
-    const progress = await getProcessingProgress(progressId);
+    const progress = await getProcessingProgress();
 
     if (progress && progress.isComplete) {
       return true;
@@ -362,9 +336,6 @@ export async function revalidateAfterProcessing(): Promise<void> {
   try {
     // Safe to call revalidation from a server action
     revalidatePath('/');
-    revalidateTag('media-items');
-    revalidateTag('folder-space');
-    revalidateTag('media-processing');
   } catch (error) {
     console.error('Failed to revalidate after processing:', error);
   }
