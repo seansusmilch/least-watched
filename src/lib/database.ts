@@ -265,6 +265,10 @@ export const mediaItemsService = {
       where: { id },
     });
   },
+
+  async deleteAll() {
+    return await prisma.mediaItem.deleteMany({});
+  },
 };
 
 // Database connection management

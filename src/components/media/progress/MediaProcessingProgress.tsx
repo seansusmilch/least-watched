@@ -43,8 +43,6 @@ export function MediaProcessingProgress({
     toast.success('Progress cleared');
   };
 
-  const isComplete = state === 'completed';
-  const isLive = state === 'live';
   const hasError = !!error;
   const progressPercentage = progress?.percentage || 0;
 
@@ -55,19 +53,19 @@ export function MediaProcessingProgress({
           <CardTitle className='flex items-center space-x-2'>
             {hasError ? (
               <AlertCircle className='h-4 w-4 mr-2 text-destructive' />
-            ) : isComplete ? (
+            ) : state === 'completed' ? (
               <CheckCircle className='h-4 w-4 mr-2 text-green-500' />
             ) : (
               <RefreshCw className='h-4 w-4 mr-2 animate-spin' />
             )}
             {hasError
               ? 'Processing Error'
-              : isComplete
+              : state === 'completed'
               ? 'Processing Complete!'
               : 'Processing Media...'}
           </CardTitle>
           <div className='flex items-center space-x-2'>
-            {isComplete && (
+            {state === 'completed' && (
               <Button
                 variant='outline'
                 size='sm'
@@ -127,20 +125,6 @@ export function MediaProcessingProgress({
                   Currently processing: {progress.currentItem}
                 </p>
               )}
-
-              {/* Processing Stats */}
-              <div className='grid grid-cols-2 gap-4 pt-2 border-t'>
-                <div className='text-center'>
-                  <p className='text-xs text-muted-foreground'>
-                    Items Processed
-                  </p>
-                  <p className='text-sm font-medium'>{progress.current || 0}</p>
-                </div>
-                <div className='text-center'>
-                  <p className='text-xs text-muted-foreground'>Total Items</p>
-                  <p className='text-sm font-medium'>{progress.total || 0}</p>
-                </div>
-              </div>
             </div>
           )}
 
@@ -151,13 +135,6 @@ export function MediaProcessingProgress({
               <span className='ml-2 text-sm text-muted-foreground'>
                 Loading progress data...
               </span>
-            </div>
-          )}
-
-          {/* Status indicator */}
-          {isLive && (
-            <div className='text-xs text-muted-foreground text-center pt-2 border-t'>
-              Live updates every 2 seconds
             </div>
           )}
         </div>

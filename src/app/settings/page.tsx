@@ -10,6 +10,7 @@ import {
   getRadarrSettings,
   getEmbySettings,
 } from '@/lib/actions/settings';
+import { AdvancedSettings } from '@/components/settings/advanced-settings';
 
 export const dynamic = 'force-dynamic';
 
@@ -69,12 +70,7 @@ export default async function SettingsPage() {
 
           {/* Advanced Settings */}
           <TabsContent value='advanced' className='space-y-4'>
-            <div className='rounded-lg border p-6'>
-              <h3 className='text-lg font-semibold mb-4'>Advanced Settings</h3>
-              <p className='text-muted-foreground'>
-                Advanced configuration options will be available here.
-              </p>
-            </div>
+            <AdvancedSettings />
           </TabsContent>
         </Tabs>
       </div>

@@ -167,6 +167,41 @@ export async function exportMediaItems(
   }
 }
 
+export async function clearMediaItems(): Promise<{
+  success: boolean;
+  message?: string;
+  error?: string;
+}> {
+  try {
+    const { mediaItemsService } = await import('../database');
+
+    // Get count before clearing
+    const allItems = await mediaItemsService.getAll();
+    const itemCount = allItems.length;
+
+    // Clear all media items
+    await mediaItemsService.deleteAll();
+
+    // Revalidate paths
+    revalidatePath('/');
+
+    const message = `Successfully cleared ${itemCount} media item${
+      itemCount === 1 ? '' : 's'
+    } from the database`;
+
+    return {
+      success: true,
+      message,
+    };
+  } catch (error) {
+    console.error('Failed to clear media items:', error);
+    return {
+      success: false,
+      error: 'Failed to clear media items from the database',
+    };
+  }
+}
+
 export async function checkProcessingComplete(): Promise<boolean> {
   try {
     const progress = await getProgress();
