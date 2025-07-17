@@ -1,7 +1,7 @@
 import { AppLayout } from '@/components/app-layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
-import { Server, Trash2 } from 'lucide-react';
+import { Server, Trash2, Settings } from 'lucide-react';
 
 import { MediaServices } from '@/components/settings/media-services';
 import { DeletionScoreSettings } from '@/components/settings/deletion-score-settings';
@@ -47,6 +47,10 @@ export default async function SettingsPage() {
               <Trash2 className='h-4 w-4' />
               Deletion Scoring
             </TabsTrigger>
+            <TabsTrigger value='advanced' className='flex items-center gap-2'>
+              <Settings className='h-4 w-4' />
+              Advanced
+            </TabsTrigger>
           </TabsList>
 
           {/* Media Services */}
@@ -61,6 +65,16 @@ export default async function SettingsPage() {
           {/* Deletion Scoring Settings */}
           <TabsContent value='deletion' className='space-y-4'>
             <DeletionScoreSettings />
+          </TabsContent>
+
+          {/* Advanced Settings */}
+          <TabsContent value='advanced' className='space-y-4'>
+            <div className='rounded-lg border p-6'>
+              <h3 className='text-lg font-semibold mb-4'>Advanced Settings</h3>
+              <p className='text-muted-foreground'>
+                Advanced configuration options will be available here.
+              </p>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
