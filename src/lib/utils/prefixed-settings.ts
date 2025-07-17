@@ -10,6 +10,7 @@ export interface ServiceSettings {
   enabled: boolean;
   selectedFolders?: string[];
   userId?: string; // Only for Emby
+  preferEmbyDateAdded?: boolean; // Only for Emby
   createdAt: Date;
   updatedAt: Date;
 }
@@ -21,6 +22,7 @@ export interface CreateServiceSettingsInput {
   enabled?: boolean;
   selectedFolders?: string[];
   userId?: string; // Only for Emby
+  preferEmbyDateAdded?: boolean; // Only for Emby
 }
 
 export interface UpdateServiceSettingsInput {
@@ -30,6 +32,7 @@ export interface UpdateServiceSettingsInput {
   enabled?: boolean;
   selectedFolders?: string[];
   userId?: string; // Only for Emby
+  preferEmbyDateAdded?: boolean; // Only for Emby
 }
 
 // Utility functions for managing prefixed settings
@@ -77,6 +80,9 @@ export const prefixedSettingsService = {
             case 'userId':
               instance.userId = setting.value;
               break;
+            case 'preferEmbyDateAdded':
+              instance.preferEmbyDateAdded = setting.value === 'true';
+              break;
           }
 
           // Use the earliest createdAt and latest updatedAt
@@ -99,6 +105,7 @@ export const prefixedSettingsService = {
         enabled: instance.enabled ?? true,
         selectedFolders: instance.selectedFolders,
         userId: instance.userId,
+        preferEmbyDateAdded: instance.preferEmbyDateAdded,
         createdAt: instance.createdAt!,
         updatedAt: instance.updatedAt!,
       }))
@@ -149,6 +156,9 @@ export const prefixedSettingsService = {
         case 'userId':
           instance.userId = setting.value;
           break;
+        case 'preferEmbyDateAdded':
+          instance.preferEmbyDateAdded = setting.value === 'true';
+          break;
       }
 
       if (setting.createdAt < createdAt) {
@@ -171,6 +181,7 @@ export const prefixedSettingsService = {
       enabled: instance.enabled ?? true,
       selectedFolders: instance.selectedFolders,
       userId: instance.userId,
+      preferEmbyDateAdded: instance.preferEmbyDateAdded,
       createdAt,
       updatedAt,
     };
@@ -233,6 +244,14 @@ export const prefixedSettingsService = {
       });
     }
 
+    if (serviceType === 'emby' && data.preferEmbyDateAdded !== undefined) {
+      settingsToCreate.push({
+        key: `${prefix}preferEmbyDateAdded`,
+        value: data.preferEmbyDateAdded.toString(),
+        description: `${serviceType} prefer Emby date added`,
+      });
+    }
+
     // Create all settings
     await Promise.all(
       settingsToCreate.map((setting) =>
@@ -252,6 +271,7 @@ export const prefixedSettingsService = {
       enabled: data.enabled ?? true,
       selectedFolders: data.selectedFolders,
       userId: data.userId,
+      preferEmbyDateAdded: data.preferEmbyDateAdded,
       createdAt: now,
       updatedAt: now,
     };
@@ -336,6 +356,18 @@ export const prefixedSettingsService = {
         updates.push(
           appSettingsService.delete(`${prefix}userId`).catch(() => {})
         ); // Ignore if doesn't exist
+      }
+    }
+
+    if (data.preferEmbyDateAdded !== undefined) {
+      if (serviceType === 'emby') {
+        updates.push(
+          appSettingsService.setValue(
+            `${prefix}preferEmbyDateAdded`,
+            data.preferEmbyDateAdded.toString(),
+            `${serviceType} prefer Emby date added`
+          )
+        );
       }
     }
 

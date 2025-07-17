@@ -63,6 +63,7 @@ export const EmbySettingsCreateSchema = z.object({
   userId: z.string().optional(),
   enabled: z.boolean().default(true),
   selectedFolders: z.array(z.string()).optional(),
+  preferEmbyDateAdded: z.boolean().optional(),
 });
 
 export const EmbySettingsUpdateSchema = z.object({
@@ -73,6 +74,7 @@ export const EmbySettingsUpdateSchema = z.object({
   userId: z.string().optional(),
   enabled: z.boolean().optional(),
   selectedFolders: z.array(z.string()).optional(),
+  preferEmbyDateAdded: z.boolean().optional(),
 });
 
 // App Settings Schemas

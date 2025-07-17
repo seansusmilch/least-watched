@@ -123,6 +123,7 @@ export const embySettingsService = {
     userId?: string;
     enabled?: boolean;
     selectedFolders?: string[];
+    preferEmbyDateAdded?: boolean;
   }) {
     return await prefixedSettingsService.create('emby', data);
   },
@@ -136,6 +137,7 @@ export const embySettingsService = {
       userId?: string;
       enabled?: boolean;
       selectedFolders?: string[];
+      preferEmbyDateAdded?: boolean;
     }
   ) {
     return await prefixedSettingsService.update('emby', id, data);

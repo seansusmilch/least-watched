@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useOptimistic } from 'react';
+import { useState } from 'react';
 import {
   Card,
   CardContent,
@@ -32,12 +32,7 @@ import {
   Play,
 } from 'lucide-react';
 
-import {
-  createEmbySetting,
-  updateEmbySetting,
-  deleteEmbySetting,
-  testEmbyConnection,
-} from '@/lib/actions/settings';
+import { useEmbySettings } from '@/hooks/useEmbySettings';
 import type { ServiceSettings } from '@/lib/utils/prefixed-settings';
 
 type ConnectionStatus = 'idle' | 'testing' | 'success' | 'error';
@@ -47,58 +42,46 @@ interface EmbySettingsProps {
 }
 
 export function EmbySettings({ initialSettings }: EmbySettingsProps) {
-  const [optimisticSettings, setOptimisticSettings] = useOptimistic(
-    initialSettings,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (state, action: { type: string; payload: any }) => {
-      switch (action.type) {
-        case 'add':
-          return [...state, action.payload];
-        case 'update':
-          return state.map((s) =>
-            s.id === action.payload.id ? { ...s, ...action.payload } : s
-          );
-        case 'delete':
-          return state.filter((s) => s.id !== action.payload);
-        default:
-          return state;
-      }
-    }
-  );
-
-  const [connectionStatus, setConnectionStatus] = useState<
-    Record<string, ConnectionStatus>
-  >({});
+  const {
+    settingsQuery,
+    createMutation,
+    updateMutation,
+    deleteMutation,
+    testConnectionMutation,
+  } = useEmbySettings();
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [settingToDelete, setSettingToDelete] = useState<string | null>(null);
+  const [preferEmbyDateAdded, setPreferEmbyDateAdded] = useState(false);
+
+  // Connection status state for test connection feedback
+  const [connectionStatus, setConnectionStatus] = useState<
+    Record<string, ConnectionStatus>
+  >({});
+
+  // Use fetched settings or fallback to initialSettings
+  const settings = settingsQuery.data || initialSettings;
+  const isLoading = settingsQuery.isLoading || settingsQuery.isFetching;
 
   const handleTestConnection = async (setting: ServiceSettings) => {
     setConnectionStatus((prev) => ({ ...prev, [setting.id]: 'testing' }));
-
     try {
-      const result = await testEmbyConnection(setting.id);
+      const result = await testConnectionMutation.mutateAsync(setting.id);
       setConnectionStatus((prev) => ({
         ...prev,
         [setting.id]: result.connected ? 'success' : 'error',
       }));
-
       if (result.connected) {
         toast.success(`Successfully connected to ${setting.name}`);
       } else {
-        const errorMessage =
-          'error' in result
-            ? result.error
-            : 'message' in result
-            ? result.message
-            : 'Unknown error';
-        toast.error((errorMessage as string) || 'Unknown error');
+        const errorMessage = result.error || 'Unknown error';
+        toast.error(errorMessage);
       }
-    } catch {
+    } catch (e: unknown) {
       setConnectionStatus((prev) => ({ ...prev, [setting.id]: 'error' }));
-      toast.error('Failed to test connection');
+      toast.error(e instanceof Error ? e.message : 'Failed to test connection');
     }
   };
 
@@ -108,58 +91,66 @@ export function EmbySettings({ initialSettings }: EmbySettingsProps) {
     const apiKey = formData.get('apiKey') as string;
     const userId = formData.get('userId') as string;
     const enabled = formData.get('enabled') === 'on';
+    const preferEmbyDateAdded = formData.get('preferEmbyDateAdded') === 'on';
+
+    const input = {
+      name,
+      url,
+      apiKey,
+      userId,
+      enabled,
+      preferEmbyDateAdded,
+    };
 
     try {
-      let result;
       if (editingId) {
-        result = await updateEmbySetting(editingId, {
-          name,
-          url,
-          apiKey,
-          userId,
-          enabled,
+        const result = await updateMutation.mutateAsync({
+          id: editingId,
+          input,
         });
-        setOptimisticSettings({ type: 'update', payload: result });
+        if (result.success) {
+          toast.success(`${name} has been updated successfully`);
+        } else {
+          toast.error(result.message || 'Failed to update settings');
+        }
       } else {
-        result = await createEmbySetting({
-          name,
-          url,
-          apiKey,
-          userId,
-          enabled,
-        });
-        setOptimisticSettings({ type: 'add', payload: result });
+        const result = await createMutation.mutateAsync(input);
+        if (result.success) {
+          toast.success(`${name} has been created successfully`);
+        } else {
+          toast.error(result.message || 'Failed to create settings');
+        }
       }
-
       setEditingId(null);
       setIsAddDialogOpen(false);
-      toast.success(
-        `${name} has been ${editingId ? 'updated' : 'created'} successfully`
-      );
-    } catch {
-      toast.error('Failed to save settings');
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to save settings');
     }
   };
 
   const handleEdit = (setting: ServiceSettings) => {
     setEditingId(setting.id);
     setIsAddDialogOpen(true);
+    setPreferEmbyDateAdded(setting.preferEmbyDateAdded ?? false);
   };
 
   const handleDelete = async (id: string) => {
     try {
-      await deleteEmbySetting(id);
-      setOptimisticSettings({ type: 'delete', payload: id });
+      const result = await deleteMutation.mutateAsync(id);
+      if (result.success) {
+        toast.success('Settings have been deleted successfully');
+      } else {
+        toast.error(result.message || 'Failed to delete settings');
+      }
       setIsDeleteDialogOpen(false);
       setSettingToDelete(null);
-      toast.success('Settings have been deleted successfully');
-    } catch {
-      toast.error('Failed to delete settings');
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to delete settings');
     }
   };
 
   const editingSetting = editingId
-    ? optimisticSettings.find((s) => s.id === editingId)
+    ? settings.find((s: ServiceSettings) => s.id === editingId)
     : null;
 
   return (
@@ -178,99 +169,19 @@ export function EmbySettings({ initialSettings }: EmbySettingsProps) {
       </div>
 
       <div className='grid gap-4'>
-        {optimisticSettings.map((setting) => (
-          <Card key={setting.id}>
-            <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-              <div className='flex items-center gap-3'>
-                <div className='flex h-10 w-10 items-center justify-center rounded-lg bg-green-500 text-white'>
-                  <Play className='h-5 w-5' />
-                </div>
-                <div>
-                  <CardTitle className='text-lg'>{setting.name}</CardTitle>
-                  <CardDescription>{setting.url}</CardDescription>
-                </div>
-              </div>
-              <div className='flex items-center gap-2'>
-                <Badge variant={setting.enabled ? 'default' : 'secondary'}>
-                  {setting.enabled ? 'Enabled' : 'Disabled'}
-                </Badge>
-                <Badge
-                  variant={
-                    connectionStatus[setting.id] === 'success'
-                      ? 'default'
-                      : connectionStatus[setting.id] === 'error'
-                      ? 'destructive'
-                      : 'secondary'
-                  }
-                >
-                  {connectionStatus[setting.id] === 'testing' && (
-                    <Loader2 className='mr-1 h-3 w-3 animate-spin' />
-                  )}
-                  {connectionStatus[setting.id] === 'success' && 'Connected'}
-                  {connectionStatus[setting.id] === 'error' && 'Failed'}
-                  {!connectionStatus[setting.id] && 'Unknown'}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
-                <div>
-                  <Label className='text-sm font-medium'>API Key</Label>
-                  <p className='text-sm text-muted-foreground'>
-                    {setting.apiKey.substring(0, 8)}...
-                  </p>
-                </div>
-                <div>
-                  <Label className='text-sm font-medium'>User ID</Label>
-                  <p className='text-sm text-muted-foreground'>
-                    {setting.userId ? setting.userId : 'Not set'}
-                  </p>
-                </div>
-              </div>
-              <div className='mt-4 flex flex-wrap gap-2'>
-                <Button
-                  variant='outline'
-                  size='sm'
-                  onClick={() => handleTestConnection(setting)}
-                  disabled={connectionStatus[setting.id] === 'testing'}
-                >
-                  {connectionStatus[setting.id] === 'testing' ? (
-                    <>
-                      <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                      Testing...
-                    </>
-                  ) : (
-                    <>
-                      <TestTube className='mr-2 h-4 w-4' />
-                      Test Connection
-                    </>
-                  )}
-                </Button>
-                <Button
-                  variant='outline'
-                  size='sm'
-                  onClick={() => handleEdit(setting)}
-                >
-                  <Edit2 className='mr-2 h-4 w-4' />
-                  Edit
-                </Button>
-                <Button
-                  variant='outline'
-                  size='sm'
-                  onClick={() => {
-                    setSettingToDelete(setting.id);
-                    setIsDeleteDialogOpen(true);
-                  }}
-                >
-                  <Trash2 className='mr-2 h-4 w-4' />
-                  Delete
-                </Button>
-              </div>
+        {isLoading ? (
+          <Card>
+            <CardContent className='flex flex-col items-center justify-center py-12'>
+              <Loader2 className='h-12 w-12 text-muted-foreground animate-spin' />
+              <h3 className='mt-4 text-lg font-medium'>
+                Loading Emby instances...
+              </h3>
+              <p className='mt-2 text-sm text-muted-foreground'>
+                Please wait while we fetch the Emby instances.
+              </p>
             </CardContent>
           </Card>
-        ))}
-
-        {optimisticSettings.length === 0 && (
+        ) : settings.length === 0 ? (
           <Card>
             <CardContent className='flex flex-col items-center justify-center py-12'>
               <Database className='h-12 w-12 text-muted-foreground' />
@@ -280,6 +191,98 @@ export function EmbySettings({ initialSettings }: EmbySettingsProps) {
               </p>
             </CardContent>
           </Card>
+        ) : (
+          settings.map((setting: ServiceSettings) => (
+            <Card key={setting.id}>
+              <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+                <div className='flex items-center gap-3'>
+                  <div className='flex h-10 w-10 items-center justify-center rounded-lg bg-green-500 text-white'>
+                    <Play className='h-5 w-5' />
+                  </div>
+                  <div>
+                    <CardTitle className='text-lg'>{setting.name}</CardTitle>
+                    <CardDescription>{setting.url}</CardDescription>
+                  </div>
+                </div>
+                <div className='flex items-center gap-2'>
+                  <Badge variant={setting.enabled ? 'default' : 'secondary'}>
+                    {setting.enabled ? 'Enabled' : 'Disabled'}
+                  </Badge>
+                  <Badge
+                    variant={
+                      connectionStatus[setting.id] === 'success'
+                        ? 'default'
+                        : connectionStatus[setting.id] === 'error'
+                        ? 'destructive'
+                        : 'secondary'
+                    }
+                  >
+                    {connectionStatus[setting.id] === 'testing' && (
+                      <Loader2 className='mr-1 h-3 w-3 animate-spin' />
+                    )}
+                    {connectionStatus[setting.id] === 'success' && 'Connected'}
+                    {connectionStatus[setting.id] === 'error' && 'Failed'}
+                    {!connectionStatus[setting.id] && 'Unknown'}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
+                  <div>
+                    <Label className='text-sm font-medium'>API Key</Label>
+                    <p className='text-sm text-muted-foreground'>
+                      {setting.apiKey.substring(0, 8)}...
+                    </p>
+                  </div>
+                  <div>
+                    <Label className='text-sm font-medium'>User ID</Label>
+                    <p className='text-sm text-muted-foreground'>
+                      {setting.userId ? setting.userId : 'Not set'}
+                    </p>
+                  </div>
+                </div>
+                <div className='mt-4 flex flex-wrap gap-2'>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => handleTestConnection(setting)}
+                    disabled={connectionStatus[setting.id] === 'testing'}
+                  >
+                    {connectionStatus[setting.id] === 'testing' ? (
+                      <>
+                        <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                        Testing...
+                      </>
+                    ) : (
+                      <>
+                        <TestTube className='mr-2 h-4 w-4' />
+                        Test Connection
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => handleEdit(setting)}
+                  >
+                    <Edit2 className='mr-2 h-4 w-4' />
+                    Edit
+                  </Button>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => {
+                      setSettingToDelete(setting.id);
+                      setIsDeleteDialogOpen(true);
+                    }}
+                  >
+                    <Trash2 className='mr-2 h-4 w-4' />
+                    Delete
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))
         )}
       </div>
 
@@ -342,6 +345,19 @@ export function EmbySettings({ initialSettings }: EmbySettingsProps) {
                 defaultChecked={editingSetting?.enabled ?? true}
               />
               <Label htmlFor='enabled'>Enabled</Label>
+            </div>
+            <div className='flex items-center space-x-2'>
+              <Checkbox
+                id='preferEmbyDateAdded'
+                name='preferEmbyDateAdded'
+                checked={preferEmbyDateAdded}
+                onCheckedChange={(checked) =>
+                  setPreferEmbyDateAdded(checked === true)
+                }
+              />
+              <Label htmlFor='preferEmbyDateAdded'>
+                Prefer Emby Date Added
+              </Label>
             </div>
             <DialogFooter>
               <Button

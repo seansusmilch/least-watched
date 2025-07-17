@@ -22,6 +22,7 @@ export type EmbySettingsInput = {
   userId?: string;
   enabled?: boolean;
   selectedFolders?: string[];
+  preferEmbyDateAdded?: boolean;
 };
 
 export type AppSettingsInput = {
