@@ -3,7 +3,6 @@ export interface MediaProcessingResult {
   message: string;
   processedItems?: number;
   error?: string;
-  progressId: string;
 }
 
 export interface MediaItemData {

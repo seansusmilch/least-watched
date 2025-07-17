@@ -9,8 +9,23 @@ export function useProgress() {
   // Query for progress data
   const { data, isLoading, error } = useQuery({
     queryKey: ['progress'],
-    queryFn: getProgress,
-    refetchInterval: 1000,
+    queryFn: async () => {
+      const progress = await getProgress();
+      console.log(progress);
+      return progress;
+    },
+    refetchInterval: ({ state }) => {
+      switch (state.data?.state) {
+        case 'none':
+          return false;
+        case 'live':
+          return 500;
+        case 'completed':
+          return false;
+        default:
+          return 1000;
+      }
+    },
     staleTime: 0,
     gcTime: 0,
     refetchIntervalInBackground: true,

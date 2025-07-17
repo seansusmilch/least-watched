@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { RefreshCw, Play, Download, AlertCircle } from 'lucide-react';
 import { useActionState, useOptimistic, useTransition } from 'react';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   startMediaProcessing,
   refreshMediaItems,
@@ -15,7 +16,6 @@ import { useProgress } from '@/hooks/use-progress';
 
 interface PageActionsEnhancedProps {
   selectedItems?: string[];
-  onProcessingStart?: (progressId: string) => void;
   onRefreshComplete?: () => void;
   onExportComplete?: (count: number) => void;
   disabled?: boolean;
@@ -30,7 +30,6 @@ interface OptimisticState {
 
 export function PageActionsEnhanced({
   selectedItems = [],
-  onProcessingStart,
   onRefreshComplete,
   onExportComplete,
   disabled = false,
@@ -38,6 +37,7 @@ export function PageActionsEnhanced({
   const [lastAction, setLastAction] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const { state: progressState } = useProgress();
+  const queryClient = useQueryClient();
 
   // Check if there's an active process
   const hasActiveProcess =
@@ -78,7 +78,6 @@ export function PageActionsEnhanced({
     undefined
   );
 
-  // Handle process media action
   const handleProcess = useCallback(() => {
     startTransition(() => {
       setLastAction('process');
@@ -86,8 +85,10 @@ export function PageActionsEnhanced({
 
       const formData = new FormData();
       processAction(formData);
+
+      queryClient.invalidateQueries({ queryKey: ['progress'] });
     });
-  }, [processAction, addOptimisticUpdate]);
+  }, [processAction, addOptimisticUpdate, queryClient]);
 
   // Handle refresh action
   const handleRefresh = useCallback(() => {
@@ -130,10 +131,6 @@ export function PageActionsEnhanced({
       toast.success(
         processState.message || 'Media processing started successfully'
       );
-
-      if (processState.data?.progressId && onProcessingStart) {
-        onProcessingStart(processState.data.progressId);
-      }
     } else if (processState?.success === false && lastAction === 'process') {
       startTransition(() => {
         addOptimisticUpdate({
@@ -143,7 +140,7 @@ export function PageActionsEnhanced({
       });
       toast.error(processState.message || 'Failed to start media processing');
     }
-  }, [processState, lastAction, onProcessingStart, addOptimisticUpdate]);
+  }, [processState, lastAction, addOptimisticUpdate]);
 
   React.useEffect(() => {
     if (refreshState?.success && lastAction === 'refresh') {

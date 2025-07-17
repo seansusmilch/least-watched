@@ -2,7 +2,6 @@
 'use server';
 
 import { MediaProcessor } from '../media-processor/';
-import { randomUUID } from 'crypto';
 import { revalidatePath } from 'next/cache';
 import {
   type MediaProcessingResult,
@@ -17,6 +16,7 @@ import {
 } from '../validation/schemas';
 import { mediaService } from '../services/media-service';
 import { getProgress } from './progress';
+import { ProgressStore } from '../media-processor/progress-store';
 
 // ============================================================================
 // Media Processing Functions
@@ -27,17 +27,14 @@ export async function startMediaProcessing(
   _formData: FormData
 ): Promise<FormState<MediaProcessingResult>> {
   try {
-    const progressId = randomUUID();
-
     // Start processing in background (don't await)
-    processMediaInBackground(progressId).catch((error) => {
+    processMediaInBackground().catch((error) => {
       console.error('Background processing failed:', error);
     });
 
     const result: MediaProcessingResult = {
       success: true,
       message: 'Processing started successfully',
-      progressId,
     };
 
     // Revalidate relevant paths and tags immediately when starting
@@ -57,18 +54,14 @@ export async function startMediaProcessing(
   }
 }
 
-async function processMediaInBackground(progressId: string): Promise<void> {
+async function processMediaInBackground(): Promise<void> {
   try {
-    const processor = new MediaProcessor(undefined, progressId);
+    await ProgressStore.clearProgress();
+
+    const processor = new MediaProcessor(undefined);
     await processor.processAllMedia();
 
-    // Cache invalidation is disabled
-
     console.log('✅ Background media processing completed successfully');
-
-    // Clean up old progress records
-    const { ProgressStore } = await import('../media-processor/progress-store');
-    await ProgressStore.cleanupOldProgress();
   } catch (error) {
     console.error('Background media processing failed:', error);
     throw error;

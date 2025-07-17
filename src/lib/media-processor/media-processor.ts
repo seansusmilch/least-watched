@@ -16,7 +16,14 @@ import {
   type MediaProcessingProgress,
   type ProcessedMediaItem,
   type StoredMediaItem,
+  type SonarrInstance,
+  type EmbyInstance,
+  type RadarrInstance,
 } from './types';
+import {
+  getDeletionScoreSettings,
+  getEnhancedProcessingSettings,
+} from '@/lib/actions/settings';
 
 export class MediaProcessor {
   private onProgress?: (progress: MediaProcessingProgress) => void;
@@ -33,9 +40,6 @@ export class MediaProcessor {
 
   private async ensureEnhancedSettings(): Promise<void> {
     if (!this.enhancedSettings) {
-      const { getEnhancedProcessingSettings } = await import(
-        '../actions/settings'
-      );
       this.enhancedSettings = await getEnhancedProcessingSettings();
     }
   }
@@ -134,7 +138,6 @@ export class MediaProcessor {
     let processedItemCount = 0;
 
     // Get deletion score settings and folder space data for scoring (load once)
-    const { getDeletionScoreSettings } = await import('../actions/settings');
     const deletionScoreSettings: DeletionScoreSettings =
       await getDeletionScoreSettings();
     const folderSpaceData = await folderSpaceService.getFolderSpaceData();
@@ -196,76 +199,118 @@ export class MediaProcessor {
   }
 
   private async processSonarrInstance(
-    sonarrInstance: import('./types').SonarrInstance,
-    embyInstances: import('./types').EmbyInstance[],
+    sonarrInstance: SonarrInstance,
+    embyInstances: EmbyInstance[],
     processedItemCount: number,
     totalItems: number,
     deletionScoreSettings: DeletionScoreSettings,
     folderSpaceData: FolderSpaceData[]
   ): Promise<ProcessedMediaItem[]> {
-    // Process using SonarrProcessor
-    const processedItems = await SonarrProcessor.processInstance(
-      sonarrInstance,
-      embyInstances,
-      this.enhancedSettings!
-    );
+    const processedItems: ProcessedMediaItem[] = [];
 
-    // Update progress and store items
-    for (let i = 0; i < processedItems.length; i++) {
-      const item = processedItems[i];
+    // Get raw series data from Sonarr
+    const response = await fetch(`${sonarrInstance.url}/api/v3/series`, {
+      headers: { 'X-Api-Key': sonarrInstance.apiKey },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch series from ${sonarrInstance.name}`);
+    }
+
+    const series = await response.json();
+    const limitedSeries = series.slice(0, TESTING_LIMIT);
+
+    // Process each series individually
+    for (let i = 0; i < limitedSeries.length; i++) {
+      const seriesData = limitedSeries[i];
       const currentItemIndex = processedItemCount + i + 1;
 
       await this.updateProgress(
         'Processing TV Shows',
         currentItemIndex,
         totalItems,
-        `Processing: ${item.title}`
+        `Processing: ${seriesData.title}`
       );
 
-      // Store the item
-      await MediaStorage.storeProcessedItem(
-        item,
-        deletionScoreSettings,
-        folderSpaceData
-      );
+      try {
+        // Process single series item
+        const processedItem = await SonarrProcessor.processSingleItem(
+          seriesData,
+          sonarrInstance,
+          embyInstances,
+          this.enhancedSettings!
+        );
+
+        // Store the item immediately
+        await MediaStorage.storeProcessedItem(
+          processedItem,
+          deletionScoreSettings,
+          folderSpaceData
+        );
+
+        processedItems.push(processedItem);
+      } catch (error) {
+        console.error(`Error processing series ${seriesData.title}:`, error);
+      }
     }
 
     return processedItems;
   }
 
   private async processRadarrInstance(
-    radarrInstance: import('./types').RadarrInstance,
-    embyInstances: import('./types').EmbyInstance[],
+    radarrInstance: RadarrInstance,
+    embyInstances: EmbyInstance[],
     processedItemCount: number,
     totalItems: number,
     deletionScoreSettings: DeletionScoreSettings,
     folderSpaceData: FolderSpaceData[]
   ): Promise<ProcessedMediaItem[]> {
-    // Process using RadarrProcessor
-    const processedItems = await RadarrProcessor.processInstance(
-      radarrInstance,
-      embyInstances,
-      this.enhancedSettings!
-    );
+    const processedItems: ProcessedMediaItem[] = [];
 
-    // Update progress and store items
-    for (let i = 0; i < processedItems.length; i++) {
-      const item = processedItems[i];
+    // Get raw movie data from Radarr
+    const response = await fetch(`${radarrInstance.url}/api/v3/movie`, {
+      headers: { 'X-Api-Key': radarrInstance.apiKey },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch movies from ${radarrInstance.name}`);
+    }
+
+    const movies = await response.json();
+    const limitedMovies = movies.slice(0, TESTING_LIMIT);
+
+    // Process each movie individually
+    for (let i = 0; i < limitedMovies.length; i++) {
+      const movieData = limitedMovies[i];
       const currentItemIndex = processedItemCount + i + 1;
 
       await this.updateProgress(
         'Processing Movies',
         currentItemIndex,
         totalItems,
-        `Processing: ${item.title}`
+        `Processing: ${movieData.title}`
       );
 
-      // Store the item
-      await MediaStorage.storeProcessedItem(
-        item,
-        deletionScoreSettings,
-        folderSpaceData
-      );
+      try {
+        // Process single movie item
+        const processedItem = await RadarrProcessor.processSingleItem(
+          movieData,
+          radarrInstance,
+          embyInstances,
+          this.enhancedSettings!
+        );
+
+        // Store the item immediately
+        await MediaStorage.storeProcessedItem(
+          processedItem,
+          deletionScoreSettings,
+          folderSpaceData
+        );
+
+        processedItems.push(processedItem);
+      } catch (error) {
+        console.error(`Error processing movie ${movieData.title}:`, error);
+      }
     }
 
     return processedItems;

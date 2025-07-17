@@ -20,8 +20,7 @@ export { MediaProcessingProgress } from './progress/MediaProcessingProgress';
 export { MediaProcessingProgressSkeleton } from './progress/MediaProcessingProgressSkeleton';
 
 // Action components
-export { PageActions } from './actions/PageActions';
-export { PageActionsEnhanced } from './actions/PageActionsEnhanced';
+export { PageActionsEnhanced } from './PageActionsEnhanced';
 
 // Page components
 export { MediaPageContent } from './page/MediaPageContent';

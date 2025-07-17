@@ -20,11 +20,6 @@ class ProgressStoreImpl {
   async getActiveProcess(): Promise<MediaProcessingProgress | null> {
     return this.progress && !this.progress.isComplete ? this.progress : null;
   }
-
-  async cleanupOldProgress(): Promise<void> {
-    // For now, just clear the progress
-    this.progress = null;
-  }
 }
 
 export const ProgressStore = new ProgressStoreImpl();
