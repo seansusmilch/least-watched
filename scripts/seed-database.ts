@@ -68,6 +68,7 @@ interface SeedConfig {
     sizePerHour?: number;
     genres?: string[];
     overview?: string;
+    deletionScore?: number;
   }>;
 }
 
@@ -258,7 +259,9 @@ function transformMediaItemForDatabase(item: SeedConfig['mediaItems'][0]) {
     lastWatched: item.lastWatched ? new Date(item.lastWatched) : undefined,
     dateAdded: item.dateAdded ? new Date(item.dateAdded) : undefined,
     sizeOnDisk: item.sizeOnDisk ? BigInt(item.sizeOnDisk) : undefined,
-    genres: item.genres ? JSON.stringify(item.genres) : undefined,
+    genres: item.genres ?? [], // Use array or empty array
+    deletionScore:
+      typeof item.deletionScore === 'number' ? item.deletionScore : 0, // Ensure number
   };
 }
 
