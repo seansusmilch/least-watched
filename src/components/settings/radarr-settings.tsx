@@ -1,14 +1,19 @@
 'use client';
 
-import { useState, useTransition, useOptimistic } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useOptimistic } from 'react';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { AddInstanceDialog } from './add-instance-dialog';
 import {
   Dialog,
   DialogContent,
@@ -20,15 +25,12 @@ import {
 import {
   Globe,
   Plus,
-  Edit,
+  Edit2,
   Trash2,
   TestTube,
-  CheckCircle,
-  XCircle,
-  RefreshCw,
-  Eye,
-  EyeOff,
   Folder,
+  Loader2,
+  Clapperboard,
 } from 'lucide-react';
 
 import {
@@ -36,7 +38,6 @@ import {
   updateRadarrSetting,
   deleteRadarrSetting,
   testRadarrConnection,
-  type RadarrSettingsInput,
 } from '@/lib/actions/settings';
 
 import { FolderSelectionDialog } from './folder-selection-dialog';
@@ -69,479 +70,392 @@ export function RadarrSettings({ initialSettings }: RadarrSettingsProps) {
     }
   );
 
-  const [isPending, startTransition] = useTransition();
-  const [showApiKeys, setShowApiKeys] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<
     Record<string, ConnectionStatus>
   >({});
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [folderDialogOpen, setFolderDialogOpen] = useState(false);
-  const [selectedInstanceForFolders, setSelectedInstanceForFolders] =
-    useState<ServiceSettings | null>(null);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [instanceToDelete, setInstanceToDelete] =
-    useState<ServiceSettings | null>(null);
-
-  const [formData, setFormData] = useState<RadarrSettingsInput>({
-    name: '',
-    url: '',
-    apiKey: '',
-    enabled: true,
-  });
+  const [currentSettingId, setCurrentSettingId] = useState<string | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [settingToDelete, setSettingToDelete] = useState<string | null>(null);
 
   const resetForm = () => {
-    setFormData({
-      name: '',
-      url: '',
-      apiKey: '',
-      enabled: true,
-    });
+    // setFormData({ // setFormData is not defined
+    //   name: '',
+    //   url: '',
+    //   apiKey: '',
+    //   enabled: true,
+    // });
     setEditingId(null);
   };
 
-  const handleCreate = async () => {
-    if (!formData.name || !formData.url || !formData.apiKey) {
-      toast.error('Please fill in all required fields');
-      return;
-    }
+  const handleSubmit = async (formData: FormData) => {
+    const name = formData.get('name') as string;
+    const url = formData.get('url') as string;
+    const apiKey = formData.get('apiKey') as string;
+    const enabled = formData.get('enabled') === 'on';
 
-    startTransition(async () => {
-      const tempId = `temp-${Date.now()}`;
-      setOptimisticSettings({
-        type: 'add',
-        payload: {
-          id: tempId,
-          ...formData,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      });
-
-      const result = await createRadarrSetting(formData);
-
-      if (result.success) {
-        toast.success('Radarr instance created successfully');
-        resetForm();
-        setShowAddDialog(false);
+    try {
+      let result;
+      if (editingId) {
+        result = await updateRadarrSetting(editingId, {
+          name,
+          url,
+          apiKey,
+          enabled,
+        });
+        setOptimisticSettings({ type: 'update', payload: result });
       } else {
-        toast.error(result.message || 'Failed to create Radarr instance');
+        result = await createRadarrSetting({
+          name,
+          url,
+          apiKey,
+          enabled,
+        });
+        setOptimisticSettings({ type: 'add', payload: result });
       }
-    });
+
+      setEditingId(null);
+      setIsAddDialogOpen(false);
+      resetForm();
+      toast.success(
+        `${name} has been ${editingId ? 'updated' : 'created'} successfully`
+      );
+    } catch {
+      toast.error('Failed to save settings');
+    }
   };
 
-  const handleUpdate = async (id: string) => {
-    if (!formData.name || !formData.url || !formData.apiKey) {
-      toast.error('Please fill in all required fields');
-      return;
-    }
-
-    startTransition(async () => {
-      setOptimisticSettings({
-        type: 'update',
-        payload: { id, ...formData },
-      });
-
-      const result = await updateRadarrSetting(id, formData);
-
-      if (result.success) {
-        toast.success('Radarr instance updated successfully');
-        resetForm();
-      } else {
-        toast.error(result.message || 'Failed to update Radarr instance');
-      }
-    });
+  const handleEdit = (setting: ServiceSettings) => {
+    // setFormData({ // setFormData is not defined
+    //   name: setting.name,
+    //   url: setting.url,
+    //   apiKey: setting.apiKey,
+    //   enabled: setting.enabled,
+    // });
+    setEditingId(setting.id);
+    setIsAddDialogOpen(true);
   };
 
   const handleDelete = async (id: string) => {
-    startTransition(async () => {
-      setOptimisticSettings({
-        type: 'delete',
-        payload: id,
-      });
+    try {
+      await deleteRadarrSetting(id);
+      setOptimisticSettings({ type: 'delete', payload: id });
+      setIsDeleteDialogOpen(false);
+      setSettingToDelete(null);
+      toast.success('Settings have been deleted successfully');
+    } catch {
+      toast.error('Failed to delete settings');
+    }
+  };
 
-      const result = await deleteRadarrSetting(id);
+  const handleTestConnection = async (setting: ServiceSettings) => {
+    setConnectionStatus((prev) => ({ ...prev, [setting.id]: 'testing' }));
 
-      if (result.success) {
-        toast.success('Radarr instance deleted successfully');
+    try {
+      const result = await testRadarrConnection(setting.id);
+      const isConnected =
+        result.success && 'connected' in result && result.connected;
+      setConnectionStatus((prev) => ({
+        ...prev,
+        [setting.id]: isConnected ? 'success' : 'error',
+      }));
+
+      if (isConnected) {
+        toast.success(`Successfully connected to ${setting.name}`);
       } else {
-        toast.error(result.message || 'Failed to delete Radarr instance');
+        const errorMessage =
+          'error' in result
+            ? result.error
+            : 'message' in result
+            ? result.message
+            : 'Connection failed';
+        toast.error(errorMessage);
       }
-    });
-  };
-
-  const openDeleteConfirmation = (setting: ServiceSettings) => {
-    setInstanceToDelete(setting);
-    setDeleteConfirmOpen(true);
-  };
-
-  const handleConfirmDelete = () => {
-    if (instanceToDelete) {
-      handleDelete(instanceToDelete.id);
-      setDeleteConfirmOpen(false);
-      setInstanceToDelete(null);
+    } catch {
+      setConnectionStatus((prev) => ({ ...prev, [setting.id]: 'error' }));
+      toast.error('Failed to test connection');
     }
   };
 
-  const handleCancelDelete = () => {
-    setDeleteConfirmOpen(false);
-    setInstanceToDelete(null);
-  };
-
-  const handleTestConnection = async (id: string) => {
-    setConnectionStatus((prev) => ({ ...prev, [id]: 'testing' }));
-
-    const result = await testRadarrConnection(id);
-
-    const isConnected =
-      result.success && 'connected' in result && result.connected;
-    setConnectionStatus((prev) => ({
-      ...prev,
-      [id]: isConnected ? 'success' : 'error',
-    }));
-
-    if (isConnected) {
-      toast.success('Connection successful');
-    } else {
-      const errorMessage =
-        'error' in result
-          ? result.error
-          : 'message' in result
-          ? result.message
-          : 'Connection failed';
-      toast.error(errorMessage);
-    }
-  };
-
-  const handleToggleEnabled = async (id: string, enabled: boolean) => {
-    startTransition(async () => {
-      setOptimisticSettings({
-        type: 'update',
-        payload: { id, enabled },
-      });
-
-      const result = await updateRadarrSetting(id, { enabled });
-
-      if (!result.success) {
-        toast.error(result.message || 'Failed to update Radarr instance');
-      }
-    });
-  };
-
-  const startEdit = (setting: ServiceSettings) => {
-    setFormData({
-      name: setting.name,
-      url: setting.url,
-      apiKey: setting.apiKey,
-      enabled: setting.enabled,
-    });
-    setEditingId(setting.id);
-  };
-
-  const handleConfigureFolders = (setting: ServiceSettings) => {
-    setSelectedInstanceForFolders(setting);
+  const handleFolderSelection = (settingId: string) => {
+    setCurrentSettingId(settingId);
     setFolderDialogOpen(true);
   };
 
-  const handleFolderSelectionSave = async (selectedFolders: string[]) => {
-    if (!selectedInstanceForFolders) return;
+  const handleFolderSave = async (selectedFolders: string[]) => {
+    if (!currentSettingId) return;
 
-    const result = await updateRadarrSetting(selectedInstanceForFolders.id, {
-      selectedFolders,
-    });
-
-    if (result.success) {
-      toast.success('Folder selection updated successfully');
-    } else {
-      toast.error(result.message || 'Failed to update folder selection');
+    try {
+      await updateRadarrSetting(currentSettingId, { selectedFolders });
+      setOptimisticSettings({
+        type: 'update',
+        payload: { id: currentSettingId, selectedFolders },
+      });
+      setFolderDialogOpen(false);
+      setCurrentSettingId(null);
+      toast.success('Selected folders have been updated successfully');
+    } catch {
+      toast.error('Failed to update folders');
     }
   };
 
-  const getStatusIcon = (status: ConnectionStatus) => {
-    switch (status) {
-      case 'testing':
-        return <RefreshCw className='h-4 w-4 animate-spin' />;
-      case 'success':
-        return <CheckCircle className='h-4 w-4 text-green-500' />;
-      case 'error':
-        return <XCircle className='h-4 w-4 text-red-500' />;
-      default:
-        return null;
-    }
-  };
+  const currentSetting = currentSettingId
+    ? optimisticSettings.find((s) => s.id === currentSettingId)
+    : null;
 
-  const getStatusBadge = (status: ConnectionStatus) => {
-    switch (status) {
-      case 'testing':
-        return <Badge variant='outline'>Testing...</Badge>;
-      case 'success':
-        return <Badge variant='default'>Connected</Badge>;
-      case 'error':
-        return <Badge variant='destructive'>Failed</Badge>;
-      default:
-        return <Badge variant='secondary'>Not Tested</Badge>;
-    }
-  };
+  const editingSetting = editingId
+    ? optimisticSettings.find((s) => s.id === editingId)
+    : null;
 
   return (
-    <div className='space-y-4'>
-      <Card>
-        <CardHeader>
-          <div className='flex items-center justify-between'>
-            <CardTitle className='flex items-center gap-2'>
-              <Globe className='h-5 w-5' />
-              Radarr Instances
-            </CardTitle>
-            <div className='flex items-center gap-2'>
-              <Button
-                variant='outline'
-                size='sm'
-                onClick={() => setShowApiKeys(!showApiKeys)}
-              >
-                {showApiKeys ? (
-                  <EyeOff className='h-4 w-4 mr-2' />
-                ) : (
-                  <Eye className='h-4 w-4 mr-2' />
-                )}
-                {showApiKeys ? 'Hide' : 'Show'} API Keys
-              </Button>
-              <AddInstanceDialog
-                title='Add Radarr Instance'
-                open={showAddDialog}
-                onOpenChange={setShowAddDialog}
-                formData={formData}
-                onFormDataChange={(field, value) =>
-                  setFormData((prev) => ({ ...prev, [field]: value }))
-                }
-                onSubmit={handleCreate}
-                onCancel={() => {
-                  resetForm();
-                  setShowAddDialog(false);
-                }}
-                isPending={isPending}
-                fields={[
-                  {
-                    id: 'name',
-                    label: 'Name',
-                    placeholder: 'Main Radarr',
-                    required: true,
-                  },
-                  {
-                    id: 'url',
-                    label: 'URL',
-                    placeholder: 'http://localhost:7878',
-                    required: true,
-                  },
-                  {
-                    id: 'apiKey',
-                    label: 'API Key',
-                    type: 'password',
-                    placeholder: 'Enter API key',
-                    required: true,
-                  },
-                ]}
-              />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className='space-y-4'>
-            {optimisticSettings.length === 0 ? (
-              <div className='text-center py-8'>
-                <Globe className='h-12 w-12 mx-auto text-muted-foreground mb-4' />
-                <h3 className='text-lg font-medium mb-2'>
-                  No Radarr instances
-                </h3>
-                <p className='text-muted-foreground mb-4'>
-                  Add your first Radarr instance to get started
-                </p>
-                <Button onClick={() => setShowAddDialog(true)}>
-                  <Plus className='h-4 w-4 mr-2' />
-                  Add Instance
+    <div className='space-y-6'>
+      <div className='flex items-center justify-between'>
+        <div>
+          <h2 className='text-2xl font-bold'>Radarr Settings</h2>
+          <p className='text-muted-foreground'>
+            Configure your Radarr instances for movie management
+          </p>
+        </div>
+        <Button onClick={() => setIsAddDialogOpen(true)}>
+          <Plus className='mr-2 h-4 w-4' />
+          Add Instance
+        </Button>
+      </div>
+
+      <div className='grid gap-4'>
+        {optimisticSettings.map((setting) => (
+          <Card key={setting.id}>
+            <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+              <div className='flex items-center gap-3'>
+                <div className='flex h-10 w-10 items-center justify-center rounded-lg bg-yellow-500 text-white'>
+                  <Clapperboard className='h-5 w-5 text-black' />
+                </div>
+                <div>
+                  <CardTitle className='text-lg'>{setting.name}</CardTitle>
+                  <CardDescription>{setting.url}</CardDescription>
+                </div>
+              </div>
+              <div className='flex items-center gap-2'>
+                <Badge variant={setting.enabled ? 'default' : 'secondary'}>
+                  {setting.enabled ? 'Enabled' : 'Disabled'}
+                </Badge>
+                <Badge
+                  variant={
+                    connectionStatus[setting.id] === 'success'
+                      ? 'default'
+                      : connectionStatus[setting.id] === 'error'
+                      ? 'destructive'
+                      : 'secondary'
+                  }
+                >
+                  {connectionStatus[setting.id] === 'testing' && (
+                    <Loader2 className='mr-1 h-3 w-3 animate-spin' />
+                  )}
+                  {connectionStatus[setting.id] === 'success' && 'Connected'}
+                  {connectionStatus[setting.id] === 'error' && 'Failed'}
+                  {!connectionStatus[setting.id] && 'Unknown'}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
+                <div>
+                  <Label className='text-sm font-medium'>API Key</Label>
+                  <p className='text-sm text-muted-foreground'>
+                    {setting.apiKey.substring(0, 8)}...
+                  </p>
+                </div>
+                <div>
+                  <Label className='text-sm font-medium'>
+                    Selected Folders
+                  </Label>
+                  <p className='text-sm text-muted-foreground'>
+                    {setting.selectedFolders &&
+                    setting.selectedFolders.length > 0
+                      ? `${setting.selectedFolders.length} folder(s) selected`
+                      : 'No folders selected'}
+                  </p>
+                </div>
+              </div>
+              <div className='mt-4 flex flex-wrap gap-2'>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={() => handleTestConnection(setting)}
+                  disabled={connectionStatus[setting.id] === 'testing'}
+                >
+                  {connectionStatus[setting.id] === 'testing' ? (
+                    <>
+                      <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                      Testing...
+                    </>
+                  ) : (
+                    <>
+                      <TestTube className='mr-2 h-4 w-4' />
+                      Test Connection
+                    </>
+                  )}
+                </Button>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={() => handleFolderSelection(setting.id)}
+                >
+                  <Folder className='mr-2 h-4 w-4' />
+                  Select Folders
+                </Button>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={() => handleEdit(setting)}
+                >
+                  <Edit2 className='mr-2 h-4 w-4' />
+                  Edit
+                </Button>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={() => {
+                    setSettingToDelete(setting.id);
+                    setIsDeleteDialogOpen(true);
+                  }}
+                >
+                  <Trash2 className='mr-2 h-4 w-4' />
+                  Delete
                 </Button>
               </div>
-            ) : (
-              optimisticSettings.map((setting) => (
-                <Card
-                  key={setting.id}
-                  className='border-l-4 border-l-orange-500'
-                >
-                  <CardContent className='p-4'>
-                    <div className='flex items-center justify-between'>
-                      <div className='flex items-center space-x-4'>
-                        <div>
-                          <h3 className='font-medium'>{setting.name}</h3>
-                          <p className='text-sm text-muted-foreground'>
-                            {setting.url}
-                          </p>
-                          {showApiKeys && (
-                            <p className='text-xs text-muted-foreground font-mono'>
-                              {setting.apiKey}
-                            </p>
-                          )}
-                        </div>
-                        <div className='flex items-center space-x-2'>
-                          <Switch
-                            checked={setting.enabled}
-                            onCheckedChange={(enabled) =>
-                              handleToggleEnabled(setting.id, enabled)
-                            }
-                            disabled={isPending}
-                          />
-                          <span className='text-sm'>
-                            {setting.enabled ? 'Enabled' : 'Disabled'}
-                          </span>
-                        </div>
-                      </div>
-                      <div className='flex items-center space-x-2'>
-                        <div className='flex items-center space-x-2'>
-                          {getStatusIcon(connectionStatus[setting.id])}
-                          {getStatusBadge(connectionStatus[setting.id])}
-                        </div>
-                        <Button
-                          variant='outline'
-                          size='sm'
-                          onClick={() => handleTestConnection(setting.id)}
-                          disabled={
-                            connectionStatus[setting.id] === 'testing' ||
-                            isPending
-                          }
-                        >
-                          <TestTube className='h-4 w-4' />
-                        </Button>
-                        <Button
-                          variant='outline'
-                          size='sm'
-                          onClick={() => handleConfigureFolders(setting)}
-                          title='Configure Folders'
-                        >
-                          <Folder className='h-4 w-4' />
-                        </Button>
-                        <Button
-                          variant='outline'
-                          size='sm'
-                          onClick={() => startEdit(setting)}
-                        >
-                          <Edit className='h-4 w-4' />
-                        </Button>
-                        <Button
-                          variant='outline'
-                          size='sm'
-                          onClick={() => openDeleteConfirmation(setting)}
-                        >
-                          <Trash2 className='h-4 w-4' />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        ))}
 
-      {/* Edit Dialog */}
-      <Dialog open={editingId !== null} onOpenChange={() => resetForm()}>
+        {optimisticSettings.length === 0 && (
+          <Card>
+            <CardContent className='flex flex-col items-center justify-center py-12'>
+              <Globe className='h-12 w-12 text-muted-foreground' />
+              <h3 className='mt-4 text-lg font-medium'>No Radarr instances</h3>
+              <p className='mt-2 text-sm text-muted-foreground'>
+                Add your first Radarr instance to get started
+              </p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* Add/Edit Dialog */}
+      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Radarr Instance</DialogTitle>
+            <DialogTitle>
+              {editingId ? 'Edit Radarr Instance' : 'Add Radarr Instance'}
+            </DialogTitle>
+            <DialogDescription>
+              {editingId
+                ? 'Update your Radarr instance configuration'
+                : 'Add a new Radarr instance to manage your movies'}
+            </DialogDescription>
           </DialogHeader>
-          <div className='space-y-4'>
-            <div className='space-y-2'>
-              <Label htmlFor='edit-name'>Name</Label>
+          <form action={handleSubmit} className='space-y-4'>
+            <div>
+              <Label htmlFor='name'>Name</Label>
               <Input
-                id='edit-name'
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, name: e.target.value }))
-                }
-                placeholder='Main Radarr'
+                id='name'
+                name='name'
+                defaultValue={editingSetting?.name || ''}
+                required
               />
             </div>
-            <div className='space-y-2'>
-              <Label htmlFor='edit-url'>URL</Label>
+            <div>
+              <Label htmlFor='url'>URL</Label>
               <Input
-                id='edit-url'
-                value={formData.url}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, url: e.target.value }))
-                }
+                id='url'
+                name='url'
+                type='url'
+                defaultValue={editingSetting?.url || ''}
                 placeholder='http://localhost:7878'
+                required
               />
             </div>
-            <div className='space-y-2'>
-              <Label htmlFor='edit-apiKey'>API Key</Label>
+            <div>
+              <Label htmlFor='apiKey'>API Key</Label>
               <Input
-                id='edit-apiKey'
-                type='password'
-                value={formData.apiKey}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, apiKey: e.target.value }))
-                }
-                placeholder='Enter API key'
+                id='apiKey'
+                name='apiKey'
+                defaultValue={editingSetting?.apiKey || ''}
+                required
               />
             </div>
             <div className='flex items-center space-x-2'>
-              <Switch
-                id='edit-enabled'
-                checked={formData.enabled}
-                onCheckedChange={(enabled) =>
-                  setFormData((prev) => ({ ...prev, enabled }))
-                }
+              <Checkbox
+                id='enabled'
+                name='enabled'
+                defaultChecked={editingSetting?.enabled ?? true}
               />
-              <Label htmlFor='edit-enabled'>Enable this instance</Label>
+              <Label htmlFor='enabled'>Enabled</Label>
             </div>
-            <div className='flex justify-end space-x-2'>
-              <Button variant='outline' onClick={resetForm}>
+            <DialogFooter>
+              <Button
+                type='button'
+                variant='outline'
+                onClick={() => {
+                  setIsAddDialogOpen(false);
+                  setEditingId(null);
+                  resetForm();
+                }}
+              >
                 Cancel
               </Button>
-              <Button
-                onClick={() => editingId && handleUpdate(editingId)}
-                disabled={isPending}
-              >
-                Update
+              <Button type='submit'>
+                {editingId ? 'Update' : 'Create'} Instance
               </Button>
-            </div>
-          </div>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
-      {/* Folder Selection Dialog */}
-      {selectedInstanceForFolders && (
-        <FolderSelectionDialog
-          open={folderDialogOpen}
-          onOpenChange={setFolderDialogOpen}
-          instanceId={selectedInstanceForFolders.id}
-          instanceName={selectedInstanceForFolders.name}
-          instanceType='radarr'
-          currentSelectedFolders={
-            selectedInstanceForFolders.selectedFolders || []
-          }
-          onSave={handleFolderSelectionSave}
-        />
-      )}
-
       {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-        <DialogContent showCloseButton={false}>
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>Are you sure?</DialogTitle>
+            <DialogTitle>Delete Radarr Instance</DialogTitle>
             <DialogDescription>
-              This will permanently delete the Radarr instance &quot;
-              {instanceToDelete?.name}&quot;. This action cannot be undone.
+              Are you sure you want to delete this Radarr instance? This action
+              cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant='outline' onClick={handleCancelDelete}>
+            <Button
+              variant='outline'
+              onClick={() => {
+                setIsDeleteDialogOpen(false);
+                setSettingToDelete(null);
+              }}
+            >
               Cancel
             </Button>
-            <Button variant='destructive' onClick={handleConfirmDelete}>
+            <Button
+              variant='destructive'
+              onClick={() => settingToDelete && handleDelete(settingToDelete)}
+            >
               Delete
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Folder Selection Dialog */}
+      {currentSetting && (
+        <FolderSelectionDialog
+          open={folderDialogOpen}
+          onOpenChange={setFolderDialogOpen}
+          instanceId={currentSetting.id}
+          instanceName={currentSetting.name}
+          instanceType='radarr'
+          currentSelectedFolders={currentSetting.selectedFolders || []}
+          onSave={handleFolderSave}
+        />
+      )}
     </div>
   );
 }

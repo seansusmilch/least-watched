@@ -32,6 +32,7 @@ import {
   Loader2,
   Edit2,
   Globe,
+  Tv,
 } from 'lucide-react';
 
 import {
@@ -214,7 +215,7 @@ export function SonarrSettings({ initialSettings }: SonarrSettingsProps) {
             <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
               <div className='flex items-center gap-3'>
                 <div className='flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500 text-white'>
-                  <Monitor className='h-5 w-5' />
+                  <Tv className='h-5 w-5' />
                 </div>
                 <div>
                   <CardTitle className='text-lg'>{setting.name}</CardTitle>

@@ -1,14 +1,19 @@
 'use client';
 
-import { useState, useTransition, useOptimistic } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useOptimistic } from 'react';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { AddInstanceDialog } from './add-instance-dialog';
 import {
   Dialog,
   DialogContent,
@@ -20,14 +25,11 @@ import {
 import {
   Database,
   Plus,
-  Edit,
+  Edit2,
   Trash2,
   TestTube,
-  CheckCircle,
-  XCircle,
-  RefreshCw,
-  Eye,
-  EyeOff,
+  Loader2,
+  Play,
 } from 'lucide-react';
 
 import {
@@ -35,8 +37,6 @@ import {
   updateEmbySetting,
   deleteEmbySetting,
   testEmbyConnection,
-  type EmbySettingsInput,
-  type ConnectionTestResult,
 } from '@/lib/actions/settings';
 import type { ServiceSettings } from '@/lib/utils/prefixed-settings';
 
@@ -49,466 +49,343 @@ interface EmbySettingsProps {
 export function EmbySettings({ initialSettings }: EmbySettingsProps) {
   const [optimisticSettings, setOptimisticSettings] = useOptimistic(
     initialSettings,
-    (
-      state,
-      action: {
-        type: 'add' | 'update' | 'delete';
-        payload: Partial<ServiceSettings> & { id: string };
-      }
-    ) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (state, action: { type: string; payload: any }) => {
       switch (action.type) {
         case 'add':
-          return [...state, action.payload as ServiceSettings];
+          return [...state, action.payload];
         case 'update':
           return state.map((s) =>
             s.id === action.payload.id ? { ...s, ...action.payload } : s
           );
         case 'delete':
-          return state.filter((s) => s.id !== action.payload.id);
+          return state.filter((s) => s.id !== action.payload);
         default:
           return state;
       }
     }
   );
 
-  const [isPending, startTransition] = useTransition();
-  const [showApiKeys, setShowApiKeys] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<
     Record<string, ConnectionStatus>
   >({});
+
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [showAddDialog, setShowAddDialog] = useState(false);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [instanceToDelete, setInstanceToDelete] =
-    useState<ServiceSettings | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [settingToDelete, setSettingToDelete] = useState<string | null>(null);
 
-  const [formData, setFormData] = useState<EmbySettingsInput>({
-    name: '',
-    url: '',
-    apiKey: '',
-    userId: '',
-    enabled: true,
-  });
+  const handleTestConnection = async (setting: ServiceSettings) => {
+    setConnectionStatus((prev) => ({ ...prev, [setting.id]: 'testing' }));
 
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      url: '',
-      apiKey: '',
-      userId: '',
-      enabled: true,
-    });
-    setEditingId(null);
+    try {
+      const result = await testEmbyConnection(setting.id);
+      setConnectionStatus((prev) => ({
+        ...prev,
+        [setting.id]: result.connected ? 'success' : 'error',
+      }));
+
+      if (result.connected) {
+        toast.success(`Successfully connected to ${setting.name}`);
+      } else {
+        const errorMessage =
+          'error' in result
+            ? result.error
+            : 'message' in result
+            ? result.message
+            : 'Unknown error';
+        toast.error((errorMessage as string) || 'Unknown error');
+      }
+    } catch {
+      setConnectionStatus((prev) => ({ ...prev, [setting.id]: 'error' }));
+      toast.error('Failed to test connection');
+    }
   };
 
-  const handleCreate = async () => {
-    if (!formData.name || !formData.url || !formData.apiKey) {
-      toast.error('Please fill in all required fields');
-      return;
-    }
+  const handleSubmit = async (formData: FormData) => {
+    const name = formData.get('name') as string;
+    const url = formData.get('url') as string;
+    const apiKey = formData.get('apiKey') as string;
+    const userId = formData.get('userId') as string;
+    const enabled = formData.get('enabled') === 'on';
 
-    startTransition(async () => {
-      const tempId = `temp-${Date.now()}`;
-      setOptimisticSettings({
-        type: 'add',
-        payload: {
-          id: tempId,
-          ...formData,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      });
-
-      const result = await createEmbySetting(formData);
-
-      if (result.success) {
-        toast.success('Emby instance created successfully');
-        resetForm();
-        setShowAddDialog(false);
+    try {
+      let result;
+      if (editingId) {
+        result = await updateEmbySetting(editingId, {
+          name,
+          url,
+          apiKey,
+          userId,
+          enabled,
+        });
+        setOptimisticSettings({ type: 'update', payload: result });
       } else {
-        toast.error(result.errors?.[0] || 'Failed to create Emby instance');
+        result = await createEmbySetting({
+          name,
+          url,
+          apiKey,
+          userId,
+          enabled,
+        });
+        setOptimisticSettings({ type: 'add', payload: result });
       }
-    });
+
+      setEditingId(null);
+      setIsAddDialogOpen(false);
+      toast.success(
+        `${name} has been ${editingId ? 'updated' : 'created'} successfully`
+      );
+    } catch {
+      toast.error('Failed to save settings');
+    }
   };
 
-  const handleUpdate = async (id: string) => {
-    if (!formData.name || !formData.url || !formData.apiKey) {
-      toast.error('Please fill in all required fields');
-      return;
-    }
-
-    startTransition(async () => {
-      setOptimisticSettings({
-        type: 'update',
-        payload: { id, ...formData },
-      });
-
-      const result = await updateEmbySetting(id, formData);
-
-      if (result.success) {
-        toast.success('Emby instance updated successfully');
-        resetForm();
-      } else {
-        toast.error(result.errors?.[0] || 'Failed to update Emby instance');
-      }
-    });
+  const handleEdit = (setting: ServiceSettings) => {
+    setEditingId(setting.id);
+    setIsAddDialogOpen(true);
   };
 
   const handleDelete = async (id: string) => {
-    startTransition(async () => {
-      setOptimisticSettings({
-        type: 'delete',
-        payload: { id },
-      });
-
-      const result = await deleteEmbySetting(id);
-
-      if (result.success) {
-        toast.success('Emby instance deleted successfully');
-      } else {
-        toast.error(result.errors?.[0] || 'Failed to delete Emby instance');
-      }
-    });
-  };
-
-  const openDeleteConfirmation = (setting: ServiceSettings) => {
-    setInstanceToDelete(setting);
-    setDeleteConfirmOpen(true);
-  };
-
-  const handleConfirmDelete = () => {
-    if (instanceToDelete) {
-      handleDelete(instanceToDelete.id);
-      setDeleteConfirmOpen(false);
-      setInstanceToDelete(null);
+    try {
+      await deleteEmbySetting(id);
+      setOptimisticSettings({ type: 'delete', payload: id });
+      setIsDeleteDialogOpen(false);
+      setSettingToDelete(null);
+      toast.success('Settings have been deleted successfully');
+    } catch {
+      toast.error('Failed to delete settings');
     }
   };
 
-  const handleCancelDelete = () => {
-    setDeleteConfirmOpen(false);
-    setInstanceToDelete(null);
-  };
-
-  const handleTestConnection = async (id: string) => {
-    setConnectionStatus((prev) => ({ ...prev, [id]: 'testing' }));
-
-    const result: ConnectionTestResult = await testEmbyConnection(id);
-
-    setConnectionStatus((prev) => ({
-      ...prev,
-      [id]: result.connected ? 'success' : 'error',
-    }));
-
-    if (result.connected) {
-      toast.success('Connection successful');
-    } else {
-      toast.error(result.error || 'Connection failed');
-    }
-  };
-
-  const handleToggleEnabled = async (id: string, enabled: boolean) => {
-    startTransition(async () => {
-      setOptimisticSettings({
-        type: 'update',
-        payload: { id, enabled },
-      });
-
-      const result = await updateEmbySetting(id, { enabled });
-
-      if (!result.success) {
-        toast.error(result.errors?.[0] || 'Failed to update Emby instance');
-      }
-    });
-  };
-
-  const startEdit = (setting: ServiceSettings) => {
-    setFormData({
-      name: setting.name,
-      url: setting.url,
-      apiKey: setting.apiKey,
-      userId: setting.userId || '',
-      enabled: setting.enabled,
-    });
-    setEditingId(setting.id);
-  };
-
-  const getStatusIcon = (status: ConnectionStatus) => {
-    switch (status) {
-      case 'testing':
-        return <RefreshCw className='h-4 w-4 animate-spin' />;
-      case 'success':
-        return <CheckCircle className='h-4 w-4 text-green-500' />;
-      case 'error':
-        return <XCircle className='h-4 w-4 text-red-500' />;
-      default:
-        return null;
-    }
-  };
-
-  const getStatusBadge = (status: ConnectionStatus) => {
-    switch (status) {
-      case 'testing':
-        return <Badge variant='outline'>Testing...</Badge>;
-      case 'success':
-        return <Badge variant='default'>Connected</Badge>;
-      case 'error':
-        return <Badge variant='destructive'>Failed</Badge>;
-      default:
-        return <Badge variant='secondary'>Not Tested</Badge>;
-    }
-  };
+  const editingSetting = editingId
+    ? optimisticSettings.find((s) => s.id === editingId)
+    : null;
 
   return (
-    <div className='space-y-4'>
-      <Card>
-        <CardHeader>
-          <div className='flex items-center justify-between'>
-            <CardTitle className='flex items-center gap-2'>
-              <Database className='h-5 w-5' />
-              Emby Instances
-            </CardTitle>
-            <div className='flex items-center gap-2'>
-              <Button
-                variant='outline'
-                size='sm'
-                onClick={() => setShowApiKeys(!showApiKeys)}
-              >
-                {showApiKeys ? (
-                  <EyeOff className='h-4 w-4 mr-2' />
-                ) : (
-                  <Eye className='h-4 w-4 mr-2' />
-                )}
-                {showApiKeys ? 'Hide' : 'Show'} API Keys
-              </Button>
-              <AddInstanceDialog
-                title='Add Emby Instance'
-                open={showAddDialog}
-                onOpenChange={setShowAddDialog}
-                formData={formData}
-                onFormDataChange={(field, value) =>
-                  setFormData((prev) => ({ ...prev, [field]: value }))
-                }
-                onSubmit={handleCreate}
-                onCancel={() => {
-                  resetForm();
-                  setShowAddDialog(false);
-                }}
-                isPending={isPending}
-                fields={[
-                  {
-                    id: 'name',
-                    label: 'Name',
-                    placeholder: 'Main Emby',
-                    required: true,
-                  },
-                  {
-                    id: 'url',
-                    label: 'URL',
-                    placeholder: 'http://localhost:8096',
-                    required: true,
-                  },
-                  {
-                    id: 'apiKey',
-                    label: 'API Key',
-                    type: 'password',
-                    placeholder: 'Enter API key',
-                    required: true,
-                  },
-                  {
-                    id: 'userId',
-                    label: 'User ID (Optional)',
-                    placeholder: 'Enter user ID',
-                    required: false,
-                  },
-                ]}
-              />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className='space-y-4'>
-            {optimisticSettings.length === 0 ? (
-              <div className='text-center py-8'>
-                <Database className='h-12 w-12 mx-auto text-muted-foreground mb-4' />
-                <h3 className='text-lg font-medium mb-2'>No Emby instances</h3>
-                <p className='text-muted-foreground mb-4'>
-                  Add your first Emby instance to get started
-                </p>
-                <Button onClick={() => setShowAddDialog(true)}>
-                  <Plus className='h-4 w-4 mr-2' />
-                  Add Instance
+    <div className='space-y-6'>
+      <div className='flex items-center justify-between'>
+        <div>
+          <h2 className='text-2xl font-bold'>Emby Settings</h2>
+          <p className='text-muted-foreground'>
+            Configure your Emby instances for media server management
+          </p>
+        </div>
+        <Button onClick={() => setIsAddDialogOpen(true)}>
+          <Plus className='mr-2 h-4 w-4' />
+          Add Instance
+        </Button>
+      </div>
+
+      <div className='grid gap-4'>
+        {optimisticSettings.map((setting) => (
+          <Card key={setting.id}>
+            <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+              <div className='flex items-center gap-3'>
+                <div className='flex h-10 w-10 items-center justify-center rounded-lg bg-green-500 text-white'>
+                  <Play className='h-5 w-5' />
+                </div>
+                <div>
+                  <CardTitle className='text-lg'>{setting.name}</CardTitle>
+                  <CardDescription>{setting.url}</CardDescription>
+                </div>
+              </div>
+              <div className='flex items-center gap-2'>
+                <Badge variant={setting.enabled ? 'default' : 'secondary'}>
+                  {setting.enabled ? 'Enabled' : 'Disabled'}
+                </Badge>
+                <Badge
+                  variant={
+                    connectionStatus[setting.id] === 'success'
+                      ? 'default'
+                      : connectionStatus[setting.id] === 'error'
+                      ? 'destructive'
+                      : 'secondary'
+                  }
+                >
+                  {connectionStatus[setting.id] === 'testing' && (
+                    <Loader2 className='mr-1 h-3 w-3 animate-spin' />
+                  )}
+                  {connectionStatus[setting.id] === 'success' && 'Connected'}
+                  {connectionStatus[setting.id] === 'error' && 'Failed'}
+                  {!connectionStatus[setting.id] && 'Unknown'}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
+                <div>
+                  <Label className='text-sm font-medium'>API Key</Label>
+                  <p className='text-sm text-muted-foreground'>
+                    {setting.apiKey.substring(0, 8)}...
+                  </p>
+                </div>
+                <div>
+                  <Label className='text-sm font-medium'>User ID</Label>
+                  <p className='text-sm text-muted-foreground'>
+                    {setting.userId ? setting.userId : 'Not set'}
+                  </p>
+                </div>
+              </div>
+              <div className='mt-4 flex flex-wrap gap-2'>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={() => handleTestConnection(setting)}
+                  disabled={connectionStatus[setting.id] === 'testing'}
+                >
+                  {connectionStatus[setting.id] === 'testing' ? (
+                    <>
+                      <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                      Testing...
+                    </>
+                  ) : (
+                    <>
+                      <TestTube className='mr-2 h-4 w-4' />
+                      Test Connection
+                    </>
+                  )}
+                </Button>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={() => handleEdit(setting)}
+                >
+                  <Edit2 className='mr-2 h-4 w-4' />
+                  Edit
+                </Button>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={() => {
+                    setSettingToDelete(setting.id);
+                    setIsDeleteDialogOpen(true);
+                  }}
+                >
+                  <Trash2 className='mr-2 h-4 w-4' />
+                  Delete
                 </Button>
               </div>
-            ) : (
-              optimisticSettings.map((setting) => (
-                <Card
-                  key={setting.id}
-                  className='border-l-4 border-l-purple-500'
-                >
-                  <CardContent className='p-4'>
-                    <div className='flex items-center justify-between'>
-                      <div className='flex items-center space-x-4'>
-                        <div>
-                          <h3 className='font-medium'>{setting.name}</h3>
-                          <p className='text-sm text-muted-foreground'>
-                            {setting.url}
-                          </p>
-                          {setting.userId && (
-                            <p className='text-xs text-muted-foreground'>
-                              User ID: {setting.userId}
-                            </p>
-                          )}
-                          {showApiKeys && (
-                            <p className='text-xs text-muted-foreground font-mono'>
-                              {setting.apiKey}
-                            </p>
-                          )}
-                        </div>
-                        <div className='flex items-center space-x-2'>
-                          <Switch
-                            checked={setting.enabled}
-                            onCheckedChange={(enabled) =>
-                              handleToggleEnabled(setting.id, enabled)
-                            }
-                            disabled={isPending}
-                          />
-                          <span className='text-sm'>
-                            {setting.enabled ? 'Enabled' : 'Disabled'}
-                          </span>
-                        </div>
-                      </div>
-                      <div className='flex items-center space-x-2'>
-                        <div className='flex items-center space-x-2'>
-                          {getStatusIcon(connectionStatus[setting.id])}
-                          {getStatusBadge(connectionStatus[setting.id])}
-                        </div>
-                        <Button
-                          variant='outline'
-                          size='sm'
-                          onClick={() => handleTestConnection(setting.id)}
-                          disabled={
-                            connectionStatus[setting.id] === 'testing' ||
-                            isPending
-                          }
-                        >
-                          <TestTube className='h-4 w-4' />
-                        </Button>
-                        <Button
-                          variant='outline'
-                          size='sm'
-                          onClick={() => startEdit(setting)}
-                        >
-                          <Edit className='h-4 w-4' />
-                        </Button>
-                        <Button
-                          variant='outline'
-                          size='sm'
-                          onClick={() => openDeleteConfirmation(setting)}
-                        >
-                          <Trash2 className='h-4 w-4' />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        ))}
 
-      {/* Edit Dialog */}
-      <Dialog open={editingId !== null} onOpenChange={() => resetForm()}>
+        {optimisticSettings.length === 0 && (
+          <Card>
+            <CardContent className='flex flex-col items-center justify-center py-12'>
+              <Database className='h-12 w-12 text-muted-foreground' />
+              <h3 className='mt-4 text-lg font-medium'>No Emby instances</h3>
+              <p className='mt-2 text-sm text-muted-foreground'>
+                Add your first Emby instance to get started
+              </p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* Add/Edit Dialog */}
+      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Emby Instance</DialogTitle>
+            <DialogTitle>
+              {editingId ? 'Edit Emby Instance' : 'Add Emby Instance'}
+            </DialogTitle>
+            <DialogDescription>
+              {editingId
+                ? 'Update your Emby instance configuration'
+                : 'Add a new Emby instance to manage your media server'}
+            </DialogDescription>
           </DialogHeader>
-          <div className='space-y-4'>
-            <div className='space-y-2'>
-              <Label htmlFor='edit-name'>Name</Label>
+          <form action={handleSubmit} className='space-y-4'>
+            <div>
+              <Label htmlFor='name'>Name</Label>
               <Input
-                id='edit-name'
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, name: e.target.value }))
-                }
-                placeholder='Main Emby'
+                id='name'
+                name='name'
+                defaultValue={editingSetting?.name || ''}
+                required
               />
             </div>
-            <div className='space-y-2'>
-              <Label htmlFor='edit-url'>URL</Label>
+            <div>
+              <Label htmlFor='url'>URL</Label>
               <Input
-                id='edit-url'
-                value={formData.url}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, url: e.target.value }))
-                }
+                id='url'
+                name='url'
+                type='url'
+                defaultValue={editingSetting?.url || ''}
                 placeholder='http://localhost:8096'
+                required
               />
             </div>
-            <div className='space-y-2'>
-              <Label htmlFor='edit-apiKey'>API Key</Label>
+            <div>
+              <Label htmlFor='apiKey'>API Key</Label>
               <Input
-                id='edit-apiKey'
-                type='password'
-                value={formData.apiKey}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, apiKey: e.target.value }))
-                }
-                placeholder='Enter API key'
+                id='apiKey'
+                name='apiKey'
+                defaultValue={editingSetting?.apiKey || ''}
+                required
               />
             </div>
-            <div className='space-y-2'>
-              <Label htmlFor='edit-userId'>User ID (Optional)</Label>
+            <div>
+              <Label htmlFor='userId'>User ID (Optional)</Label>
               <Input
-                id='edit-userId'
-                value={formData.userId}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, userId: e.target.value }))
-                }
+                id='userId'
+                name='userId'
+                defaultValue={editingSetting?.userId || ''}
                 placeholder='Enter user ID'
               />
             </div>
             <div className='flex items-center space-x-2'>
-              <Switch
-                id='edit-enabled'
-                checked={formData.enabled}
-                onCheckedChange={(enabled) =>
-                  setFormData((prev) => ({ ...prev, enabled }))
-                }
+              <Checkbox
+                id='enabled'
+                name='enabled'
+                defaultChecked={editingSetting?.enabled ?? true}
               />
-              <Label htmlFor='edit-enabled'>Enable this instance</Label>
+              <Label htmlFor='enabled'>Enabled</Label>
             </div>
-            <div className='flex justify-end space-x-2'>
-              <Button variant='outline' onClick={resetForm}>
+            <DialogFooter>
+              <Button
+                type='button'
+                variant='outline'
+                onClick={() => {
+                  setIsAddDialogOpen(false);
+                  setEditingId(null);
+                }}
+              >
                 Cancel
               </Button>
-              <Button
-                onClick={() => editingId && handleUpdate(editingId)}
-                disabled={isPending}
-              >
-                Update
+              <Button type='submit'>
+                {editingId ? 'Update' : 'Create'} Instance
               </Button>
-            </div>
-          </div>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-        <DialogContent showCloseButton={false}>
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>Are you sure?</DialogTitle>
+            <DialogTitle>Delete Emby Instance</DialogTitle>
             <DialogDescription>
-              This will permanently delete the Emby instance &quot;
-              {instanceToDelete?.name}&quot;. This action cannot be undone.
+              Are you sure you want to delete this Emby instance? This action
+              cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant='outline' onClick={handleCancelDelete}>
+            <Button
+              variant='outline'
+              onClick={() => {
+                setIsDeleteDialogOpen(false);
+                setSettingToDelete(null);
+              }}
+            >
               Cancel
             </Button>
-            <Button variant='destructive' onClick={handleConfirmDelete}>
+            <Button
+              variant='destructive'
+              onClick={() => settingToDelete && handleDelete(settingToDelete)}
+            >
               Delete
             </Button>
           </DialogFooter>
