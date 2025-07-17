@@ -16,13 +16,13 @@ import {
   type MediaProcessingProgress,
   type ProcessedMediaItem,
   type SonarrInstance,
-  type EmbyInstance,
   type RadarrInstance,
 } from './types';
 import {
   getDeletionScoreSettings,
   getEnhancedProcessingSettings,
 } from '@/lib/actions/settings';
+import { ServiceSettings } from '../utils/prefixed-settings';
 
 export class MediaProcessor {
   private onProgress?: (progress: MediaProcessingProgress) => void;
@@ -199,7 +199,7 @@ export class MediaProcessor {
 
   private async processSonarrInstance(
     sonarrInstance: SonarrInstance,
-    embyInstances: EmbyInstance[],
+    embyInstances: ServiceSettings[],
     processedItemCount: number,
     totalItems: number,
     deletionScoreSettings: DeletionScoreSettings,
@@ -258,7 +258,7 @@ export class MediaProcessor {
 
   private async processRadarrInstance(
     radarrInstance: RadarrInstance,
-    embyInstances: EmbyInstance[],
+    embyInstances: ServiceSettings[],
     processedItemCount: number,
     totalItems: number,
     deletionScoreSettings: DeletionScoreSettings,

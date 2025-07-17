@@ -2,17 +2,17 @@ import path from 'path';
 import {
   type SonarrInstance,
   type SonarrSeries,
-  type EmbyInstance,
   type ProcessedMediaItem,
 } from './types';
 import { type EnhancedProcessingSettings } from '../actions/settings';
 import { EmbyProcessor } from './emby-processor';
+import { ServiceSettings } from '../utils/prefixed-settings';
 
 export class SonarrProcessor {
   static async processSingleItem(
     series: SonarrSeries,
     sonarrInstance: SonarrInstance,
-    embyInstances: EmbyInstance[],
+    embyInstances: ServiceSettings[],
     enhancedSettings: EnhancedProcessingSettings
   ): Promise<ProcessedMediaItem> {
     console.log(`📺 Processing series:`);

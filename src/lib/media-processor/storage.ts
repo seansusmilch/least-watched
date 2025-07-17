@@ -1,4 +1,4 @@
-import { PrismaClient } from '../../generated/prisma';
+import { PrismaClient, Prisma } from '../../generated/prisma';
 import { type ProcessedMediaItem } from './types';
 import { type DeletionScoreSettings } from '../actions/settings/types';
 import { type FolderSpaceData } from '../types/media-processing';
@@ -81,11 +81,11 @@ export class MediaStorage {
         sizePerHour: item.sizePerHour,
 
         // Metadata
-        genres: item.genres ? JSON.stringify(item.genres) : null,
+        genres: item.genres ? item.genres : Prisma.JsonNull,
         overview: item.overview,
 
         // Deletion score
-        deletionScore: deletionScore,
+        deletionScore: deletionScore === null ? undefined : deletionScore,
       };
 
       // Note: For true upsert efficiency, we would need unique constraints in the schema
@@ -133,6 +133,7 @@ export class MediaStorage {
           ...itemData,
           sonarrId: item.sonarrId,
           radarrId: item.radarrId,
+          deletionScore: deletionScore === null ? 0 : deletionScore,
         },
       });
 

@@ -1,13 +1,10 @@
-import {
-  type EmbyInstance,
-  type EmbyPlaybackInfo,
-  type EmbyMetadata,
-} from './types';
+import { type EmbyPlaybackInfo, type EmbyMetadata } from './types';
+import { ServiceSettings } from '../utils/prefixed-settings';
 
 export class EmbyProcessor {
   static async getItemMetadata(
     itemId: string,
-    embyInstances: EmbyInstance[]
+    embyInstances: ServiceSettings[]
   ): Promise<EmbyMetadata | null> {
     console.log(
       `     🔍 Fetching metadata for item ID "${itemId}" from ${embyInstances.length} Emby instances`
@@ -133,7 +130,7 @@ export class EmbyProcessor {
 
   static async getPlaybackInfo(
     title: string,
-    embyInstances: EmbyInstance[]
+    embyInstances: ServiceSettings[]
   ): Promise<EmbyPlaybackInfo | null> {
     console.log(
       `     🔍 Searching for "${title}" in ${embyInstances.length} Emby instances`
@@ -256,7 +253,7 @@ export class EmbyProcessor {
     embyInstances,
   }: {
     title: string;
-    embyInstances: EmbyInstance[];
+    embyInstances: ServiceSettings[];
   }): Promise<EmbyPlaybackInfo | null> {
     const playbackResponse = await this.getPlaybackInfo(title, embyInstances);
     const itemId = playbackResponse?.embyId;

@@ -245,7 +245,7 @@ export class DeletionScoreService {
       console.log('🧹 Clearing all deletion scores...');
 
       const result = await prisma.mediaItem.updateMany({
-        data: { deletionScore: null },
+        data: { deletionScore: 0 },
       });
 
       console.log(`✅ Cleared deletion scores for ${result.count} items`);

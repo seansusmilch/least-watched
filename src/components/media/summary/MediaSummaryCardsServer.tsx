@@ -6,8 +6,6 @@ import { getMediaItems } from '@/lib/actions/media-processing';
 export async function MediaSummaryCardsServer() {
   const items = await getMediaItems();
 
-  console.log(items[0].genres);
-
   const processedItems: MediaItem[] = items.map((item) => ({
     ...item,
     unwatchedDays: calculateUnwatchedDays(item.lastWatched, item.dateAdded),

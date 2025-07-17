@@ -234,7 +234,7 @@ function applyGenreFilter(
   itemGenres: unknown,
   filterGenres: Set<string>
 ): boolean {
-  const genresArray = JSON.parse(itemGenres as string) as string[];
+  const genresArray = Array.from(itemGenres as string[]);
   if (filterGenres.size === 0) return true;
   if (!genresArray || genresArray.length === 0) return false;
 
@@ -293,7 +293,7 @@ export const getUniqueFilterOptions = (items: MediaItem[]) => {
 
   items.forEach((item) => {
     if (item.genres) {
-      const genresArray = JSON.parse(item.genres as string) as string[];
+      const genresArray = Array.from(item.genres as string[]);
       genresArray.forEach((genre) => genres.add(genre as string));
     }
     if (item.quality) {

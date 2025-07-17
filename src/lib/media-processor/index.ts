@@ -5,7 +5,6 @@ export { MediaProcessor } from './media-processor';
 export type {
   MediaProcessingProgress,
   ProcessedMediaItem,
-  StoredMediaItem,
   SonarrSeries,
   RadarrMovie,
   SonarrInstance,

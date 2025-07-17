@@ -103,7 +103,7 @@ export function useMediaTable(data: MediaItem[] = []) {
 
   const getSelectedSize = () => {
     return getSelectedItems().reduce(
-      (sum, item) => sum + (item.sizeOnDisk || 0),
+      (sum, item) => sum + (Number(item.sizeOnDisk) || 0),
       0
     );
   };

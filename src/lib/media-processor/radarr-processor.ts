@@ -2,18 +2,18 @@ import path from 'path';
 import {
   type RadarrInstance,
   type RadarrMovie,
-  type EmbyInstance,
   type ProcessedMediaItem,
 } from './types';
 import { type EnhancedProcessingSettings } from '../actions/settings';
 import { getQualityScore } from './constants';
 import { EmbyProcessor } from './emby-processor';
+import { ServiceSettings } from '../utils/prefixed-settings';
 
 export class RadarrProcessor {
   static async processSingleItem(
     movie: RadarrMovie,
     radarrInstance: RadarrInstance,
-    embyInstances: EmbyInstance[],
+    embyInstances: ServiceSettings[],
     enhancedSettings: EnhancedProcessingSettings
   ): Promise<ProcessedMediaItem> {
     console.log(`🎬 Processing movie:`);
