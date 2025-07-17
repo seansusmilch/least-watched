@@ -3,45 +3,25 @@ import { ServiceSettings } from '../utils/prefixed-settings';
 
 export class EmbyProcessor {
   static async getItemMetadata(
-    itemId: string,
+    title: string,
     embyInstances: ServiceSettings[]
   ): Promise<EmbyMetadata | null> {
     console.log(
-      `     🔍 Fetching metadata for item ID "${itemId}" from ${embyInstances.length} Emby instances`
+      `     🔍 Fetching metadata for "${title}" from ${embyInstances.length} Emby instances`
     );
 
     for (let i = 0; i < embyInstances.length; i++) {
       const embyInstance = embyInstances[i];
       try {
-        // Get the current user ID first to construct the proper endpoint
-        const usersUrl = `${embyInstance.url}/emby/Users`;
-        const usersResponse = await fetch(usersUrl, {
-          method: 'GET',
-          headers: {
-            'X-Emby-Token': embyInstance.apiKey,
-          },
-        });
-
-        if (!usersResponse.ok) {
-          console.log(
-            `     ❌ Failed to get users from Emby ${embyInstance.name}: ${usersResponse.status}`
-          );
-          continue;
-        }
-
-        const users = await usersResponse.json();
-        if (!users || users.length === 0) {
-          console.log(`     ❌ No users found in Emby ${embyInstance.name}`);
-          continue;
-        }
-
-        // Use the first user (or find admin user)
-        const user = users[0];
-        const userId = user.Id;
-
         // Fetch item metadata using the proper endpoint
-        const itemUrl = `${embyInstance.url}/emby/Users/${userId}/Items/${itemId}`;
-        const itemResponse = await fetch(itemUrl, {
+        const itemUrl = `${embyInstance.url}/emby/Items`;
+        const query = new URLSearchParams({
+          Fields: 'DateCreated',
+          Recursive: 'true',
+          SearchTerm: title,
+          Limit: '50',
+        });
+        const itemResponse = await fetch(`${itemUrl}?${query}`, {
           method: 'GET',
           headers: {
             'X-Emby-Token': embyInstance.apiKey,
@@ -55,65 +35,61 @@ export class EmbyProcessor {
           continue;
         }
 
-        const itemData = await itemResponse.json();
+        const itemsData = await itemResponse.json();
 
-        if (itemData) {
+        if (!itemsData) {
           console.log(
-            `     ✅ Successfully fetched metadata for item: ${
-              itemData.Name || itemData.OriginalTitle || 'Unknown'
-            }`
+            `     ❌ No items found for "${title}" in Emby ${embyInstance.name}`
           );
-          console.log(`     📋 Type: ${itemData.Type || 'Unknown'}`);
-          console.log(`     📅 Year: ${itemData.ProductionYear || 'Unknown'}`);
-          console.log(
-            `     ⏱️ Runtime: ${
-              itemData.RunTimeTicks
-                ? Math.round(itemData.RunTimeTicks / 10000000 / 60) + ' minutes'
-                : 'Unknown'
-            }`
-          );
-          console.log(
-            `     🎭 Genres: ${itemData.Genres?.join(', ') || 'Unknown'}`
-          );
-          console.log(
-            `     ⭐ Rating: ${itemData.CommunityRating || 'Unrated'}`
-          );
-
-          return {
-            id: itemData.Id,
-            name: itemData.Name,
-            originalTitle: itemData.OriginalTitle,
-            type: itemData.Type,
-            year: itemData.ProductionYear,
-            runtime: itemData.RunTimeTicks
-              ? Math.round(itemData.RunTimeTicks / 10000000 / 60)
-              : null,
-            genres: itemData.Genres || [],
-            rating: itemData.CommunityRating,
-            officialRating: itemData.OfficialRating,
-            overview: itemData.Overview,
-            taglines: itemData.Taglines || [],
-            people: itemData.People || [],
-            studios: itemData.Studios || [],
-            dateCreated: itemData.DateCreated,
-            premiereDate: itemData.PremiereDate,
-            path: itemData.Path,
-            fileName: itemData.FileName,
-            mediaType: itemData.MediaType,
-            isFolder: itemData.IsFolder,
-            parentId: itemData.ParentId,
-            seriesId: itemData.SeriesId,
-            seasonId: itemData.SeasonId,
-            episodeNumber: itemData.IndexNumber,
-            seasonNumber: itemData.ParentIndexNumber,
-            seriesName: itemData.SeriesName,
-            seasonName: itemData.SeasonName,
-            providerIds: itemData.ProviderIds || {},
-            userData: itemData.UserData || {},
-            embyInstance: embyInstance.name,
-            rawData: itemData,
-          };
+          continue;
         }
+
+        const itemData = itemsData.Items?.find(
+          (item: { Name: string }) => item.Name === title
+        );
+
+        if (!itemData) {
+          console.log(
+            `     ❌ No item found for "${title}" in Emby ${embyInstance.name}`
+          );
+          continue;
+        }
+
+        console.log(
+          `     ✅ Successfully fetched metadata for item: ${
+            itemData.Name || itemData.OriginalTitle || 'Unknown'
+          }`
+        );
+        console.log(`     📋 Type: ${itemData.Type || 'Unknown'}`);
+        console.log(`     📅 Year: ${itemData.ProductionYear || 'Unknown'}`);
+        console.log(
+          `     ⏱️ Runtime: ${
+            itemData.RunTimeTicks
+              ? Math.round(itemData.RunTimeTicks / 10000000 / 60) + ' minutes'
+              : 'Unknown'
+          }`
+        );
+        console.log(
+          `     🎭 Genres: ${itemData.Genres?.join(', ') || 'Unknown'}`
+        );
+        console.log(`     ⭐ Rating: ${itemData.CommunityRating || 'Unrated'}`);
+
+        return {
+          id: itemData.Id,
+          name: itemData.Name,
+          originalTitle: itemData.OriginalTitle,
+          type: itemData.Type,
+          year: itemData.ProductionYear,
+          genres: itemData.Genres || [],
+          rating: itemData.CommunityRating,
+          officialRating: itemData.OfficialRating,
+          overview: itemData.Overview,
+          dateCreated: itemData.DateCreated,
+          premiereDate: itemData.PremiereDate,
+          path: itemData.Path,
+          fileName: itemData.FileName,
+          providerIds: itemData.ProviderIds || {},
+        };
       } catch (error) {
         console.error(
           `     ❌ Error fetching metadata from Emby instance ${embyInstance.name}:`,
@@ -123,7 +99,7 @@ export class EmbyProcessor {
     }
 
     console.log(
-      `     ❌ No metadata found for item ID "${itemId}" in any Emby instance`
+      `     ❌ No metadata found for item ID "${title}" in any Emby instance`
     );
     return null;
   }
@@ -259,11 +235,12 @@ export class EmbyProcessor {
     const itemId = playbackResponse?.embyId;
     if (!itemId) return playbackResponse;
 
-    const itemMetadata = await this.getItemMetadata(itemId, embyInstances);
+    const itemMetadata = await this.getItemMetadata(title, embyInstances);
     if (!itemMetadata) return playbackResponse;
 
     return {
       ...playbackResponse,
+      embyId: itemMetadata.id,
       metadata: itemMetadata,
     };
   }
