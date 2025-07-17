@@ -12,7 +12,6 @@ export interface ProgressData {
 export async function getProgress(): Promise<ProgressData> {
   try {
     const progress = await ProgressStore.getProgress();
-    console.log('fetching progress', progress);
 
     if (!progress) {
       return { state: 'none' };
