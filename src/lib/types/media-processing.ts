@@ -5,56 +5,6 @@ export interface MediaProcessingResult {
   error?: string;
 }
 
-export interface MediaItemData {
-  id: string;
-  title: string;
-  type: string;
-  year?: number;
-  mediaPath?: string;
-  sizeOnDisk?: bigint;
-  dateAdded?: Date;
-  lastWatched?: Date;
-  source?: string;
-  watchCount: number;
-  createdAt: Date;
-  updatedAt: Date;
-
-  // Enhanced fields
-  quality?: string;
-  qualityScore?: number;
-
-  // TV Show specific
-  episodesOnDisk?: number;
-  totalEpisodes?: number;
-  seasonCount?: number;
-  completionPercentage?: number;
-
-  // Monitoring and availability
-  monitored?: boolean;
-
-  // Ratings
-  imdbRating?: number;
-  tmdbRating?: number;
-
-  // Play progress
-  playProgress?: number;
-  fullyWatched?: boolean;
-
-  // Size efficiency
-  runtime?: number;
-  sizePerHour?: number;
-
-  // Metadata
-  genres?: string; // JSON string
-  overview?: string;
-
-  // Folder space tracking
-  folderRemainingSpacePercent?: number;
-
-  // Deletion score (stored in database)
-  deletionScore?: number;
-}
-
 export interface FolderSpaceData {
   path: string;
   label: string;

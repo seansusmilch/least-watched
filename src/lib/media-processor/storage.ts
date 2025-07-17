@@ -1,5 +1,5 @@
 import { PrismaClient } from '../../generated/prisma';
-import { type ProcessedMediaItem, type StoredMediaItem } from './types';
+import { type ProcessedMediaItem } from './types';
 import { type DeletionScoreSettings } from '../actions/settings/types';
 import { type FolderSpaceData } from '../types/media-processing';
 import { deletionScoreCalculator } from '../deletion-score-calculator';
@@ -145,11 +145,5 @@ export class MediaStorage {
       console.error(`❌ Error storing item ${item.title}:`, error);
       console.error(`   Item data:`, JSON.stringify(item, null, 2));
     }
-  }
-
-  static async getStoredMediaItems(): Promise<StoredMediaItem[]> {
-    return await prisma.mediaItem.findMany({
-      orderBy: [{ parentFolder: 'asc' }, { title: 'asc' }],
-    });
   }
 }

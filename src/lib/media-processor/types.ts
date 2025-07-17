@@ -129,62 +129,6 @@ export interface EmbyInstance {
   updatedAt: Date;
 }
 
-export interface StoredMediaItem {
-  id: string;
-  title: string;
-  type: string;
-  tmdbId?: number | null;
-  imdbId?: string | null;
-  year?: number | null;
-  lastWatched?: Date | null;
-  watchCount: number;
-  sonarrId?: number | null;
-  radarrId?: number | null;
-  embyId?: string | null;
-  mediaPath?: string | null;
-  parentFolder?: string | null;
-  sizeOnDisk?: bigint | null;
-  dateAdded?: Date | null;
-  source?: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-
-  // Enhanced fields
-  quality?: string | null;
-  qualityScore?: number | null;
-
-  // TV Show specific
-  episodesOnDisk?: number | null;
-  totalEpisodes?: number | null;
-  seasonCount?: number | null;
-  completionPercentage?: number | null;
-
-  // Monitoring and availability
-  monitored?: boolean | null;
-
-  // Ratings
-  imdbRating?: number | null;
-  tmdbRating?: number | null;
-
-  // Play progress
-  playProgress?: number | null;
-  fullyWatched?: boolean | null;
-
-  // Size efficiency
-  runtime?: number | null;
-  sizePerHour?: number | null;
-
-  // Metadata
-  genres?: string | null;
-  overview?: string | null;
-
-  // Folder space
-  folderRemainingSpacePercent?: number | null;
-
-  // Deletion score
-  deletionScore?: number | null;
-}
-
 export interface EmbyPlaybackInfo {
   lastWatched?: Date;
   watchCount?: number;

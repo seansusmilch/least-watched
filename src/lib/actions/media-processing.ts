@@ -6,7 +6,6 @@ import { revalidatePath } from 'next/cache';
 import {
   type MediaProcessingResult,
   type SelectedFoldersFromDatabase,
-  type MediaItemData,
 } from '../types/media-processing';
 
 import {
@@ -14,7 +13,7 @@ import {
   handleServerError,
   type FormState,
 } from '../validation/schemas';
-import { mediaService } from '../services/media-service';
+import { prisma } from '../database';
 import { getProgress } from './progress';
 import { ProgressStore } from '../media-processor/progress-store';
 
@@ -68,9 +67,13 @@ async function processMediaInBackground(): Promise<void> {
   }
 }
 
-export async function getMediaItems(): Promise<MediaItemData[]> {
+export async function getMediaItems() {
   try {
-    return await mediaService.getMediaItems();
+    const mediaItems = await prisma.mediaItem.findMany({
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    return mediaItems;
   } catch (error) {
     console.error('Failed to get media items:', error);
     return [];
@@ -173,14 +176,9 @@ export async function clearMediaItems(): Promise<{
   error?: string;
 }> {
   try {
-    const { mediaItemsService } = await import('../database');
+    const itemCount = await prisma.mediaItem.count();
 
-    // Get count before clearing
-    const allItems = await mediaItemsService.getAll();
-    const itemCount = allItems.length;
-
-    // Clear all media items
-    await mediaItemsService.deleteAll();
+    await prisma.mediaItem.deleteMany();
 
     // Revalidate paths
     revalidatePath('/');

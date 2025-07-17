@@ -15,7 +15,6 @@ import { MediaStorage } from './storage';
 import {
   type MediaProcessingProgress,
   type ProcessedMediaItem,
-  type StoredMediaItem,
   type SonarrInstance,
   type EmbyInstance,
   type RadarrInstance,
@@ -314,9 +313,5 @@ export class MediaProcessor {
     }
 
     return processedItems;
-  }
-
-  async getStoredMediaItems(): Promise<StoredMediaItem[]> {
-    return MediaStorage.getStoredMediaItems();
   }
 }
