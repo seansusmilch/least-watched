@@ -1,33 +1,22 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 'use server';
 
-import {
-  MediaProcessor,
-  type MediaProcessingProgress,
-} from '../media-processor/';
+import { MediaProcessor } from '../media-processor/';
 import { randomUUID } from 'crypto';
 import { revalidatePath } from 'next/cache';
 import {
-  getCachedMediaItems,
-  getCachedFolderSpaceData,
-  getCachedSelectedFoldersWithSpace,
-  getCachedAllFoldersWithSpace,
-} from '../cache/data-cache';
-import {
   type MediaProcessingResult,
   type SelectedFoldersFromDatabase,
+  type MediaItemData,
 } from '../types/media-processing';
-import {
-  type CachedMediaItemData,
-  type FolderSpaceData,
-  type FolderWithSpace,
-  type FolderWithSpaceEnhanced,
-} from '../types/cached-data';
+
 import {
   createFormState,
   handleServerError,
   type FormState,
 } from '../validation/schemas';
+import { mediaService } from '../services/media-service';
+import { getProgress } from './progress';
 
 // ============================================================================
 // Media Processing Functions
@@ -90,9 +79,9 @@ async function processMediaInBackground(progressId: string): Promise<void> {
 // Media Items Functions (Cached)
 // ============================================================================
 
-export async function getMediaItems(): Promise<CachedMediaItemData[]> {
+export async function getMediaItems(): Promise<MediaItemData[]> {
   try {
-    return await getCachedMediaItems();
+    return await mediaService.getMediaItems();
   } catch (error) {
     console.error('Failed to get media items:', error);
     return [];
@@ -112,19 +101,6 @@ export async function refreshMediaItems(
     return createFormState(true, 'Media items refreshed successfully');
   } catch (error) {
     return handleServerError(error, 'Failed to refresh media items');
-  }
-}
-
-// ============================================================================
-// Folder Space Functions (Cached)
-// ============================================================================
-
-export async function getFolderSpaceData(): Promise<FolderSpaceData[]> {
-  try {
-    return await getCachedFolderSpaceData();
-  } catch (error) {
-    console.error('Failed to get folder space data:', error);
-    return [];
   }
 }
 
@@ -175,71 +151,6 @@ export async function getSelectedFoldersFromDatabase(): Promise<SelectedFoldersF
   }
 }
 
-// Get selected folders with disk space information (Cached)
-export async function getSelectedFoldersWithSpace(): Promise<
-  FolderWithSpace[]
-> {
-  try {
-    return await getCachedSelectedFoldersWithSpace();
-  } catch (error) {
-    console.error('Failed to get selected folders with space:', error);
-    return [];
-  }
-}
-
-// Get all folders with disk space information (Cached)
-export async function getAllFoldersWithSpace(): Promise<
-  FolderWithSpaceEnhanced[]
-> {
-  try {
-    return await getCachedAllFoldersWithSpace();
-  } catch (error) {
-    console.error('Failed to get all folders with space:', error);
-    return [];
-  }
-}
-
-// ============================================================================
-// Cache Invalidation Functions
-// ============================================================================
-
-/**
- * Invalidate caches after settings change
- */
-export async function invalidateCachesAfterSettingsChange(
-  _prevState: FormState | undefined,
-  _formData: FormData
-): Promise<FormState> {
-  try {
-    // Cache invalidation is disabled
-
-    revalidatePath('/');
-    revalidatePath('/settings');
-
-    return createFormState(true, 'Caches invalidated successfully');
-  } catch (error) {
-    return handleServerError(error, 'Failed to invalidate caches');
-  }
-}
-
-/**
- * Invalidate caches after media processing
- */
-export async function invalidateCachesAfterMediaProcessing(
-  _prevState: FormState | undefined,
-  _formData: FormData
-): Promise<FormState> {
-  try {
-    // Cache invalidation is disabled
-
-    revalidatePath('/');
-
-    return createFormState(true, 'Caches invalidated successfully');
-  } catch (error) {
-    return handleServerError(error, 'Failed to invalidate caches');
-  }
-}
-
 // ============================================================================
 // Export Functions
 // ============================================================================
@@ -281,9 +192,9 @@ export async function exportMediaItems(
 
 export async function checkProcessingComplete(): Promise<boolean> {
   try {
-    const progress = await getProcessingProgress();
+    const progress = await getProgress();
 
-    if (progress && progress.isComplete) {
+    if (progress && progress.state === 'completed') {
       return true;
     }
 

@@ -1,8 +1,8 @@
-import { getCachedAllFoldersWithSpace } from '@/lib/cache/data-cache';
+import { getAllFoldersWithSpace } from '@/lib/actions/folder-space';
 import { FolderSpaceWidget } from './FolderSpaceWidget';
 
 export async function FolderSpaceWidgetWithInitialData() {
-  const allFoldersWithSpace = await getCachedAllFoldersWithSpace();
+  const allFoldersWithSpace = await getAllFoldersWithSpace();
 
   return <FolderSpaceWidget initialData={allFoldersWithSpace} />;
 }

@@ -14,7 +14,7 @@ import {
   Film,
   Folder,
 } from 'lucide-react';
-import { getAllFoldersWithSpace } from '@/lib/actions/media-processing';
+import { getAllFoldersWithSpace } from '@/lib/actions/folder-space';
 import type { FolderWithSpaceEnhanced } from '@/lib/types/media-processing';
 import { formatBytes } from '@/lib/utils/formatters';
 

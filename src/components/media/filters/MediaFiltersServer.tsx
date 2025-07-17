@@ -1,12 +1,12 @@
-import { getCachedMediaItemsWithScores } from '@/lib/cache/data-cache';
 import { getUniqueFilterOptions } from '@/lib/utils/mediaFilters';
 import { MediaItem } from '@/lib/types/media';
 import { calculateUnwatchedDays } from '@/lib/utils/formatters';
 import { MediaFiltersClient } from './MediaFiltersClient';
+import { getMediaItems } from '@/lib/actions/media-processing';
 
 export async function MediaFiltersServer() {
   // Fetch data to populate filter options
-  const items = await getCachedMediaItemsWithScores();
+  const items = await getMediaItems();
 
   const processedItems: MediaItem[] = items.map((item) => ({
     ...item,

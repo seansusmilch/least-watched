@@ -1,74 +1,9 @@
-import { mediaService } from '../services/media-service';
 import { folderSpaceService } from '../services/folder-space-service';
 import { sonarrApiClient, radarrApiClient } from '../services/api-client';
 import {
-  type CachedMediaItemData,
   type FolderSpaceData,
-  type FolderWithSpace,
   type FolderWithSpaceEnhanced,
-} from '../types/cached-data';
-
-// ============================================================================
-// Media Items - Direct Database Calls (No Caching)
-// ============================================================================
-
-/**
- * Get media items from database (NO CACHE)
- */
-export const getCachedMediaItems = async (): Promise<CachedMediaItemData[]> => {
-  console.log('🔄 Fetching media items from database (no cache)');
-  const items = await mediaService.getMediaItems();
-
-  // Convert BigInt to number and Dates to ISO strings for serialization
-  return items.map((item) => {
-    const {
-      sizeOnDisk,
-      dateAdded,
-      lastWatched,
-      createdAt,
-      updatedAt,
-      ...rest
-    } = item;
-    return {
-      ...rest,
-      sizeOnDisk: sizeOnDisk ? Number(sizeOnDisk) : undefined,
-      dateAdded: dateAdded ? dateAdded.toISOString() : undefined,
-      lastWatched: lastWatched ? lastWatched.toISOString() : undefined,
-      createdAt: createdAt.toISOString(),
-      updatedAt: updatedAt.toISOString(),
-    } as CachedMediaItemData;
-  });
-};
-
-/**
- * Get media items with scores (NO CACHE)
- */
-export const getCachedMediaItemsWithScores = async (): Promise<
-  CachedMediaItemData[]
-> => {
-  console.log('🔄 Fetching media items with scores from database (no cache)');
-  const items = await mediaService.getMediaItemsWithScores();
-
-  // Convert BigInt to number and Dates to ISO strings for serialization
-  return items.map((item) => {
-    const {
-      sizeOnDisk,
-      dateAdded,
-      lastWatched,
-      createdAt,
-      updatedAt,
-      ...rest
-    } = item;
-    return {
-      ...rest,
-      sizeOnDisk: sizeOnDisk ? Number(sizeOnDisk) : undefined,
-      dateAdded: dateAdded ? dateAdded.toISOString() : undefined,
-      lastWatched: lastWatched ? lastWatched.toISOString() : undefined,
-      createdAt: createdAt.toISOString(),
-      updatedAt: updatedAt.toISOString(),
-    } as CachedMediaItemData;
-  });
-};
+} from '../types/media-processing';
 
 // ============================================================================
 // Folder Space - Direct API Calls (No Caching)
@@ -77,112 +12,15 @@ export const getCachedMediaItemsWithScores = async (): Promise<
 /**
  * Get folder space data (NO CACHE)
  */
-export const getCachedFolderSpaceData = async (): Promise<
-  FolderSpaceData[]
-> => {
+export const getFolderSpaceData = async (): Promise<FolderSpaceData[]> => {
   console.log('🔄 Fetching folder space data from APIs (no cache)');
   return await folderSpaceService.getFolderSpaceData();
 };
 
 /**
- * Get selected folders with space information (NO CACHE)
- */
-export const getCachedSelectedFoldersWithSpace = async (): Promise<
-  FolderWithSpace[]
-> => {
-  console.log('🔄 Fetching selected folders with space information (no cache)');
-
-  const { sonarrSettingsService, radarrSettingsService } = await import(
-    '../database'
-  );
-  const [sonarrInstances, radarrInstances] = await Promise.all([
-    sonarrSettingsService.getEnabled(),
-    radarrSettingsService.getEnabled(),
-  ]);
-
-  const foldersWithSpace: FolderWithSpace[] = [];
-
-  // Process Sonarr instances
-  for (const instance of sonarrInstances) {
-    try {
-      const selectedFolders = instance.selectedFolders || [];
-
-      if (selectedFolders.length === 0) continue;
-
-      const rootFolders = await sonarrApiClient.getRootFolders(instance);
-      const matchingFolders = rootFolders.filter((folder) =>
-        selectedFolders.includes(folder.path)
-      );
-
-      for (const folder of matchingFolders) {
-        const totalSpace = folder.totalSpace || 0;
-        const freeSpace = folder.freeSpace || 0;
-        const usedSpace = totalSpace - freeSpace;
-
-        foldersWithSpace.push({
-          path: folder.path,
-          instanceName: instance.name,
-          instanceType: 'sonarr',
-          freeSpace,
-          totalSpace,
-          usedSpace,
-          freeSpacePercent: totalSpace > 0 ? (freeSpace / totalSpace) * 100 : 0,
-          usedSpacePercent: totalSpace > 0 ? (usedSpace / totalSpace) * 100 : 0,
-          enabled: instance.enabled,
-        });
-      }
-    } catch (error) {
-      console.error(
-        `❌ Error fetching disk space from Sonarr ${instance.name}:`,
-        error
-      );
-    }
-  }
-
-  // Process Radarr instances
-  for (const instance of radarrInstances) {
-    try {
-      const selectedFolders = instance.selectedFolders || [];
-
-      if (selectedFolders.length === 0) continue;
-
-      const rootFolders = await radarrApiClient.getRootFolders(instance);
-      const matchingFolders = rootFolders.filter((folder) =>
-        selectedFolders.includes(folder.path)
-      );
-
-      for (const folder of matchingFolders) {
-        const totalSpace = folder.totalSpace || 0;
-        const freeSpace = folder.freeSpace || 0;
-        const usedSpace = totalSpace - freeSpace;
-
-        foldersWithSpace.push({
-          path: folder.path,
-          instanceName: instance.name,
-          instanceType: 'radarr',
-          freeSpace,
-          totalSpace,
-          usedSpace,
-          freeSpacePercent: totalSpace > 0 ? (freeSpace / totalSpace) * 100 : 0,
-          usedSpacePercent: totalSpace > 0 ? (usedSpace / totalSpace) * 100 : 0,
-          enabled: instance.enabled,
-        });
-      }
-    } catch (error) {
-      console.error(
-        `❌ Error fetching disk space from Radarr ${instance.name}:`,
-        error
-      );
-    }
-  }
-
-  return foldersWithSpace;
-};
-
-/**
  * Get all folders with enhanced space information (NO CACHE)
  */
-export const getCachedAllFoldersWithSpace = async (): Promise<
+export const getAllFoldersWithSpace = async (): Promise<
   FolderWithSpaceEnhanced[]
 > => {
   console.log(
