@@ -1,20 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Skeleton } from '@/components/ui/skeleton';
-import {
-  FolderOpen,
-  RefreshCw,
-  Settings,
-  Tv,
-  Film,
-  Folder,
-} from 'lucide-react';
-import { getAllFoldersWithSpace } from '@/lib/actions/folder-space';
+import { FolderOpen, Settings, Tv, Film, Folder } from 'lucide-react';
 import type { FolderWithSpaceEnhanced } from '@/lib/types/media-processing';
 import { formatBytes } from '@/lib/utils/formatters';
 
@@ -22,14 +11,9 @@ interface FolderSpaceWidgetProps {
   initialData?: FolderWithSpaceEnhanced[];
 }
 
-export function FolderSpaceWidget({ initialData }: FolderSpaceWidgetProps) {
-  const [allFoldersWithSpace, setAllFoldersWithSpace] = useState<
-    FolderWithSpaceEnhanced[]
-  >(initialData || []);
-  const [loading, setLoading] = useState(!initialData);
-  const [error, setError] = useState<string | null>(null);
-  const [initialLoad, setInitialLoad] = useState(!initialData);
-
+export function FolderSpaceWidget({
+  initialData = [],
+}: FolderSpaceWidgetProps) {
   // Group folders by drive root for better organization
   const groupFoldersByDrive = (folders: FolderWithSpaceEnhanced[]) => {
     const groups: { [key: string]: FolderWithSpaceEnhanced[] } = {};
@@ -45,112 +29,11 @@ export function FolderSpaceWidget({ initialData }: FolderSpaceWidgetProps) {
     return groups;
   };
 
-  // Fetch all folders with disk space from the API
-  const fetchAllFoldersWithSpace = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      console.log('🔍 Fetching all folders with disk space...');
-
-      const data = await getAllFoldersWithSpace();
-      console.log('📊 Received all folders with disk space:', data);
-
-      setAllFoldersWithSpace(data);
-    } catch (error) {
-      console.error('❌ Error fetching all folders with disk space:', error);
-      setError('Failed to fetch all folder disk space information');
-    } finally {
-      setLoading(false);
-      setInitialLoad(false);
-    }
-  };
-
-  // Load data on mount if no initial data provided
-  useEffect(() => {
-    if (initialLoad) {
-      fetchAllFoldersWithSpace();
-    }
-  }, [initialLoad]);
-
-  const handleRefresh = () => {
-    fetchAllFoldersWithSpace();
-  };
-
   // Filter to show only selected folders
-  const selectedFolders = allFoldersWithSpace.filter(
-    (folder) => folder.isSelected
-  );
+  const selectedFolders = initialData.filter((folder) => folder.isSelected);
 
   // Group selected folders by drive
   const groupedFolders = groupFoldersByDrive(selectedFolders);
-
-  if (loading && initialLoad) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className='flex items-center space-x-2'>
-            <FolderOpen className='h-5 w-5' />
-            <span>Selected Folders Space</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className='flex flex-row gap-4 overflow-x-auto flex-nowrap pb-2'>
-            {Array.from({ length: 3 }).map((_, idx) => (
-              <Card
-                key={idx}
-                className='cursor-pointer flex-shrink-0 w-80 hover:bg-muted relative'
-              >
-                <CardHeader className='flex items-center justify-between px-4'>
-                  {/* Header skeleton: icon and title */}
-                  <Skeleton className='h-4 w-4' />
-                  <Skeleton className='h-4 w-1/2' />
-                </CardHeader>
-                <CardContent className='px-4'>
-                  {/* Progress bar skeleton */}
-                  <Skeleton className='h-2 w-full mb-4' />
-                  {/* Grid of space details skeleton */}
-                  <div className='grid grid-cols-3 gap-4 mb-4'>
-                    <Skeleton className='h-6 w-full' />
-                    <Skeleton className='h-6 w-full' />
-                    <Skeleton className='h-6 w-full' />
-                  </div>
-                  {/* Metadata skeleton */}
-                  <div className='flex items-center space-x-4'>
-                    <Skeleton className='h-3 w-1/3' />
-                    <Skeleton className='h-3 w-1/4' />
-                    <Skeleton className='h-3 w-1/5' />
-                  </div>
-                  <Badge variant='outline' className='text-xs'></Badge>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (error) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className='flex items-center space-x-2'>
-            <FolderOpen className='h-5 w-5' />
-            <span>Selected Folders Space</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className='flex items-center justify-between'>
-            <p className='text-red-500'>{error}</p>
-            <Button variant='outline' size='sm' onClick={handleRefresh}>
-              <RefreshCw className='h-4 w-4 mr-2' />
-              Retry
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
 
   if (selectedFolders.length === 0) {
     return (
@@ -163,15 +46,9 @@ export function FolderSpaceWidget({ initialData }: FolderSpaceWidgetProps) {
         </CardHeader>
         <CardContent>
           <div className='space-y-4'>
-            <div className='flex items-center justify-between'>
-              <p className='text-muted-foreground'>
-                No folders selected. This could be because:
-              </p>
-              <Button variant='outline' size='sm' onClick={handleRefresh}>
-                <RefreshCw className='h-4 w-4 mr-2' />
-                Refresh
-              </Button>
-            </div>
+            <p className='text-muted-foreground'>
+              No folders selected. This could be because:
+            </p>
             <div className='text-sm text-muted-foreground space-y-2'>
               <p>• No Sonarr/Radarr instances are configured</p>
               <p>• No folders are selected in your instance settings</p>
@@ -194,24 +71,10 @@ export function FolderSpaceWidget({ initialData }: FolderSpaceWidgetProps) {
   return (
     <Card>
       <CardHeader>
-        <div className='flex items-center justify-between'>
-          <CardTitle className='flex items-center space-x-2'>
-            <FolderOpen className='h-5 w-5' />
-            <span>Selected Folders Space</span>
-          </CardTitle>
-          <Button
-            variant='outline'
-            size='sm'
-            onClick={handleRefresh}
-            disabled={loading}
-          >
-            {loading ? (
-              <RefreshCw className='h-4 w-4 animate-spin' />
-            ) : (
-              <RefreshCw className='h-4 w-4' />
-            )}
-          </Button>
-        </div>
+        <CardTitle className='flex items-center space-x-2'>
+          <FolderOpen className='h-5 w-5' />
+          <span>Selected Folders Space</span>
+        </CardTitle>
       </CardHeader>
 
       <CardContent>
