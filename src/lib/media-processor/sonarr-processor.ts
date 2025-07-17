@@ -104,6 +104,13 @@ export class SonarrProcessor {
         processedItem.embyId = embyData.embyId;
         processedItem.lastWatched = embyData.lastWatched;
         processedItem.watchCount = embyData.watchCount || 0;
+
+        const preferDateAdded = embyInstances?.some(
+          (instance) => instance.preferEmbyDateAdded
+        );
+        if (preferDateAdded && embyData.metadata?.dateCreated) {
+          processedItem.dateAdded = new Date(embyData.metadata.dateCreated);
+        }
       } else {
         console.log(`   ❌ No Emby data found for: ${series.title}`);
       }

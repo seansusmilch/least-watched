@@ -125,6 +125,7 @@ export interface EmbyInstance {
   apiKey: string;
   userId?: string | null;
   enabled: boolean;
+  preferEmbyDateAdded: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
