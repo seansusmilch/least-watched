@@ -61,7 +61,6 @@ export class EmbyProcessor {
           }`
         );
         console.log(`     📋 Type: ${itemData.Type || 'Unknown'}`);
-        console.log(`     📅 Year: ${itemData.ProductionYear || 'Unknown'}`);
         console.log(
           `     ⏱️ Runtime: ${
             itemData.RunTimeTicks
@@ -69,10 +68,6 @@ export class EmbyProcessor {
               : 'Unknown'
           }`
         );
-        console.log(
-          `     🎭 Genres: ${itemData.Genres?.join(', ') || 'Unknown'}`
-        );
-        console.log(`     ⭐ Rating: ${itemData.CommunityRating || 'Unrated'}`);
 
         return {
           id: itemData.Id,

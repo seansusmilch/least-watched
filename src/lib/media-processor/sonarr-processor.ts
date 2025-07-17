@@ -109,6 +109,9 @@ export class SonarrProcessor {
           (instance) => instance.preferEmbyDateAdded
         );
         if (preferDateAdded && embyData.metadata?.dateCreated) {
+          console.log(
+            `   🎬 Emby date added: ${embyData.metadata.dateCreated}`
+          );
           processedItem.dateAdded = new Date(embyData.metadata.dateCreated);
         }
       } else {
