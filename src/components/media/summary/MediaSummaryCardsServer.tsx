@@ -6,11 +6,11 @@ import { getMediaItems } from '@/lib/actions/media-processing';
 export async function MediaSummaryCardsServer() {
   const items = await getMediaItems();
 
+  console.log(items[0].genres);
+
   const processedItems: MediaItem[] = items.map((item) => ({
     ...item,
-    sizeOnDisk: item.sizeOnDisk ? Number(item.sizeOnDisk) : 0,
     unwatchedDays: calculateUnwatchedDays(item.lastWatched, item.dateAdded),
-    genres: item.genres ? JSON.parse(item.genres) : undefined,
   }));
 
   return (

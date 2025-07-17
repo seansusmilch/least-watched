@@ -29,7 +29,7 @@ export function normalizePathForComparison(path: string): string {
 
 // Helper function to check if a media path is within a selected folder
 export function isMediaPathInFolder(
-  mediaPath: string | undefined,
+  mediaPath: string | null | undefined,
   folderPath: string
 ): boolean {
   if (!mediaPath || !folderPath) return false;

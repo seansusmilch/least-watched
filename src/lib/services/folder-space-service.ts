@@ -3,7 +3,7 @@ import {
   radarrApiClient,
   type DiskSpaceInfo,
   type RootFolderInfo,
-} from './api-client';
+} from './arr-client';
 import type { ServiceSettings } from '../utils/prefixed-settings';
 import {
   type FolderSpaceData,

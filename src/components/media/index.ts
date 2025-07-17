@@ -23,5 +23,5 @@ export { MediaProcessingProgressSkeleton } from './progress/MediaProcessingProgr
 export { PageActionsEnhanced } from './PageActionsEnhanced';
 
 // Page components
-export { MediaPageContent } from './page/MediaPageContent';
-export { MediaPageServer } from './page/MediaPageServer';
+export { MediaPageContent } from './MediaPageContent';
+export { MediaPageServer } from './MediaPageServer';

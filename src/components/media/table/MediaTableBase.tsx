@@ -23,7 +23,7 @@ export function MediaTableBase({ table }: MediaTableBaseProps) {
 
   const selectedRows = table.getSelectedRowModel().rows;
   const selectedSize = selectedRows.reduce(
-    (sum, row) => sum + (row.original.sizeOnDisk || 0),
+    (sum, row) => sum + (Number(row.original.sizeOnDisk) || 0),
     0
   );
 

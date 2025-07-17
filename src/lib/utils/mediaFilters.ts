@@ -170,7 +170,7 @@ function applyWatchStateFilter(
   const isWatched = item.watchCount > 0 || item.lastWatched !== undefined;
   const isPartial =
     item.type === 'tv' &&
-    item.completionPercentage !== undefined &&
+    !!item.completionPercentage &&
     item.completionPercentage > 0 &&
     item.completionPercentage < 100;
 
@@ -182,11 +182,13 @@ function applyWatchStateFilter(
 }
 
 function applyRangeFilter(
-  value: number | undefined,
+  value: number | null | undefined,
   range: { min?: number; max?: number }
 ): boolean {
   if (!range.min && !range.max) return true;
   if (value === undefined) return false;
+
+  if (value === null) return false;
 
   if (range.min !== undefined && value < range.min) return false;
   if (range.max !== undefined && value > range.max) return false;
@@ -195,7 +197,7 @@ function applyRangeFilter(
 }
 
 function applyDateRangeFilter(
-  value: Date | string | undefined,
+  value: Date | string | null | undefined,
   range: { start?: Date; end?: Date }
 ): boolean {
   if (!range.start && !range.end) return true;
@@ -204,6 +206,8 @@ function applyDateRangeFilter(
   // Convert string dates to Date objects for comparison
   const dateValue = typeof value === 'string' ? new Date(value) : value;
 
+  if (!dateValue) return false;
+
   if (range.start && dateValue < range.start) return false;
   if (range.end && dateValue > range.end) return false;
 
@@ -211,14 +215,14 @@ function applyDateRangeFilter(
 }
 
 function applySizeFilter(
-  sizeInBytes: number | undefined,
+  sizeInBytes: number | bigint | null | undefined,
   sizeRange: { min?: number; max?: number; unit: 'GB' | 'MB' }
 ): boolean {
   if (!sizeRange.min && !sizeRange.max) return true;
   if (sizeInBytes === undefined) return false;
 
   const multiplier = sizeRange.unit === 'GB' ? 1024 * 1024 * 1024 : 1024 * 1024;
-  const sizeInUnits = sizeInBytes / multiplier;
+  const sizeInUnits = Number(sizeInBytes) / multiplier;
 
   if (sizeRange.min !== undefined && sizeInUnits < sizeRange.min) return false;
   if (sizeRange.max !== undefined && sizeInUnits > sizeRange.max) return false;
@@ -227,14 +231,15 @@ function applySizeFilter(
 }
 
 function applyGenreFilter(
-  itemGenres: string[] | undefined,
+  itemGenres: unknown,
   filterGenres: Set<string>
 ): boolean {
+  const genresArray = JSON.parse(itemGenres as string) as string[];
   if (filterGenres.size === 0) return true;
-  if (!itemGenres || itemGenres.length === 0) return false;
+  if (!genresArray || genresArray.length === 0) return false;
 
   // Check if any of the item's genres match any of the filter genres
-  return itemGenres.some((genre) => filterGenres.has(genre));
+  return genresArray.some((genre) => filterGenres.has(genre));
 }
 
 function applyFolderFilter(item: MediaItem, folders: Set<string>): boolean {
@@ -288,7 +293,8 @@ export const getUniqueFilterOptions = (items: MediaItem[]) => {
 
   items.forEach((item) => {
     if (item.genres) {
-      item.genres.forEach((genre) => genres.add(genre));
+      const genresArray = JSON.parse(item.genres as string) as string[];
+      genresArray.forEach((genre) => genres.add(genre as string));
     }
     if (item.quality) {
       qualities.add(item.quality);

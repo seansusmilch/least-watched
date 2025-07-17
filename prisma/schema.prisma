@@ -49,9 +49,9 @@ model MediaItem {
   fullyWatched         Boolean?
   runtime              Int?
   sizePerHour          Float?
-  genres               String?
+  genres               Json
   overview             String?
-  deletionScore        Float?
+  deletionScore        Float
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 

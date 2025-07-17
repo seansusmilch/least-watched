@@ -1,52 +1,56 @@
-export interface MediaItem {
-  id: string;
-  title: string;
-  type: string; // 'movie' | 'tv' but stored as string in database
-  year?: number;
-  dateAdded?: Date | string; // Can be Date object or ISO string from cache
-  lastWatched?: Date | string; // Can be Date object or ISO string from cache
-  sizeOnDisk?: number; // in bytes
-  source?: string;
-  mediaPath?: string;
-  parentFolder?: string;
-  watchCount: number;
-  unwatchedDays: number;
+import { z } from 'zod';
+
+export const MediaItemSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  type: z.string(), // 'movie' | 'tv' but stored as string in database
+  year: z.number().optional().nullable(),
+  dateAdded: z.union([z.date(), z.string()]).optional().nullable(), // Can be Date object or ISO string from cache
+  lastWatched: z.union([z.date(), z.string()]).optional().nullable(), // Can be Date object or ISO string from cache
+  sizeOnDisk: z.union([z.bigint()]).optional().nullable(), // in bytes, can be number or bigint
+  source: z.string().optional().nullable(),
+  mediaPath: z.string().optional().nullable(),
+  parentFolder: z.string().optional().nullable(),
+  watchCount: z.number(),
+  unwatchedDays: z.number(),
 
   // Enhanced fields
-  quality?: string;
-  qualityScore?: number;
+  quality: z.string().optional().nullable(),
+  qualityScore: z.number().optional().nullable(),
 
   // TV Show specific
-  episodesOnDisk?: number;
-  totalEpisodes?: number;
-  seasonCount?: number;
-  completionPercentage?: number;
+  episodesOnDisk: z.number().optional().nullable(),
+  totalEpisodes: z.number().optional().nullable(),
+  seasonCount: z.number().optional().nullable(),
+  completionPercentage: z.number().optional().nullable(),
 
   // Monitoring and availability
-  monitored?: boolean;
+  monitored: z.boolean().optional().nullable(),
 
   // Ratings
-  imdbRating?: number;
-  tmdbRating?: number;
+  imdbRating: z.number().optional().nullable(),
+  tmdbRating: z.number().optional().nullable(),
 
   // Play progress
-  playProgress?: number;
-  fullyWatched?: boolean;
+  playProgress: z.number().optional().nullable(),
+  fullyWatched: z.boolean().optional().nullable(),
 
   // Size efficiency
-  runtime?: number;
-  sizePerHour?: number;
+  runtime: z.number().optional().nullable(),
+  sizePerHour: z.number().optional().nullable(),
 
   // Metadata
-  genres?: string[];
-  overview?: string;
+  genres: z.unknown().optional().nullable(),
+  overview: z.string().optional().nullable(),
 
   // Folder space tracking
-  folderRemainingSpacePercent?: number;
+  folderRemainingSpacePercent: z.number().optional().nullable(),
 
   // Deletion scoring
-  deletionScore?: number;
-}
+  deletionScore: z.number().optional().nullable(),
+});
+
+export type MediaItem = z.infer<typeof MediaItemSchema>;
 
 export interface SortCriteria {
   field: keyof MediaItem;

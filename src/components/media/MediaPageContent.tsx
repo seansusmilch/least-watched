@@ -1,8 +1,8 @@
 'use client';
 
-import { MediaFilterProvider } from '../filters/MediaFilterProvider';
-import { MediaFiltersClient } from '../filters/MediaFiltersClient';
-import { MediaTableWithFilters } from '../table/MediaTableWithFilters';
+import { MediaFilterProvider } from './filters/MediaFilterProvider';
+import { MediaFiltersClient } from './filters/MediaFiltersClient';
+import { MediaTableWithFilters } from './table/MediaTableWithFilters';
 import { MediaItem } from '@/lib/types/media';
 
 interface MediaPageContentProps {

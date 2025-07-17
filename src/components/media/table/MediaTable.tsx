@@ -16,9 +16,7 @@ export function MediaTable() {
       const rawItems = await getMediaItems();
       const processedItems: MediaItem[] = rawItems.map((item) => ({
         ...item,
-        sizeOnDisk: item.sizeOnDisk ? Number(item.sizeOnDisk) : 0,
         unwatchedDays: calculateUnwatchedDays(item.lastWatched, item.dateAdded),
-        genres: item.genres ? JSON.parse(item.genres) : undefined,
       }));
       return processedItems;
     },

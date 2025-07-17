@@ -13,7 +13,7 @@ export const MediaSummaryCards = ({
   totalItems,
 }: MediaSummaryCardsProps) => {
   const totalSize = filteredItems.reduce(
-    (sum, item) => sum + (item.sizeOnDisk || 0),
+    (sum, item) => sum + (Number(item.sizeOnDisk) || 0),
     0
   );
 

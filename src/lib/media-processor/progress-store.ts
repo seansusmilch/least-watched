@@ -5,7 +5,6 @@ class ProgressStoreImpl {
   private progress: MediaProcessingProgress | null = null;
 
   async setProgress(progress: MediaProcessingProgress): Promise<void> {
-    console.log('new progress', progress);
     this.progress = progress;
   }
 

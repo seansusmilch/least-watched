@@ -82,7 +82,7 @@ export const createMediaTableColumns = () => [
   columnHelper.accessor('sizeOnDisk', {
     id: 'size',
     header: 'Size',
-    cell: ({ getValue }) => formatFileSize(getValue() || 0),
+    cell: ({ getValue }) => formatFileSize(Number(getValue()) || 0),
     enableSorting: true,
     enableColumnFilter: true,
     size: 120,
@@ -238,7 +238,7 @@ export const createMediaTableColumns = () => [
     header: 'Deletion Score',
     cell: ({ getValue, row }) => {
       const score = getValue();
-      if (score !== undefined) {
+      if (score !== undefined && score !== null) {
         return (
           <div className='flex items-center gap-2'>
             <Badge

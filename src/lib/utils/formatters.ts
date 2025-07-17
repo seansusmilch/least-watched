@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon';
 
-export const formatDate = (date?: Date | string) => {
+export const formatDate = (date?: Date | string | null) => {
   if (!date) return 'N/A';
 
   const luxonDate =
@@ -12,15 +12,15 @@ export const formatDate = (date?: Date | string) => {
     : 'N/A';
 };
 
-export const formatFileSize = (sizeInBytes: number) => {
+export const formatFileSize = (sizeInBytes: number | bigint) => {
   const TB = 1024 * 1024 * 1024 * 1024;
   const GB = 1024 * 1024 * 1024;
 
   if (sizeInBytes >= TB) {
-    const tb = sizeInBytes / TB;
+    const tb = Number(sizeInBytes) / TB;
     return `${tb.toFixed(2)} TB`;
   } else {
-    const gb = sizeInBytes / GB;
+    const gb = Number(sizeInBytes) / GB;
     return `${gb.toFixed(1)} GB`;
   }
 };
@@ -34,11 +34,11 @@ export const formatBytes = (bytes: number): string => {
 };
 
 export const calculateUnwatchedDays = (
-  lastWatched?: Date | string,
-  dateAdded?: Date | string
+  lastWatched?: Date | string | null,
+  dateAdded?: Date | string | null
 ): number => {
   // Handle both Date objects and ISO date strings from cached data
-  const parseDate = (date?: Date | string): DateTime | null => {
+  const parseDate = (date?: Date | string | null): DateTime | null => {
     if (!date) return null;
     if (typeof date === 'string') {
       const parsed = DateTime.fromISO(date);
