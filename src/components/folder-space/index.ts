@@ -7,4 +7,3 @@ export { DiskSpaceDetails } from './disk-space-details';
 export { FolderSpaceWidget } from './FolderSpaceWidget';
 // Server wrapper (optional)
 export { FolderSpaceWidgetWithInitialData } from './FolderSpaceWidgetWithInitialData';
-export * from './utils';
