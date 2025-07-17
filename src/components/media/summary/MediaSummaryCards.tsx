@@ -44,7 +44,7 @@ export const MediaSummaryCards = ({
         <CardContent>
           <div className='text-2xl font-bold'>{formatFileSize(totalSize)}</div>
           <p className='text-xs text-muted-foreground'>
-            Space used by filtered items
+            Space used by all items
           </p>
         </CardContent>
       </Card>
