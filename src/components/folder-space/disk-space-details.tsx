@@ -3,7 +3,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { AlertTriangle } from 'lucide-react';
-import { formatFileSize } from './utils';
+import { formatFileSize } from '@/lib/utils/formatters';
 import type { FolderSpaceData } from '@/lib/types/media-processing';
 
 interface DiskSpaceDetailsProps {

@@ -2,7 +2,7 @@
 
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, BarChart3, Users } from 'lucide-react';
-import { formatFileSize } from './utils';
+import { formatFileSize } from '@/lib/utils/formatters';
 
 // Define the enhanced data structure that this component expects
 interface EnhancedFolderData {
