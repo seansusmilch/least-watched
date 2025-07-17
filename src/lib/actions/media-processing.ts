@@ -78,47 +78,11 @@ async function processMediaInBackground(progressId: string): Promise<void> {
     console.log('✅ Background media processing completed successfully');
 
     // Clean up old progress records
-    const { ProgressStore } = await import('../progress-store');
+    const { ProgressStore } = await import('../media-processor/progress-store');
     await ProgressStore.cleanupOldProgress();
   } catch (error) {
     console.error('Background media processing failed:', error);
     throw error;
-  }
-}
-
-export async function getProcessingProgress(): Promise<MediaProcessingProgress | null> {
-  try {
-    const { ProgressStore } = await import('../progress-store');
-    return await ProgressStore.getProgress();
-  } catch (error) {
-    console.error('Failed to get processing progress:', error);
-    return null;
-  }
-}
-
-export async function getActiveMediaProcess(): Promise<MediaProcessingProgress | null> {
-  try {
-    const { ProgressStore } = await import('../progress-store');
-    return await ProgressStore.getActiveProcess();
-  } catch (error) {
-    console.error('Failed to get active media process:', error);
-    return null;
-  }
-}
-
-export async function cancelMediaProcessing(
-  prevState: FormState | undefined,
-  formData: FormData
-): Promise<FormState> {
-  try {
-    // TODO: Implement actual cancellation logic in MediaProcessor
-    // For now, just return success
-
-    revalidatePath('/');
-
-    return createFormState(true, 'Media processing cancelled successfully');
-  } catch (error) {
-    return handleServerError(error, 'Failed to cancel media processing');
   }
 }
 

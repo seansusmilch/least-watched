@@ -131,10 +131,6 @@ export class RadarrProcessor {
             embyInstances,
           });
           if (embyData) {
-            console.log(
-              `   ✅ Found Emby data:`,
-              JSON.stringify(embyData, null, 2)
-            );
             processedItem.embyId = embyData.embyId;
             processedItem.lastWatched = embyData.lastWatched;
             processedItem.watchCount = embyData.watchCount || 0;

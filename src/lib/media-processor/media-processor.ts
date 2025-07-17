@@ -7,7 +7,7 @@ import { type EnhancedProcessingSettings } from '../actions/settings';
 import { type DeletionScoreSettings } from '../actions/settings/types';
 import { folderSpaceService } from '../services/folder-space-service';
 import { type FolderSpaceData } from '../types/media-processing';
-import { ProgressStore } from '../progress-store';
+import { ProgressStore } from './progress-store';
 import { TESTING_LIMIT } from './constants';
 import { SonarrProcessor } from './sonarr-processor';
 import { RadarrProcessor } from './radarr-processor';
@@ -61,18 +61,6 @@ export class MediaProcessor {
     if (this.onProgress) {
       this.onProgress(progress);
     }
-  }
-
-  static async getProgress(): Promise<MediaProcessingProgress | null> {
-    return await ProgressStore.getProgress();
-  }
-
-  static async clearProgress(): Promise<void> {
-    await ProgressStore.clearProgress();
-  }
-
-  static async getActiveProcess(): Promise<MediaProcessingProgress | null> {
-    return await ProgressStore.getActiveProcess();
   }
 
   async processAllMedia(): Promise<ProcessedMediaItem[]> {

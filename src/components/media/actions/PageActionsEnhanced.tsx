@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Play, Download, AlertCircle } from 'lucide-react';
 import { useActionState, useOptimistic, useTransition } from 'react';
@@ -10,8 +10,8 @@ import {
   refreshMediaItems,
   exportMediaItems,
   refreshFolderSpaceData,
-  getActiveMediaProcess,
 } from '@/lib/actions/media-processing';
+import { useProgress } from '@/hooks/use-progress';
 
 interface PageActionsEnhancedProps {
   selectedItems?: string[];
@@ -37,28 +37,11 @@ export function PageActionsEnhanced({
 }: PageActionsEnhancedProps) {
   const [lastAction, setLastAction] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const [hasActiveProcess, setHasActiveProcess] = useState(false);
+  const { state: progressState } = useProgress();
 
-  // Check for active processes
-  useEffect(() => {
-    const checkActiveProcess = async () => {
-      try {
-        const activeProcess = await getActiveMediaProcess();
-        setHasActiveProcess(activeProcess !== null);
-      } catch (error) {
-        console.error('Failed to check active process:', error);
-        setHasActiveProcess(false);
-      }
-    };
-
-    // Check immediately
-    checkActiveProcess();
-
-    // Then check every 2 seconds
-    const interval = setInterval(checkActiveProcess, 2000);
-
-    return () => clearInterval(interval);
-  }, []);
+  // Check if there's an active process
+  const hasActiveProcess =
+    progressState === 'live' || progressState === 'completed';
 
   // Optimistic state for immediate UI feedback
   const [optimisticState, addOptimisticUpdate] = useOptimistic<
