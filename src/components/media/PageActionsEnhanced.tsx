@@ -40,9 +40,6 @@ export function PageActionsEnhanced({
     },
     onSuccess: (result) => {
       if (result?.success) {
-        toast.success(
-          result.message || 'Media processing started successfully'
-        );
         queryClient.invalidateQueries({ queryKey: ['progress'] });
       } else {
         throw new Error(result?.message || 'Failed to start media processing');
@@ -69,7 +66,6 @@ export function PageActionsEnhanced({
     },
     onSuccess: (result) => {
       if (result?.success) {
-        toast.success(result.message || 'Data refreshed successfully');
         onRefreshComplete?.();
       } else {
         throw new Error(result?.message || 'Failed to refresh data');
@@ -95,8 +91,6 @@ export function PageActionsEnhanced({
     },
     onSuccess: (result) => {
       if (result?.success) {
-        toast.success(result.message || 'Export completed successfully');
-
         if (
           result.data &&
           typeof result.data === 'object' &&

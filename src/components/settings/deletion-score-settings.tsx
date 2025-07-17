@@ -114,24 +114,6 @@ export function DeletionScoreSettings() {
     try {
       const result = await setDeletionScoreSettings(settings);
       if (result.success) {
-        if (settings.enabled) {
-          toast.success(
-            'Settings saved successfully! Deletion scores are being recalculated in the background.',
-            {
-              description:
-                'This may take a few minutes for large libraries. The scores will update automatically.',
-              duration: 5000,
-            }
-          );
-        } else {
-          toast.success(
-            'Deletion score settings saved successfully! Deletion scoring is now disabled.',
-            {
-              description:
-                'Existing scores will remain but no new scores will be calculated.',
-            }
-          );
-        }
       } else {
         toast.error(result.message || 'Error saving settings');
       }

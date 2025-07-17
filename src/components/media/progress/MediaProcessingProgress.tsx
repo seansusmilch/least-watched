@@ -6,7 +6,6 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, CheckCircle, X, AlertCircle } from 'lucide-react';
 import { useProgress } from '@/hooks/use-progress';
-import { toast } from 'sonner';
 
 interface MediaProcessingProgressProps {
   onClose?: () => void;
@@ -40,7 +39,6 @@ export function MediaProcessingProgress({
 
   const handleClearCompleted = async () => {
     await clearProgress();
-    toast.success('Progress cleared');
   };
 
   const hasError = !!error;

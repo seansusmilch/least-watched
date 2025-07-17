@@ -32,7 +32,6 @@ export function AdvancedSettings() {
     try {
       const result = await clearMediaItems();
       if (result.success) {
-        toast.success(result.message || 'Media items cleared successfully');
       } else {
         toast.error(result.error || 'Failed to clear media items');
       }

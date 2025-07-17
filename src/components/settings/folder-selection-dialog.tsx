@@ -17,7 +17,6 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { fetchFolders, type FolderInfo } from '@/lib/actions/settings';
-import { toast } from 'sonner';
 
 interface FolderSelectionDialogProps {
   open: boolean;
@@ -86,7 +85,6 @@ export function FolderSelectionDialog({
   const handleSave = () => {
     startTransition(() => {
       onSave(selectedFolders);
-      toast.success(`Folder selection for ${instanceName} has been updated.`);
       onOpenChange(false);
     });
   };

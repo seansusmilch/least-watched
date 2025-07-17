@@ -74,7 +74,6 @@ export function EmbySettings({ initialSettings }: EmbySettingsProps) {
         [setting.id]: result.connected ? 'success' : 'error',
       }));
       if (result.connected) {
-        toast.success(`Successfully connected to ${setting.name}`);
       } else {
         const errorMessage = result.error || 'Unknown error';
         toast.error(errorMessage);
@@ -109,14 +108,12 @@ export function EmbySettings({ initialSettings }: EmbySettingsProps) {
           input,
         });
         if (result.success) {
-          toast.success(`${name} has been updated successfully`);
         } else {
           toast.error(result.message || 'Failed to update settings');
         }
       } else {
         const result = await createMutation.mutateAsync(input);
         if (result.success) {
-          toast.success(`${name} has been created successfully`);
         } else {
           toast.error(result.message || 'Failed to create settings');
         }
@@ -138,7 +135,6 @@ export function EmbySettings({ initialSettings }: EmbySettingsProps) {
     try {
       const result = await deleteMutation.mutateAsync(id);
       if (result.success) {
-        toast.success('Settings have been deleted successfully');
       } else {
         toast.error(result.message || 'Failed to delete settings');
       }
@@ -211,7 +207,7 @@ export function EmbySettings({ initialSettings }: EmbySettingsProps) {
                   <Badge
                     variant={
                       connectionStatus[setting.id] === 'success'
-                        ? 'default'
+                        ? 'success'
                         : connectionStatus[setting.id] === 'error'
                         ? 'destructive'
                         : 'secondary'

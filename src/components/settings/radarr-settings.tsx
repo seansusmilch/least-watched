@@ -119,9 +119,6 @@ export function RadarrSettings({ initialSettings }: RadarrSettingsProps) {
       setEditingId(null);
       setIsAddDialogOpen(false);
       resetForm();
-      toast.success(
-        `${name} has been ${editingId ? 'updated' : 'created'} successfully`
-      );
     } catch {
       toast.error('Failed to save settings');
     }
@@ -144,7 +141,6 @@ export function RadarrSettings({ initialSettings }: RadarrSettingsProps) {
       setOptimisticSettings({ type: 'delete', payload: id });
       setIsDeleteDialogOpen(false);
       setSettingToDelete(null);
-      toast.success('Settings have been deleted successfully');
     } catch {
       toast.error('Failed to delete settings');
     }
@@ -163,7 +159,6 @@ export function RadarrSettings({ initialSettings }: RadarrSettingsProps) {
       }));
 
       if (isConnected) {
-        toast.success(`Successfully connected to ${setting.name}`);
       } else {
         const errorMessage =
           'error' in result
@@ -195,7 +190,6 @@ export function RadarrSettings({ initialSettings }: RadarrSettingsProps) {
       });
       setFolderDialogOpen(false);
       setCurrentSettingId(null);
-      toast.success('Selected folders have been updated successfully');
     } catch {
       toast.error('Failed to update folders');
     }
@@ -244,7 +238,7 @@ export function RadarrSettings({ initialSettings }: RadarrSettingsProps) {
                 <Badge
                   variant={
                     connectionStatus[setting.id] === 'success'
-                      ? 'default'
+                      ? 'success'
                       : connectionStatus[setting.id] === 'error'
                       ? 'destructive'
                       : 'secondary'

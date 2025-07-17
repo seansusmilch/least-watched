@@ -94,7 +94,6 @@ export function SonarrSettings({ initialSettings }: SonarrSettingsProps) {
       }));
 
       if (result.success) {
-        toast.success(`Successfully connected to ${setting.name}`);
       } else {
         // Handle both FormState (with message) and simple object (with error)
         const errorMessage =
@@ -139,9 +138,6 @@ export function SonarrSettings({ initialSettings }: SonarrSettingsProps) {
 
       setEditingId(null);
       setIsAddDialogOpen(false);
-      toast.success(
-        `${name} has been ${editingId ? 'updated' : 'created'} successfully`
-      );
     } catch (error) {
       toast.error('Failed to save settings');
     }
@@ -158,7 +154,6 @@ export function SonarrSettings({ initialSettings }: SonarrSettingsProps) {
       setOptimisticSettings({ type: 'delete', payload: id });
       setIsDeleteDialogOpen(false);
       setSettingToDelete(null);
-      toast.success('Settings have been deleted successfully');
     } catch (error) {
       toast.error('Failed to delete settings');
     }
@@ -180,7 +175,6 @@ export function SonarrSettings({ initialSettings }: SonarrSettingsProps) {
       });
       setFolderDialogOpen(false);
       setCurrentSettingId(null);
-      toast.success('Selected folders have been updated successfully');
     } catch (error) {
       toast.error('Failed to update folders');
     }
@@ -229,7 +223,7 @@ export function SonarrSettings({ initialSettings }: SonarrSettingsProps) {
                 <Badge
                   variant={
                     connectionStatus[setting.id] === 'success'
-                      ? 'default'
+                      ? 'success'
                       : connectionStatus[setting.id] === 'error'
                       ? 'destructive'
                       : 'secondary'
