@@ -68,10 +68,6 @@ async function processMediaInBackground(): Promise<void> {
   }
 }
 
-// ============================================================================
-// Media Items Functions (Cached)
-// ============================================================================
-
 export async function getMediaItems(): Promise<MediaItemData[]> {
   try {
     return await mediaService.getMediaItems();
@@ -86,9 +82,6 @@ export async function refreshMediaItems(
   _formData: FormData
 ): Promise<FormState> {
   try {
-    // Cache invalidation is disabled
-
-    // Revalidate paths and tags
     revalidatePath('/');
 
     return createFormState(true, 'Media items refreshed successfully');
@@ -102,9 +95,6 @@ export async function refreshFolderSpaceData(
   _formData: FormData
 ): Promise<FormState> {
   try {
-    // Cache invalidation is disabled
-
-    // Revalidate paths and tags
     revalidatePath('/');
 
     return createFormState(true, 'Folder space data refreshed successfully');
@@ -113,7 +103,6 @@ export async function refreshFolderSpaceData(
   }
 }
 
-// Get selected folders directly from database
 export async function getSelectedFoldersFromDatabase(): Promise<SelectedFoldersFromDatabase> {
   try {
     const { sonarrSettingsService, radarrSettingsService } = await import(
@@ -144,10 +133,6 @@ export async function getSelectedFoldersFromDatabase(): Promise<SelectedFoldersF
   }
 }
 
-// ============================================================================
-// Export Functions
-// ============================================================================
-
 export async function exportMediaItems(
   prevState: FormState | undefined,
   formData: FormData
@@ -169,8 +154,7 @@ export async function exportMediaItems(
       return createFormState(false, 'No valid items found for export');
     }
 
-    // TODO: Implement actual export logic
-    // For now, just return success with count
+    console.warn('NOT IMPLEMENTED: Exporting media items:', selectedItems);
     const message = `Successfully exported ${selectedItems.length} item${
       selectedItems.length === 1 ? '' : 's'
     }`;
@@ -199,10 +183,7 @@ export async function checkProcessingComplete(): Promise<boolean> {
 }
 
 export async function revalidateAfterProcessing(): Promise<void> {
-  'use server';
-
   try {
-    // Safe to call revalidation from a server action
     revalidatePath('/');
   } catch (error) {
     console.error('Failed to revalidate after processing:', error);

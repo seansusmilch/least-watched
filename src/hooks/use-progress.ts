@@ -17,13 +17,13 @@ export function useProgress() {
     refetchInterval: ({ state }) => {
       switch (state.data?.state) {
         case 'none':
-          return false;
+          return 10000;
         case 'live':
           return 500;
         case 'completed':
-          return false;
+          return 10000;
         default:
-          return 1000;
+          return 10000;
       }
     },
     staleTime: 0,

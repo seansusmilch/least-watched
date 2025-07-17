@@ -1,11 +1,10 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Play, Download, AlertCircle } from 'lucide-react';
-import { useActionState, useOptimistic, useTransition } from 'react';
 import { toast } from 'sonner';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useMutation } from '@tanstack/react-query';
 import {
   startMediaProcessing,
   refreshMediaItems,
@@ -21,194 +20,136 @@ interface PageActionsEnhancedProps {
   disabled?: boolean;
 }
 
-interface OptimisticState {
-  processing: boolean;
-  refreshing: boolean;
-  exporting: boolean;
-  error: string | null;
-}
-
 export function PageActionsEnhanced({
   selectedItems = [],
   onRefreshComplete,
   onExportComplete,
   disabled = false,
 }: PageActionsEnhancedProps) {
-  const [lastAction, setLastAction] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
   const { state: progressState } = useProgress();
   const queryClient = useQueryClient();
 
   // Check if there's an active process
-  const hasActiveProcess =
-    progressState === 'live' || progressState === 'completed';
+  const hasActiveProcess = progressState === 'live';
 
-  // Optimistic state for immediate UI feedback
-  const [optimisticState, addOptimisticUpdate] = useOptimistic<
-    OptimisticState,
-    Partial<OptimisticState>
-  >(
-    {
-      processing: false,
-      refreshing: false,
-      exporting: false,
-      error: null,
+  // Process Media Mutation
+  const processMutation = useMutation({
+    mutationFn: async () => {
+      const formData = new FormData();
+      return startMediaProcessing(undefined, formData);
     },
-    (state, newUpdate) => ({ ...state, ...newUpdate })
-  );
+    onSuccess: (result) => {
+      if (result?.success) {
+        toast.success(
+          result.message || 'Media processing started successfully'
+        );
+        queryClient.invalidateQueries({ queryKey: ['progress'] });
+      } else {
+        throw new Error(result?.message || 'Failed to start media processing');
+      }
+    },
+    onError: (error: Error) => {
+      const errorMessage = error.message || 'Failed to start media processing';
+      toast.error(errorMessage);
+    },
+  });
 
-  // Server actions with useActionState
-  const [processState, processAction, processPending] = useActionState(
-    startMediaProcessing,
-    undefined
-  );
+  // Refresh Data Mutation
+  const refreshMutation = useMutation({
+    mutationFn: async () => {
+      const formData = new FormData();
 
-  const [refreshState, refreshAction, refreshPending] = useActionState(
-    refreshMediaItems,
-    undefined
-  );
+      // Call both refresh actions in parallel
+      const [refreshResult] = await Promise.all([
+        refreshMediaItems(undefined, formData),
+        refreshFolderSpaceData(undefined, formData),
+      ]);
 
-  const [exportState, exportAction, exportPending] = useActionState(
-    exportMediaItems,
-    undefined
-  );
+      return refreshResult;
+    },
+    onSuccess: (result) => {
+      if (result?.success) {
+        toast.success(result.message || 'Data refreshed successfully');
+        onRefreshComplete?.();
+      } else {
+        throw new Error(result?.message || 'Failed to refresh data');
+      }
+    },
+    onError: (error: Error) => {
+      const errorMessage = error.message || 'Failed to refresh data';
+      toast.error(errorMessage);
+    },
+  });
 
-  const [, folderRefreshAction, folderRefreshPending] = useActionState(
-    refreshFolderSpaceData,
-    undefined
-  );
+  // Export Items Mutation
+  const exportMutation = useMutation({
+    mutationFn: async (items: string[]) => {
+      if (items.length === 0) {
+        throw new Error('No items selected for export');
+      }
 
+      const formData = new FormData();
+      items.forEach((id) => formData.append('selectedIds', id));
+
+      return exportMediaItems(undefined, formData);
+    },
+    onSuccess: (result) => {
+      if (result?.success) {
+        toast.success(result.message || 'Export completed successfully');
+
+        if (
+          result.data &&
+          typeof result.data === 'object' &&
+          'count' in result.data
+        ) {
+          onExportComplete?.((result.data as { count: number }).count);
+        }
+      } else {
+        throw new Error(result?.message || 'Failed to export items');
+      }
+    },
+    onError: (error: Error) => {
+      const errorMessage = error.message || 'Failed to export items';
+      toast.error(errorMessage);
+    },
+  });
+
+  // Handle functions
   const handleProcess = useCallback(() => {
-    startTransition(() => {
-      setLastAction('process');
-      addOptimisticUpdate({ processing: true, error: null });
+    processMutation.mutate();
+  }, [processMutation]);
 
-      const formData = new FormData();
-      processAction(formData);
-
-      queryClient.invalidateQueries({ queryKey: ['progress'] });
-    });
-  }, [processAction, addOptimisticUpdate, queryClient]);
-
-  // Handle refresh action
   const handleRefresh = useCallback(() => {
-    startTransition(() => {
-      setLastAction('refresh');
-      addOptimisticUpdate({ refreshing: true, error: null });
+    refreshMutation.mutate();
+  }, [refreshMutation]);
 
-      const formData = new FormData();
-
-      // Call both refresh actions
-      refreshAction(formData);
-      folderRefreshAction(formData);
-    });
-  }, [refreshAction, folderRefreshAction, addOptimisticUpdate]);
-
-  // Handle export action
   const handleExport = useCallback(() => {
-    if (selectedItems.length === 0) {
-      toast.error('No items selected for export');
-      return;
-    }
-
-    startTransition(() => {
-      setLastAction('export');
-      addOptimisticUpdate({ exporting: true, error: null });
-
-      const formData = new FormData();
-      selectedItems.forEach((id) => formData.append('selectedIds', id));
-
-      exportAction(formData);
-    });
-  }, [selectedItems, exportAction, addOptimisticUpdate]);
-
-  // Handle server action results
-  React.useEffect(() => {
-    if (processState?.success && lastAction === 'process') {
-      startTransition(() => {
-        addOptimisticUpdate({ processing: false });
-      });
-      toast.success(
-        processState.message || 'Media processing started successfully'
-      );
-    } else if (processState?.success === false && lastAction === 'process') {
-      startTransition(() => {
-        addOptimisticUpdate({
-          processing: false,
-          error: processState.message || 'Processing failed',
-        });
-      });
-      toast.error(processState.message || 'Failed to start media processing');
-    }
-  }, [processState, lastAction, addOptimisticUpdate]);
-
-  React.useEffect(() => {
-    if (refreshState?.success && lastAction === 'refresh') {
-      startTransition(() => {
-        addOptimisticUpdate({ refreshing: false });
-      });
-      toast.success(refreshState.message || 'Data refreshed successfully');
-
-      if (onRefreshComplete) {
-        onRefreshComplete();
-      }
-    } else if (refreshState?.success === false && lastAction === 'refresh') {
-      startTransition(() => {
-        addOptimisticUpdate({
-          refreshing: false,
-          error: refreshState.message || 'Refresh failed',
-        });
-      });
-      toast.error(refreshState.message || 'Failed to refresh data');
-    }
-  }, [refreshState, lastAction, onRefreshComplete, addOptimisticUpdate]);
-
-  React.useEffect(() => {
-    if (exportState?.success && lastAction === 'export') {
-      startTransition(() => {
-        addOptimisticUpdate({ exporting: false });
-      });
-      toast.success(exportState.message || 'Export completed successfully');
-
-      if (
-        exportState.data &&
-        typeof exportState.data === 'object' &&
-        'count' in exportState.data &&
-        onExportComplete
-      ) {
-        onExportComplete((exportState.data as { count: number }).count);
-      }
-    } else if (exportState?.success === false && lastAction === 'export') {
-      startTransition(() => {
-        addOptimisticUpdate({
-          exporting: false,
-          error: exportState.message || 'Export failed',
-        });
-      });
-      toast.error(exportState.message || 'Failed to export items');
-    }
-  }, [exportState, lastAction, onExportComplete, addOptimisticUpdate]);
-
-  // Use optimistic state for rendering
-  const isProcessing = optimisticState.processing || processPending;
-  const isRefreshing =
-    optimisticState.refreshing || refreshPending || folderRefreshPending;
-  const isExporting = optimisticState.exporting || exportPending;
-  const hasError = !!optimisticState.error;
+    exportMutation.mutate(selectedItems);
+  }, [exportMutation, selectedItems]);
 
   // Disable actions if there's an active process or if explicitly disabled
   const shouldDisable = disabled || hasActiveProcess;
+
+  // Check if any mutation has an error
+  const hasError =
+    processMutation.isError ||
+    refreshMutation.isError ||
+    exportMutation.isError;
 
   return (
     <div className='flex items-center space-x-2'>
       {/* Process Media Button */}
       <Button
         onClick={handleProcess}
-        disabled={shouldDisable || isProcessing || isRefreshing || isPending}
+        disabled={
+          shouldDisable ||
+          processMutation.isPending ||
+          refreshMutation.isPending
+        }
         size='sm'
         className='relative'
       >
-        {isProcessing ? (
+        {processMutation.isPending || hasActiveProcess ? (
           <>
             <RefreshCw className='h-4 w-4 mr-2 animate-spin' />
             Processing...
@@ -226,10 +167,14 @@ export function PageActionsEnhanced({
         variant='outline'
         size='sm'
         onClick={handleRefresh}
-        disabled={shouldDisable || isRefreshing || isProcessing || isPending}
+        disabled={
+          shouldDisable ||
+          refreshMutation.isPending ||
+          processMutation.isPending
+        }
         className='relative'
       >
-        {isRefreshing ? (
+        {refreshMutation.isPending ? (
           <RefreshCw className='h-4 w-4 mr-2 animate-spin' />
         ) : (
           <RefreshCw className='h-4 w-4 mr-2' />
@@ -244,13 +189,12 @@ export function PageActionsEnhanced({
         disabled={
           shouldDisable ||
           selectedItems.length === 0 ||
-          isExporting ||
-          isPending
+          exportMutation.isPending
         }
         onClick={handleExport}
         className='relative'
       >
-        {isExporting ? (
+        {exportMutation.isPending ? (
           <>
             <RefreshCw className='h-4 w-4 mr-2 animate-spin' />
             Exporting...
