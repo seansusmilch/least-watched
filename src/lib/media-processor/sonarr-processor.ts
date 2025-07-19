@@ -6,13 +6,13 @@ import {
 } from './types';
 import { type EnhancedProcessingSettings } from '../actions/settings';
 import { EmbyProcessor } from './emby-processor';
-import { ServiceSettings } from '../utils/prefixed-settings';
+import { type EmbySettings } from '../utils/single-emby-settings';
 
 export class SonarrProcessor {
   static async processSingleItem(
     series: SonarrSeries,
     sonarrInstance: SonarrInstance,
-    embyInstances: ServiceSettings[],
+    embyInstance: EmbySettings | null,
     enhancedSettings: EnhancedProcessingSettings
   ): Promise<ProcessedMediaItem> {
     console.log(`📺 Processing series:`);
@@ -98,16 +98,14 @@ export class SonarrProcessor {
       console.log(`   🎬 Querying Emby for playback info...`);
       const embyData = await EmbyProcessor.getEmbyMediaData({
         title: series.title,
-        embyInstances,
+        embyInstance,
       });
       if (embyData) {
         processedItem.embyId = embyData.embyId;
         processedItem.lastWatched = embyData.lastWatched;
         processedItem.watchCount = embyData.watchCount || 0;
 
-        const preferDateAdded = embyInstances?.some(
-          (instance) => instance.preferEmbyDateAdded
-        );
+        const preferDateAdded = embyInstance?.preferEmbyDateAdded;
         if (preferDateAdded && embyData.metadata?.dateCreated) {
           console.log(
             `   🎬 Emby date added: ${embyData.metadata.dateCreated}`

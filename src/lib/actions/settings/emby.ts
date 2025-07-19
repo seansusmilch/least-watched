@@ -6,7 +6,6 @@ import { apiService } from '../../api';
 import {
   EmbySettingsCreateSchema,
   EmbySettingsUpdateSchema,
-  IdSchema,
   createFormState,
   handleValidationErrors,
   handleServerError,
@@ -14,6 +13,7 @@ import {
 } from '../../validation/schemas';
 import { ZodError } from 'zod';
 import { EmbySettingsInput } from './types';
+import { type EmbySettings } from '../../utils/single-emby-settings';
 
 export interface ConnectionTestResult {
   success: boolean;
@@ -21,10 +21,11 @@ export interface ConnectionTestResult {
   error?: string;
 }
 
-// Emby Settings Actions
-export async function getEmbySettings() {
+// Emby Settings Actions (Single Instance)
+export async function getEmbySettings(): Promise<EmbySettings[]> {
   try {
-    return await embySettingsService.getAll();
+    const setting = await embySettingsService.get();
+    return setting ? [setting] : [];
   } catch (error) {
     console.error('Failed to get Emby settings:', error);
     throw new Error('Failed to get Emby settings');
@@ -66,16 +67,12 @@ export async function createEmbySetting(
 }
 
 export async function updateEmbySetting(
-  id: string,
   input: Partial<EmbySettingsInput>
 ): Promise<FormState> {
   try {
-    const validatedData = EmbySettingsUpdateSchema.parse({
-      id,
-      ...input,
-    });
+    const validatedData = EmbySettingsUpdateSchema.parse(input);
 
-    const setting = await embySettingsService.update(id, {
+    const setting = await embySettingsService.update({
       name: validatedData.name,
       url: validatedData.url,
       apiKey: validatedData.apiKey,
@@ -104,11 +101,9 @@ export async function updateEmbySetting(
   }
 }
 
-export async function deleteEmbySetting(id: string): Promise<FormState> {
+export async function deleteEmbySetting(): Promise<FormState> {
   try {
-    const validatedId = IdSchema.parse(id);
-
-    await embySettingsService.delete(validatedId);
+    await embySettingsService.delete();
 
     // Refresh API configuration
     await apiService.refreshConfig();
@@ -117,20 +112,13 @@ export async function deleteEmbySetting(id: string): Promise<FormState> {
 
     return createFormState(true, 'Emby setting deleted successfully');
   } catch (error) {
-    if (error instanceof ZodError) {
-      return handleValidationErrors(error);
-    }
     return handleServerError(error, 'Failed to delete Emby setting');
   }
 }
 
-export async function testEmbyConnection(
-  id: string
-): Promise<ConnectionTestResult> {
+export async function testEmbyConnection(): Promise<ConnectionTestResult> {
   try {
-    const validatedId = IdSchema.parse(id);
-
-    const setting = await embySettingsService.getById(validatedId);
+    const setting = await embySettingsService.get();
     if (!setting) {
       return { success: false, connected: false, error: 'Setting not found' };
     }
@@ -138,15 +126,8 @@ export async function testEmbyConnection(
     // Refresh API configuration to include this setting
     await apiService.refreshConfig();
 
-    // Find the index of this setting in the enabled settings
-    const enabledSettings = await embySettingsService.getEnabled();
-    const configIndex = enabledSettings.findIndex((s) => s.id === validatedId);
-
-    if (configIndex === -1) {
-      return { success: false, connected: false, error: 'Setting not enabled' };
-    }
-
-    const isConnected = await apiService.testEmbyConnection(configIndex);
+    // Test connection to the single Emby instance
+    const isConnected = await apiService.testEmbyConnection();
     return {
       success: true,
       connected: isConnected,

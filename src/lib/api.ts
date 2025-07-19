@@ -4,7 +4,8 @@ import {
   radarrSettingsService,
   embySettingsService,
 } from './database';
-
+import { EmbySettings } from './utils/single-emby-settings';
+import { ServiceSettings } from './utils/prefixed-settings';
 // Type definitions for API responses
 interface EmbyLibrary {
   Name: string;
@@ -77,30 +78,10 @@ interface MediaItem {
   tmdbId?: string;
 }
 
-// Database-backed settings types
-interface EmbyConfig {
-  url: string;
-  apiKey: string;
-  userId?: string;
-  enabled: boolean;
-}
-
-interface SonarrConfig {
-  url: string;
-  apiKey: string;
-  enabled: boolean;
-}
-
-interface RadarrConfig {
-  url: string;
-  apiKey: string;
-  enabled: boolean;
-}
-
 interface ApiConfig {
-  emby: EmbyConfig[];
-  sonarr: SonarrConfig[];
-  radarr: RadarrConfig[];
+  emby: EmbySettings | null;
+  sonarr: ServiceSettings[];
+  radarr: ServiceSettings[];
 }
 
 class ApiService {
@@ -116,26 +97,13 @@ class ApiService {
       ]);
 
       this.config = {
-        emby: embySettings.map((setting) => ({
-          url: setting.url,
-          apiKey: setting.apiKey,
-          userId: setting.userId || undefined,
-          enabled: setting.enabled,
-        })),
-        sonarr: sonarrSettings.map((setting) => ({
-          url: setting.url,
-          apiKey: setting.apiKey,
-          enabled: setting.enabled,
-        })),
-        radarr: radarrSettings.map((setting) => ({
-          url: setting.url,
-          apiKey: setting.apiKey,
-          enabled: setting.enabled,
-        })),
+        emby: embySettings || null,
+        sonarr: sonarrSettings,
+        radarr: radarrSettings,
       };
     } catch (error) {
       console.error('Failed to load configuration from database:', error);
-      this.config = { emby: [], sonarr: [], radarr: [] };
+      this.config = { emby: null, sonarr: [], radarr: [] };
     }
   }
 
@@ -146,12 +114,12 @@ class ApiService {
   }
 
   // Emby API methods
-  async testEmbyConnection(configIndex: number = 0): Promise<boolean> {
+  async testEmbyConnection(): Promise<boolean> {
     await this.ensureConfig();
-    if (!this.config?.emby[configIndex]) return false;
+    if (!this.config?.emby) return false;
 
     try {
-      const embyConfig = this.config.emby[configIndex];
+      const embyConfig = this.config.emby;
       const response = await fetch(
         `${embyConfig.url}/System/Info?api_key=${embyConfig.apiKey}`
       );
@@ -162,12 +130,12 @@ class ApiService {
     }
   }
 
-  async getEmbyLibraries(configIndex: number = 0): Promise<EmbyLibrary[]> {
+  async getEmbyLibraries(): Promise<EmbyLibrary[]> {
     await this.ensureConfig();
-    if (!this.config?.emby[configIndex]) return [];
+    if (!this.config?.emby) return [];
 
     try {
-      const embyConfig = this.config.emby[configIndex];
+      const embyConfig = this.config.emby;
       const response = await fetch(
         `${embyConfig.url}/Library/VirtualFolders?api_key=${embyConfig.apiKey}`
       );
@@ -178,15 +146,12 @@ class ApiService {
     }
   }
 
-  async getEmbyPlaybackInfo(
-    itemId: string,
-    configIndex: number = 0
-  ): Promise<EmbyPlaybackInfo | null> {
+  async getEmbyPlaybackInfo(itemId: string): Promise<EmbyPlaybackInfo | null> {
     await this.ensureConfig();
-    if (!this.config?.emby[configIndex]) return null;
+    if (!this.config?.emby) return null;
 
     try {
-      const embyConfig = this.config.emby[configIndex];
+      const embyConfig = this.config.emby;
       const response = await fetch(
         `${embyConfig.url}/UserData/${itemId}?api_key=${embyConfig.apiKey}`
       );
@@ -490,4 +455,4 @@ export const filterMediaByThreshold = (
 };
 
 export { ApiService };
-export type { MediaItem, ApiConfig, EmbyConfig, SonarrConfig, RadarrConfig };
+export type { MediaItem, ApiConfig };

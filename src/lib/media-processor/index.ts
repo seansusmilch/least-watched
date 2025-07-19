@@ -9,7 +9,7 @@ export type {
   RadarrMovie,
   SonarrInstance,
   RadarrInstance,
-  EmbyInstance,
+  EmbySettings,
   EmbyPlaybackInfo,
 } from './types';
 

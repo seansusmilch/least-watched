@@ -67,7 +67,6 @@ export const EmbySettingsCreateSchema = z.object({
 });
 
 export const EmbySettingsUpdateSchema = z.object({
-  id: IdSchema,
   name: NameSchema.optional(),
   url: UrlSchema.optional(),
   apiKey: ApiKeySchema.optional(),

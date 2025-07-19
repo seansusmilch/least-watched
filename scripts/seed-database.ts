@@ -24,14 +24,26 @@ interface SeedConfig {
     enabled: boolean;
     selectedFolders: string[];
   }>;
-  embySettings: Array<{
-    name: string;
-    url: string;
-    apiKey: string;
-    userId: string;
-    enabled: boolean;
-    selectedFolders: string[];
-  }>;
+  // Updated to support single Emby instance (with backward compatibility for arrays)
+  embySettings:
+    | {
+        name: string;
+        url: string;
+        apiKey: string;
+        userId?: string;
+        enabled: boolean;
+        selectedFolders?: string[];
+        preferEmbyDateAdded?: boolean;
+      }
+    | Array<{
+        name: string;
+        url: string;
+        apiKey: string;
+        userId?: string;
+        enabled: boolean;
+        selectedFolders?: string[];
+        preferEmbyDateAdded?: boolean;
+      }>;
   appSettings: Array<{
     key: string;
     value: string;
@@ -265,14 +277,14 @@ function transformMediaItemForDatabase(item: SeedConfig['mediaItems'][0]) {
   };
 }
 
-async function clearExistingSettings() {
-  console.log('🗑️ Clearing existing settings...');
+async function clearDatabase() {
+  console.log('🗑️ Clearing existing data...');
 
   // Get all existing settings and delete them
   const [sonarrSettings, radarrSettings, embySettings] = await Promise.all([
     sonarrSettingsService.getAll(),
     radarrSettingsService.getAll(),
-    embySettingsService.getAll(),
+    embySettingsService.get(),
   ]);
 
   // Delete all existing settings
@@ -283,11 +295,14 @@ async function clearExistingSettings() {
     ...radarrSettings.map((setting) =>
       radarrSettingsService.delete(setting.id)
     ),
-    ...embySettings.map((setting) => embySettingsService.delete(setting.id)),
+    // Delete single Emby instance if it exists
+    ...(embySettings ? [embySettingsService.delete()] : []),
   ]);
 
   console.log(
-    `🗑️ Cleared ${sonarrSettings.length} Sonarr, ${radarrSettings.length} Radarr, and ${embySettings.length} Emby settings`
+    `🗑️ Cleared ${sonarrSettings.length} Sonarr, ${
+      radarrSettings.length
+    } Radarr, and ${embySettings ? 1 : 0} Emby settings`
   );
 }
 
@@ -301,7 +316,7 @@ async function seedDatabase() {
     // Clear existing data (optional - remove if you want to keep existing data)
     await prisma.mediaItem.deleteMany();
     await prisma.appSettings.deleteMany();
-    await clearExistingSettings();
+    await clearDatabase();
     console.log('🗑️ Cleared existing data');
 
     // Seed Sonarr Settings using the new prefixed settings service
@@ -330,19 +345,40 @@ async function seedDatabase() {
     const radarrSettings = await Promise.all(radarrPromises);
     console.log(`🎬 Created ${radarrSettings.length} Radarr instances`);
 
-    // Seed Emby Settings using the new prefixed settings service
-    const embyPromises = config.embySettings.map((setting) =>
-      embySettingsService.create({
-        name: setting.name,
-        url: setting.url,
-        apiKey: setting.apiKey,
-        userId: setting.userId,
-        enabled: setting.enabled,
-        selectedFolders: setting.selectedFolders,
-      })
-    );
-    const embySettings = await Promise.all(embyPromises);
-    console.log(`🎭 Created ${embySettings.length} Emby instances`);
+    // Seed Emby Settings using the new single instance service
+    let embyCreated = false;
+    if (config.embySettings) {
+      // Handle both single object and legacy array formats
+      const embySettingsArray = Array.isArray(config.embySettings)
+        ? config.embySettings
+        : [config.embySettings];
+
+      // Only take the first Emby setting if multiple are provided (for backward compatibility)
+      const embySettingToCreate = embySettingsArray[0];
+
+      if (embySettingToCreate) {
+        await embySettingsService.create({
+          name: embySettingToCreate.name,
+          url: embySettingToCreate.url,
+          apiKey: embySettingToCreate.apiKey,
+          userId: embySettingToCreate.userId,
+          enabled: embySettingToCreate.enabled,
+          selectedFolders: embySettingToCreate.selectedFolders,
+          preferEmbyDateAdded: embySettingToCreate.preferEmbyDateAdded,
+        });
+        embyCreated = true;
+
+        if (
+          Array.isArray(config.embySettings) &&
+          config.embySettings.length > 1
+        ) {
+          console.log(
+            `⚠️  Multiple Emby settings provided, only the first one was created (single instance mode)`
+          );
+        }
+      }
+    }
+    console.log(`🎭 Created ${embyCreated ? 1 : 0} Emby instance`);
 
     // Seed App Settings
     const appSettings = await prisma.appSettings.createMany({
@@ -362,7 +398,7 @@ async function seedDatabase() {
     console.log('\n📊 Seeding Summary:');
     console.log(`   • Sonarr instances: ${sonarrSettings.length}`);
     console.log(`   • Radarr instances: ${radarrSettings.length}`);
-    console.log(`   • Emby instances: ${embySettings.length}`);
+    console.log(`   • Emby instances: ${embyCreated ? 1 : 0}`);
     console.log(`   • App settings: ${appSettings.count}`);
     console.log(`   • Media items: ${mediaItems.count}`);
   } catch (error) {

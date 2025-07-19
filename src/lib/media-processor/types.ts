@@ -1,3 +1,5 @@
+import { type EmbySettings } from '../utils/single-emby-settings';
+
 export interface MediaProcessingProgress {
   phase: string;
   current: number;
@@ -118,17 +120,8 @@ export interface RadarrInstance {
   updatedAt: Date;
 }
 
-export interface EmbyInstance {
-  id: string;
-  name: string;
-  url: string;
-  apiKey: string;
-  userId?: string | null;
-  enabled: boolean;
-  preferEmbyDateAdded: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
+// Re-export EmbySettings as the single instance type
+export type { EmbySettings } from '../utils/single-emby-settings';
 
 export interface EmbyPlaybackInfo {
   lastWatched?: Date;

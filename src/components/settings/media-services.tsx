@@ -20,6 +20,9 @@ export function MediaServices({
   radarrSettings,
   embySettings,
 }: MediaServicesProps) {
+  // For Emby, show 1 if there's an enabled instance, 0 if none or disabled
+  const embyStatus = embySettings.length > 0 && embySettings[0].enabled ? 1 : 0;
+
   return (
     <div className='space-y-6'>
       {/* Header */}
@@ -51,7 +54,7 @@ export function MediaServices({
             <Database className='h-4 w-4' />
             Emby
             <Badge variant='secondary' className='ml-1'>
-              {embySettings.filter((s) => s.enabled).length}
+              {embyStatus}
             </Badge>
           </TabsTrigger>
         </TabsList>

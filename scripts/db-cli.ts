@@ -66,20 +66,22 @@ Examples:
 }
 
 async function checkStatus() {
+  console.log('🔍 Checking database status...');
+
   const isHealthy = await database.healthCheck();
   console.log('Database status:', isHealthy ? '✅ OK' : '❌ FAILED');
 
   if (isHealthy) {
-    const [sonarrCount, radarrCount, embyCount] = await Promise.all([
+    const [sonarrCount, radarrCount, embySettings] = await Promise.all([
       sonarrSettingsService.getAll().then((s) => s.length),
       radarrSettingsService.getAll().then((s) => s.length),
-      embySettingsService.getAll().then((s) => s.length),
+      embySettingsService.get(),
     ]);
 
     console.log(`\nSettings count:`);
     console.log(`  Sonarr: ${sonarrCount}`);
     console.log(`  Radarr: ${radarrCount}`);
-    console.log(`  Emby: ${embyCount}`);
+    console.log(`  Emby: ${embySettings ? 1 : 0}`);
   }
 }
 
@@ -101,11 +103,15 @@ async function listSettings(service?: string) {
   }
 
   if (!service || service === 'emby') {
-    const settings = await embySettingsService.getAll();
+    const settings = await embySettingsService.get();
     console.log('\n📺 Emby Settings:');
-    settings.forEach((s) => {
-      console.log(`  ${s.enabled ? '✅' : '❌'} ${s.name} - ${s.url}`);
-    });
+    if (settings) {
+      console.log(
+        `  ${settings.enabled ? '✅' : '❌'} ${settings.name} - ${settings.url}`
+      );
+    } else {
+      console.log('  No Emby instance configured');
+    }
   }
 }
 

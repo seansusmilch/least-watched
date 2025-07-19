@@ -1,5 +1,11 @@
 import { PrismaClient } from '../generated/prisma';
 import { prefixedSettingsService } from './utils/prefixed-settings';
+import {
+  singleEmbySettingsService,
+  type EmbySettings,
+  type CreateEmbySettingsInput,
+  type UpdateEmbySettingsInput,
+} from './utils/single-emby-settings';
 
 // Global instance to avoid multiple connections
 const globalForPrisma = globalThis as unknown as {
@@ -102,53 +108,36 @@ export const radarrSettingsService = {
   },
 };
 
-// Emby Settings (now using prefixed settings)
+// Emby Settings (single instance)
 export const embySettingsService = {
-  async getAll() {
-    return await prefixedSettingsService.getAll('emby');
+  // Get the single Emby instance
+  async get(): Promise<EmbySettings | null> {
+    return await singleEmbySettingsService.get();
   },
 
-  async getById(id: string) {
-    return await prefixedSettingsService.getById('emby', id);
+  // Create a new Emby instance (only if none exists)
+  async create(data: CreateEmbySettingsInput): Promise<EmbySettings> {
+    return await singleEmbySettingsService.create(data);
   },
 
-  async getByName(name: string) {
-    return await prefixedSettingsService.getByName('emby', name);
+  // Update the Emby instance
+  async update(data: UpdateEmbySettingsInput): Promise<EmbySettings> {
+    return await singleEmbySettingsService.update(data);
   },
 
-  async create(data: {
-    name: string;
-    url: string;
-    apiKey: string;
-    userId?: string;
-    enabled?: boolean;
-    selectedFolders?: string[];
-    preferEmbyDateAdded?: boolean;
-  }) {
-    return await prefixedSettingsService.create('emby', data);
+  // Delete the Emby instance
+  async delete(): Promise<void> {
+    return await singleEmbySettingsService.delete();
   },
 
-  async update(
-    id: string,
-    data: {
-      name?: string;
-      url?: string;
-      apiKey?: string;
-      userId?: string;
-      enabled?: boolean;
-      selectedFolders?: string[];
-      preferEmbyDateAdded?: boolean;
-    }
-  ) {
-    return await prefixedSettingsService.update('emby', id, data);
+  // Get enabled instance (convenience method)
+  async getEnabled(): Promise<EmbySettings | null> {
+    return await singleEmbySettingsService.getEnabled();
   },
 
-  async delete(id: string) {
-    return await prefixedSettingsService.delete('emby', id);
-  },
-
-  async getEnabled() {
-    return await prefixedSettingsService.getEnabled('emby');
+  // Check if instance exists (convenience method)
+  async exists(): Promise<boolean> {
+    return await singleEmbySettingsService.exists();
   },
 };
 

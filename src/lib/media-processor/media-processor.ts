@@ -3,6 +3,7 @@ import {
   radarrSettingsService,
   embySettingsService,
 } from '../database';
+import { type EmbySettings } from '../utils/single-emby-settings';
 import { type EnhancedProcessingSettings } from '../actions/settings';
 import { type DeletionScoreSettings } from '../actions/settings/types';
 import { folderSpaceService } from '../services/folder-space-service';
@@ -22,7 +23,6 @@ import {
   getDeletionScoreSettings,
   getEnhancedProcessingSettings,
 } from '@/lib/actions/settings';
-import { ServiceSettings } from '../utils/prefixed-settings';
 
 export class MediaProcessor {
   private onProgress?: (progress: MediaProcessingProgress) => void;
@@ -80,13 +80,11 @@ export class MediaProcessor {
     await this.ensureEnhancedSettings();
 
     // Get all enabled instances
-    const [sonarrInstances, radarrInstances, embyInstances] = await Promise.all(
-      [
-        sonarrSettingsService.getEnabled(),
-        radarrSettingsService.getEnabled(),
-        embySettingsService.getEnabled(),
-      ]
-    );
+    const [sonarrInstances, radarrInstances, embyInstance] = await Promise.all([
+      sonarrSettingsService.getEnabled(),
+      radarrSettingsService.getEnabled(),
+      embySettingsService.getEnabled(),
+    ]);
 
     // Calculate total items across all instances
     await this.updateProgress(
@@ -146,7 +144,7 @@ export class MediaProcessor {
       try {
         const sonarrItems = await this.processSonarrInstance(
           sonarrInstance,
-          embyInstances,
+          embyInstance,
           processedItemCount,
           totalItems,
           deletionScoreSettings,
@@ -167,7 +165,7 @@ export class MediaProcessor {
       try {
         const radarrItems = await this.processRadarrInstance(
           radarrInstance,
-          embyInstances,
+          embyInstance,
           processedItemCount,
           totalItems,
           deletionScoreSettings,
@@ -199,7 +197,7 @@ export class MediaProcessor {
 
   private async processSonarrInstance(
     sonarrInstance: SonarrInstance,
-    embyInstances: ServiceSettings[],
+    embyInstance: EmbySettings | null,
     processedItemCount: number,
     totalItems: number,
     deletionScoreSettings: DeletionScoreSettings,
@@ -236,7 +234,7 @@ export class MediaProcessor {
         const processedItem = await SonarrProcessor.processSingleItem(
           seriesData,
           sonarrInstance,
-          embyInstances,
+          embyInstance,
           this.enhancedSettings!
         );
 
@@ -258,7 +256,7 @@ export class MediaProcessor {
 
   private async processRadarrInstance(
     radarrInstance: RadarrInstance,
-    embyInstances: ServiceSettings[],
+    embyInstance: EmbySettings | null,
     processedItemCount: number,
     totalItems: number,
     deletionScoreSettings: DeletionScoreSettings,
@@ -295,7 +293,7 @@ export class MediaProcessor {
         const processedItem = await RadarrProcessor.processSingleItem(
           movieData,
           radarrInstance,
-          embyInstances,
+          embyInstance,
           this.enhancedSettings!
         );
 

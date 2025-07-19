@@ -7,13 +7,13 @@ import {
 import { type EnhancedProcessingSettings } from '../actions/settings';
 import { getQualityScore } from './constants';
 import { EmbyProcessor } from './emby-processor';
-import { ServiceSettings } from '../utils/prefixed-settings';
+import { type EmbySettings } from '../utils/single-emby-settings';
 
 export class RadarrProcessor {
   static async processSingleItem(
     movie: RadarrMovie,
     radarrInstance: RadarrInstance,
-    embyInstances: ServiceSettings[],
+    embyInstance: EmbySettings | null,
     enhancedSettings: EnhancedProcessingSettings
   ): Promise<ProcessedMediaItem> {
     console.log(`🎬 Processing movie:`);
@@ -91,16 +91,14 @@ export class RadarrProcessor {
       console.log(`   🎬 Querying Emby for playback info...`);
       const embyData = await EmbyProcessor.getEmbyMediaData({
         title: movie.title,
-        embyInstances,
+        embyInstance,
       });
       if (embyData) {
         processedItem.embyId = embyData.embyId;
         processedItem.lastWatched = embyData.lastWatched;
         processedItem.watchCount = embyData.watchCount || 0;
 
-        const preferDateAdded = embyInstances?.some(
-          (instance) => instance.preferEmbyDateAdded
-        );
+        const preferDateAdded = embyInstance?.preferEmbyDateAdded;
         if (preferDateAdded && embyData.metadata?.dateCreated) {
           console.log(
             `   🎬 Emby date added: ${embyData.metadata.dateCreated}`

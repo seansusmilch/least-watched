@@ -102,7 +102,7 @@ The application will be available at [http://localhost:3000](http://localhost:30
 1. Navigate to the **Settings** page
 2. Configure your media services in the **Media Services** tab:
    - **Sonarr/Radarr**: Add instances with name, URL, API key, and select folders
-   - **Emby**: Add instances with name, URL, API key, and User ID
+   - **Emby**: Configure your single Emby server with name, URL, API key, and User ID
 3. Configure **Deletion Scoring** in the second tab:
    - Adjust scoring weights for different factors
    - Set thresholds for days unwatched, file size, folder space, etc.
