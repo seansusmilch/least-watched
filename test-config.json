@@ -1,0 +1,26 @@
+{
+    "database": {
+        "url": "file:./test.db"
+    },
+    "environment": "test",
+    "mockApis": {
+        "emby": {
+            "baseUrl": "http://localhost:3000/api/mock/emby",
+            "apiKey": "test-emby-key"
+        },
+        "sonarr": {
+            "baseUrl": "http://localhost:3000/api/mock/sonarr",
+            "apiKey": "test-sonarr-key"
+        },
+        "radarr": {
+            "baseUrl": "http://localhost:3000/api/mock/radarr",
+            "apiKey": "test-radarr-key"
+        }
+    },
+    "settings": {
+        "testTimeout": 30000,
+        "logLevel": "error",
+        "headless": true,
+        "slowMo": 0
+    }
+}

@@ -118,3 +118,7 @@ temp/
 
 # Seed data configuration (contains sensitive API keys)
 seed-config.json
+
+playwright-report/
+test-results/
+test-results.json
