@@ -22,10 +22,10 @@ export interface ConnectionTestResult {
 }
 
 // Emby Settings Actions (Single Instance)
-export async function getEmbySettings(): Promise<EmbySettings[]> {
+export async function getEmbySettings(): Promise<EmbySettings | null> {
   try {
     const setting = await embySettingsService.get();
-    return setting ? [setting] : [];
+    return setting;
   } catch (error) {
     console.error('Failed to get Emby settings:', error);
     throw new Error('Failed to get Emby settings');

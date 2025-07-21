@@ -1,0 +1,107 @@
+---
+description: E2E Testing Guidelines for Least Watched Media Management App
+globs:
+alwaysApply: true
+---
+
+# E2E Testing Ground Rules
+
+## Core Principle
+**Tests must be useful** - Focus on critical business logic and real user workflows, not coverage metrics.
+
+## Framework & Setup
+- Use **Playwright** for E2E testing
+- Separate test database (`test.db`) with proper isolation
+- Reset and seed database before each test suite
+- Use transaction rollbacks for test isolation where possible
+
+## External Service Mocking
+- **MANDATORY**: Mock all external API calls (Emby, Sonarr, Radarr)
+- Use Playwright's route interception for API mocking
+- Create realistic mock responses based on actual API structures
+- Test both success and failure scenarios
+- **NEVER** make actual calls to production services (follows workspace rule)
+
+## Critical Test Scenarios
+
+### Media Processing Workflow
+```typescript
+// Test complete flow: Process Media button → progress updates → data in table
+// Include error handling for failed processing
+// Verify real-time progress updates work correctly
+```
+
+### Settings Configuration
+```typescript
+// Test adding/configuring Sonarr/Radarr/Emby instances
+// Verify connection testing functionality
+// Test folder selection and validation
+// Ensure settings persist after reload
+```
+
+### Data Operations
+```typescript
+// Test filtering combinations (genre, quality, folder, etc.)
+// Verify sorting and column visibility toggles
+// Test URL state management
+// Ensure TanStack Query caching works correctly
+```
+
+## Test Organization
+```
+e2e/
+├── fixtures/           # Database setup, mock data, page objects
+├── specs/             # Actual test files
+└── utils/             # API mocks, shared helpers
+```
+
+## Performance Requirements
+- Page load time < 3 seconds
+- Media processing start < 1 second  
+- Table filtering < 500ms response time
+- Use Playwright's performance APIs for measurement
+
+## Error Handling Tests
+- Network failures during API calls
+- Invalid API responses  
+- Database connection errors
+- Partial processing failures
+- Timeout scenarios
+
+## Best Practices
+
+### DO:
+- Write tests reflecting real user behavior
+- Use `data-testid` attributes for reliable element selection
+- Test complete workflows, not individual components
+- Keep tests independent and idempotent
+- Use descriptive test names explaining the scenario
+- Include accessibility testing (keyboard nav, ARIA labels)
+
+### DON'T:
+- Test implementation details
+- Rely on CSS classes for element selection
+- Use arbitrary wait times (use Playwright's auto-waiting)
+- Test external service internals
+- Create flaky tests depending on timing
+- Modify production data or services
+
+## App-Specific Rules
+- Use `bun` for test commands (not npm/yarn)
+- Respect read-only constraint for external services
+- Test server actions integration thoroughly
+- Verify skeleton loading states during data fetching
+- Test database backup/reset workflows (must confirm before reset)
+- Ensure proper error boundaries and user feedback
+
+## CI/CD Integration
+- Run E2E tests on every PR
+- Use GitHub Actions artifacts for failure screenshots/videos
+- Test against multiple browsers (Chromium, Firefox, WebKit)
+- Run in parallel with proper worker configuration
+
+## State Management Testing
+- Verify filters persist across navigation
+- Test progress state updates correctly
+- Validate optimistic updates with TanStack Query
+- Ensure proper cache invalidation after mutations

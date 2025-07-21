@@ -19,265 +19,302 @@ export class FolderSpaceService {
       '🔄 Fetching all folders with enhanced space information (no cache)'
     );
 
-    const { sonarrSettingsService, radarrSettingsService } = await import(
-      '../database'
-    );
-    const [sonarrInstances, radarrInstances] = await Promise.all([
-      sonarrSettingsService.getEnabled(),
-      radarrSettingsService.getEnabled(),
+    try {
+      const { sonarrSettingsService, radarrSettingsService } = await import(
+        '../database'
+      );
+      const [sonarrInstances, radarrInstances] = await Promise.all([
+        sonarrSettingsService.getEnabled(),
+        radarrSettingsService.getEnabled(),
+      ]);
+
+      const allFoldersWithSpace: FolderWithSpaceEnhanced[] = [];
+
+      // Helper functions
+      const getDriveRoot = (path: string): string => {
+        if (path.match(/^[A-Za-z]:\\/)) {
+          return path.substring(0, 3);
+        }
+        return path.split('/')[0] || '/';
+      };
+
+      const isSystemDrive = (path: string): boolean => {
+        return path.startsWith('C:\\') || path === '/';
+      };
+
+      // Process Sonarr instances with individual error handling
+      const sonarrPromises = sonarrInstances.map(async (instance) => {
+        try {
+          return await this.processSonarrInstanceForEnhanced(
+            instance,
+            getDriveRoot,
+            isSystemDrive
+          );
+        } catch (error) {
+          console.warn(
+            `⚠️ Failed to process Sonarr instance ${instance.name}:`,
+            error instanceof Error ? error.message : 'Unknown error'
+          );
+          return [];
+        }
+      });
+
+      // Process Radarr instances with individual error handling
+      const radarrPromises = radarrInstances.map(async (instance) => {
+        try {
+          return await this.processRadarrInstanceForEnhanced(
+            instance,
+            getDriveRoot,
+            isSystemDrive
+          );
+        } catch (error) {
+          console.warn(
+            `⚠️ Failed to process Radarr instance ${instance.name}:`,
+            error instanceof Error ? error.message : 'Unknown error'
+          );
+          return [];
+        }
+      });
+
+      // Wait for all instances to complete (with individual error handling)
+      const [sonarrResults, radarrResults] = await Promise.all([
+        Promise.all(sonarrPromises),
+        Promise.all(radarrPromises),
+      ]);
+
+      // Flatten results
+      sonarrResults.forEach((result) => allFoldersWithSpace.push(...result));
+      radarrResults.forEach((result) => allFoldersWithSpace.push(...result));
+
+      // Group folders by path to identify shared folders
+      const pathToInstances = new Map<
+        string,
+        { instanceName: string; instanceType: string }[]
+      >();
+
+      allFoldersWithSpace.forEach((folder) => {
+        const instances = pathToInstances.get(folder.path) || [];
+        instances.push({
+          instanceName: folder.instanceName,
+          instanceType: folder.instanceType,
+        });
+        pathToInstances.set(folder.path, instances);
+      });
+
+      // Update shared folder information
+      const result = allFoldersWithSpace.map((folder) => {
+        const instances = pathToInstances.get(folder.path) || [];
+        const instanceCount = instances.length;
+        const isShared = instanceCount > 1;
+
+        return {
+          ...folder,
+          isShared,
+          instanceCount,
+          sharedInstances: isShared
+            ? instances.map((i) => `${i.instanceName} (${i.instanceType})`)
+            : undefined,
+        };
+      });
+
+      console.log(
+        `✅ Successfully retrieved ${result.length} folders with space data`
+      );
+      return result;
+    } catch (error) {
+      console.error('❌ Critical error in getAllFoldersWithSpace:', error);
+      return [];
+    }
+  }
+
+  private async processSonarrInstanceForEnhanced(
+    instance: ServiceSettings,
+    getDriveRoot: (path: string) => string,
+    isSystemDrive: (path: string) => boolean
+  ): Promise<FolderWithSpaceEnhanced[]> {
+    const selectedFolders = instance.selectedFolders || [];
+
+    const [rootFolders, diskSpaceData] = await Promise.all([
+      sonarrApiClient.getRootFolders(instance),
+      sonarrApiClient.getDiskSpace(instance),
     ]);
 
-    const allFoldersWithSpace: FolderWithSpaceEnhanced[] = [];
+    const folderMap = new Map<string, FolderWithSpaceEnhanced>();
 
-    // Helper functions
-    const getDriveRoot = (path: string): string => {
-      if (path.match(/^[A-Za-z]:\\/)) {
-        return path.substring(0, 3);
-      }
-      return path.split('/')[0] || '/';
-    };
+    // Process root folders
+    for (const folder of rootFolders) {
+      const totalSpace = folder.totalSpace || 0;
+      const freeSpace = folder.freeSpace || 0;
+      const usedSpace = totalSpace - freeSpace;
+      const isSelected = selectedFolders.includes(folder.path);
 
-    const isSystemDrive = (path: string): boolean => {
-      return path.startsWith('C:\\') || path === '/';
-    };
-
-    // Process Sonarr instances
-    for (const instance of sonarrInstances) {
-      try {
-        const selectedFolders = instance.selectedFolders || [];
-
-        const [rootFolders, diskSpaceData] = await Promise.all([
-          sonarrApiClient.getRootFolders(instance),
-          sonarrApiClient.getDiskSpace(instance),
-        ]);
-
-        const folderMap = new Map<string, FolderWithSpaceEnhanced>();
-
-        // Process root folders
-        for (const folder of rootFolders) {
-          const totalSpace = folder.totalSpace || 0;
-          const freeSpace = folder.freeSpace || 0;
-          const usedSpace = totalSpace - freeSpace;
-          const isSelected = selectedFolders.includes(folder.path);
-
-          const enhancedFolder: FolderWithSpaceEnhanced = {
-            path: folder.path,
-            instanceName: instance.name,
-            instanceType: 'sonarr',
-            freeSpace,
-            totalSpace,
-            usedSpace,
-            freeSpacePercent:
-              totalSpace > 0 ? (freeSpace / totalSpace) * 100 : 0,
-            usedSpacePercent:
-              totalSpace > 0 ? (usedSpace / totalSpace) * 100 : 0,
-            enabled: instance.enabled,
-            isSelected,
-            isRootFolder: true,
-            isDiskSpaceFolder: false,
-            driveRoot: getDriveRoot(folder.path),
-            isSystemDrive: isSystemDrive(folder.path),
-          };
-
-          folderMap.set(folder.path, enhancedFolder);
-        }
-
-        // Enhance with disk space data
-        for (const diskInfo of diskSpaceData) {
-          const existingFolder = folderMap.get(diskInfo.path);
-
-          if (existingFolder) {
-            existingFolder.isDiskSpaceFolder = true;
-            existingFolder.label = diskInfo.label;
-            existingFolder.driveFormat = diskInfo.driveFormat;
-            existingFolder.unmappedFolders = diskInfo.unmappedFolders;
-
-            if (!existingFolder.totalSpace && diskInfo.totalSpace) {
-              existingFolder.totalSpace = diskInfo.totalSpace;
-              existingFolder.freeSpace = diskInfo.freeSpace;
-              existingFolder.usedSpace =
-                diskInfo.totalSpace - diskInfo.freeSpace;
-              existingFolder.freeSpacePercent =
-                (diskInfo.freeSpace / diskInfo.totalSpace) * 100;
-              existingFolder.usedSpacePercent =
-                diskInfo.percentUsed ||
-                ((diskInfo.totalSpace - diskInfo.freeSpace) /
-                  diskInfo.totalSpace) *
-                  100;
-            }
-          } else {
-            const isSelected = selectedFolders.includes(diskInfo.path);
-            const usedSpace = diskInfo.totalSpace - diskInfo.freeSpace;
-
-            const enhancedFolder: FolderWithSpaceEnhanced = {
-              path: diskInfo.path,
-              instanceName: instance.name,
-              instanceType: 'sonarr',
-              freeSpace: diskInfo.freeSpace,
-              totalSpace: diskInfo.totalSpace,
-              usedSpace,
-              freeSpacePercent:
-                (diskInfo.freeSpace / diskInfo.totalSpace) * 100,
-              usedSpacePercent:
-                diskInfo.percentUsed || (usedSpace / diskInfo.totalSpace) * 100,
-              enabled: instance.enabled,
-              isSelected,
-              isRootFolder: false,
-              isDiskSpaceFolder: true,
-              label: diskInfo.label,
-              driveFormat: diskInfo.driveFormat,
-              unmappedFolders: diskInfo.unmappedFolders,
-              driveRoot: getDriveRoot(diskInfo.path),
-              isSystemDrive: isSystemDrive(diskInfo.path),
-            };
-
-            folderMap.set(diskInfo.path, enhancedFolder);
-          }
-        }
-
-        allFoldersWithSpace.push(...folderMap.values());
-      } catch (error) {
-        console.error(
-          `❌ Error fetching folders from Sonarr ${instance.name}:`,
-          error
-        );
-      }
-    }
-
-    // Process Radarr instances (similar logic)
-    for (const instance of radarrInstances) {
-      try {
-        const selectedFolders = instance.selectedFolders || [];
-
-        const [rootFolders, diskSpaceData] = await Promise.all([
-          radarrApiClient.getRootFolders(instance),
-          radarrApiClient.getDiskSpace(instance),
-        ]);
-
-        const folderMap = new Map<string, FolderWithSpaceEnhanced>();
-
-        // Process root folders
-        for (const folder of rootFolders) {
-          const totalSpace = folder.totalSpace || 0;
-          const freeSpace = folder.freeSpace || 0;
-          const usedSpace = totalSpace - freeSpace;
-          const isSelected = selectedFolders.includes(folder.path);
-
-          const enhancedFolder: FolderWithSpaceEnhanced = {
-            path: folder.path,
-            instanceName: instance.name,
-            instanceType: 'radarr',
-            freeSpace,
-            totalSpace,
-            usedSpace,
-            freeSpacePercent:
-              totalSpace > 0 ? (freeSpace / totalSpace) * 100 : 0,
-            usedSpacePercent:
-              totalSpace > 0 ? (usedSpace / totalSpace) * 100 : 0,
-            enabled: instance.enabled,
-            isSelected,
-            isRootFolder: true,
-            isDiskSpaceFolder: false,
-            driveRoot: getDriveRoot(folder.path),
-            isSystemDrive: isSystemDrive(folder.path),
-          };
-
-          folderMap.set(folder.path, enhancedFolder);
-        }
-
-        // Enhance with disk space data
-        for (const diskInfo of diskSpaceData) {
-          const existingFolder = folderMap.get(diskInfo.path);
-
-          if (existingFolder) {
-            existingFolder.isDiskSpaceFolder = true;
-            existingFolder.label = diskInfo.label;
-            existingFolder.driveFormat = diskInfo.driveFormat;
-            existingFolder.unmappedFolders = diskInfo.unmappedFolders;
-
-            if (!existingFolder.totalSpace && diskInfo.totalSpace) {
-              existingFolder.totalSpace = diskInfo.totalSpace;
-              existingFolder.freeSpace = diskInfo.freeSpace;
-              existingFolder.usedSpace =
-                diskInfo.totalSpace - diskInfo.freeSpace;
-              existingFolder.freeSpacePercent =
-                (diskInfo.freeSpace / diskInfo.totalSpace) * 100;
-              existingFolder.usedSpacePercent =
-                diskInfo.percentUsed ||
-                ((diskInfo.totalSpace - diskInfo.freeSpace) /
-                  diskInfo.totalSpace) *
-                  100;
-            }
-          } else {
-            const isSelected = selectedFolders.includes(diskInfo.path);
-            const usedSpace = diskInfo.totalSpace - diskInfo.freeSpace;
-
-            const enhancedFolder: FolderWithSpaceEnhanced = {
-              path: diskInfo.path,
-              instanceName: instance.name,
-              instanceType: 'radarr',
-              freeSpace: diskInfo.freeSpace,
-              totalSpace: diskInfo.totalSpace,
-              usedSpace,
-              freeSpacePercent:
-                (diskInfo.freeSpace / diskInfo.totalSpace) * 100,
-              usedSpacePercent:
-                diskInfo.percentUsed || (usedSpace / diskInfo.totalSpace) * 100,
-              enabled: instance.enabled,
-              isSelected,
-              isRootFolder: false,
-              isDiskSpaceFolder: true,
-              label: diskInfo.label,
-              driveFormat: diskInfo.driveFormat,
-              unmappedFolders: diskInfo.unmappedFolders,
-              driveRoot: getDriveRoot(diskInfo.path),
-              isSystemDrive: isSystemDrive(diskInfo.path),
-            };
-
-            folderMap.set(diskInfo.path, enhancedFolder);
-          }
-        }
-
-        allFoldersWithSpace.push(...folderMap.values());
-      } catch (error) {
-        console.error(
-          `❌ Error fetching folders from Radarr ${instance.name}:`,
-          error
-        );
-      }
-    }
-
-    // Group folders by path to identify shared folders
-    const pathToInstances = new Map<
-      string,
-      { instanceName: string; instanceType: string }[]
-    >();
-
-    allFoldersWithSpace.forEach((folder) => {
-      const instances = pathToInstances.get(folder.path) || [];
-      instances.push({
-        instanceName: folder.instanceName,
-        instanceType: folder.instanceType,
-      });
-      pathToInstances.set(folder.path, instances);
-    });
-
-    // Update shared folder information
-    return allFoldersWithSpace.map((folder) => {
-      const instances = pathToInstances.get(folder.path) || [];
-      const instanceCount = instances.length;
-      const isShared = instanceCount > 1;
-
-      return {
-        ...folder,
-        isShared,
-        instanceCount,
-        sharedInstances: isShared
-          ? instances.map((i) => `${i.instanceName} (${i.instanceType})`)
-          : undefined,
+      const enhancedFolder: FolderWithSpaceEnhanced = {
+        path: folder.path,
+        instanceName: instance.name,
+        instanceType: 'sonarr',
+        freeSpace,
+        totalSpace,
+        usedSpace,
+        freeSpacePercent: totalSpace > 0 ? (freeSpace / totalSpace) * 100 : 0,
+        usedSpacePercent: totalSpace > 0 ? (usedSpace / totalSpace) * 100 : 0,
+        enabled: instance.enabled,
+        isSelected,
+        isRootFolder: true,
+        isDiskSpaceFolder: false,
+        driveRoot: getDriveRoot(folder.path),
+        isSystemDrive: isSystemDrive(folder.path),
       };
-    });
+
+      folderMap.set(folder.path, enhancedFolder);
+    }
+
+    // Enhance with disk space data
+    for (const diskInfo of diskSpaceData) {
+      const existingFolder = folderMap.get(diskInfo.path);
+
+      if (existingFolder) {
+        existingFolder.isDiskSpaceFolder = true;
+        existingFolder.label = diskInfo.label;
+        existingFolder.driveFormat = diskInfo.driveFormat;
+        existingFolder.unmappedFolders = diskInfo.unmappedFolders;
+
+        if (!existingFolder.totalSpace && diskInfo.totalSpace) {
+          existingFolder.totalSpace = diskInfo.totalSpace;
+          existingFolder.freeSpace = diskInfo.freeSpace;
+          existingFolder.usedSpace = diskInfo.totalSpace - diskInfo.freeSpace;
+          existingFolder.freeSpacePercent =
+            (diskInfo.freeSpace / diskInfo.totalSpace) * 100;
+          existingFolder.usedSpacePercent =
+            diskInfo.percentUsed ||
+            ((diskInfo.totalSpace - diskInfo.freeSpace) / diskInfo.totalSpace) *
+              100;
+        }
+      } else {
+        const isSelected = selectedFolders.includes(diskInfo.path);
+        const usedSpace = diskInfo.totalSpace - diskInfo.freeSpace;
+
+        const enhancedFolder: FolderWithSpaceEnhanced = {
+          path: diskInfo.path,
+          instanceName: instance.name,
+          instanceType: 'sonarr',
+          freeSpace: diskInfo.freeSpace,
+          totalSpace: diskInfo.totalSpace,
+          usedSpace,
+          freeSpacePercent: (diskInfo.freeSpace / diskInfo.totalSpace) * 100,
+          usedSpacePercent:
+            diskInfo.percentUsed || (usedSpace / diskInfo.totalSpace) * 100,
+          enabled: instance.enabled,
+          isSelected,
+          isRootFolder: false,
+          isDiskSpaceFolder: true,
+          label: diskInfo.label,
+          driveFormat: diskInfo.driveFormat,
+          unmappedFolders: diskInfo.unmappedFolders,
+          driveRoot: getDriveRoot(diskInfo.path),
+          isSystemDrive: isSystemDrive(diskInfo.path),
+        };
+
+        folderMap.set(diskInfo.path, enhancedFolder);
+      }
+    }
+
+    return Array.from(folderMap.values());
   }
+
+  private async processRadarrInstanceForEnhanced(
+    instance: ServiceSettings,
+    getDriveRoot: (path: string) => string,
+    isSystemDrive: (path: string) => boolean
+  ): Promise<FolderWithSpaceEnhanced[]> {
+    const selectedFolders = instance.selectedFolders || [];
+
+    const [rootFolders, diskSpaceData] = await Promise.all([
+      radarrApiClient.getRootFolders(instance),
+      radarrApiClient.getDiskSpace(instance),
+    ]);
+
+    const folderMap = new Map<string, FolderWithSpaceEnhanced>();
+
+    // Process root folders
+    for (const folder of rootFolders) {
+      const totalSpace = folder.totalSpace || 0;
+      const freeSpace = folder.freeSpace || 0;
+      const usedSpace = totalSpace - freeSpace;
+      const isSelected = selectedFolders.includes(folder.path);
+
+      const enhancedFolder: FolderWithSpaceEnhanced = {
+        path: folder.path,
+        instanceName: instance.name,
+        instanceType: 'radarr',
+        freeSpace,
+        totalSpace,
+        usedSpace,
+        freeSpacePercent: totalSpace > 0 ? (freeSpace / totalSpace) * 100 : 0,
+        usedSpacePercent: totalSpace > 0 ? (usedSpace / totalSpace) * 100 : 0,
+        enabled: instance.enabled,
+        isSelected,
+        isRootFolder: true,
+        isDiskSpaceFolder: false,
+        driveRoot: getDriveRoot(folder.path),
+        isSystemDrive: isSystemDrive(folder.path),
+      };
+
+      folderMap.set(folder.path, enhancedFolder);
+    }
+
+    // Enhance with disk space data
+    for (const diskInfo of diskSpaceData) {
+      const existingFolder = folderMap.get(diskInfo.path);
+
+      if (existingFolder) {
+        existingFolder.isDiskSpaceFolder = true;
+        existingFolder.label = diskInfo.label;
+        existingFolder.driveFormat = diskInfo.driveFormat;
+        existingFolder.unmappedFolders = diskInfo.unmappedFolders;
+
+        if (!existingFolder.totalSpace && diskInfo.totalSpace) {
+          existingFolder.totalSpace = diskInfo.totalSpace;
+          existingFolder.freeSpace = diskInfo.freeSpace;
+          existingFolder.usedSpace = diskInfo.totalSpace - diskInfo.freeSpace;
+          existingFolder.freeSpacePercent =
+            (diskInfo.freeSpace / diskInfo.totalSpace) * 100;
+          existingFolder.usedSpacePercent =
+            diskInfo.percentUsed ||
+            ((diskInfo.totalSpace - diskInfo.freeSpace) / diskInfo.totalSpace) *
+              100;
+        }
+      } else {
+        const isSelected = selectedFolders.includes(diskInfo.path);
+        const usedSpace = diskInfo.totalSpace - diskInfo.freeSpace;
+
+        const enhancedFolder: FolderWithSpaceEnhanced = {
+          path: diskInfo.path,
+          instanceName: instance.name,
+          instanceType: 'radarr',
+          freeSpace: diskInfo.freeSpace,
+          totalSpace: diskInfo.totalSpace,
+          usedSpace,
+          freeSpacePercent: (diskInfo.freeSpace / diskInfo.totalSpace) * 100,
+          usedSpacePercent:
+            diskInfo.percentUsed || (usedSpace / diskInfo.totalSpace) * 100,
+          enabled: instance.enabled,
+          isSelected,
+          isRootFolder: false,
+          isDiskSpaceFolder: true,
+          label: diskInfo.label,
+          driveFormat: diskInfo.driveFormat,
+          unmappedFolders: diskInfo.unmappedFolders,
+          driveRoot: getDriveRoot(diskInfo.path),
+          isSystemDrive: isSystemDrive(diskInfo.path),
+        };
+
+        folderMap.set(diskInfo.path, enhancedFolder);
+      }
+    }
+
+    return Array.from(folderMap.values());
+  }
+
   async getFolderSpaceData(): Promise<FolderSpaceData[]> {
     console.log('🔍 Fetching folder space data from Sonarr/Radarr APIs...');
 

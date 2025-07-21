@@ -114,6 +114,7 @@ export function DeletionScoreSettings() {
     try {
       const result = await setDeletionScoreSettings(settings);
       if (result.success) {
+        toast.success('Deletion score settings saved successfully!');
       } else {
         toast.error(result.message || 'Error saving settings');
       }
@@ -211,6 +212,7 @@ export function DeletionScoreSettings() {
                   }
                   max={50}
                   step={1}
+                  data-testid='last-watched-weight'
                 />
               </div>
 
@@ -311,6 +313,7 @@ export function DeletionScoreSettings() {
                 }
                 max={30}
                 step={1}
+                data-testid='play-count-weight'
               />
             </div>
           )}
@@ -347,6 +350,7 @@ export function DeletionScoreSettings() {
                   }
                   max={50}
                   step={1}
+                  data-testid='file-size-weight'
                 />
               </div>
 
@@ -453,6 +457,7 @@ export function DeletionScoreSettings() {
                   }
                   max={30}
                   step={1}
+                  data-testid='rating-weight'
                 />
               </div>
 
@@ -616,7 +621,11 @@ export function DeletionScoreSettings() {
           <div className='flex space-x-2'>
             <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
               <DialogTrigger asChild>
-                <Button variant='outline' disabled={saving}>
+                <Button
+                  variant='outline'
+                  disabled={saving}
+                  data-testid='reset-to-defaults'
+                >
                   <RotateCcw className='h-4 w-4 mr-2' />
                   Reset to Defaults
                 </Button>
@@ -641,7 +650,11 @@ export function DeletionScoreSettings() {
             </Dialog>
           </div>
 
-          <Button onClick={handleSaveClick} disabled={saving}>
+          <Button
+            onClick={handleSaveClick}
+            disabled={saving}
+            data-testid='save-score-settings'
+          >
             {saving ? (
               <>
                 <Loader2 className='h-4 w-4 mr-2 animate-spin' />

@@ -320,7 +320,11 @@ export function MediaFiltersClient({
         {/* Advanced Filters Accordion */}
         <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
           <CollapsibleTrigger asChild>
-            <Button variant='outline' className='w-full justify-between'>
+            <Button
+              variant='outline'
+              className='w-full justify-between'
+              data-testid='filter-button'
+            >
               <div className='flex items-center space-x-2'>
                 <Settings className='h-4 w-4' />
                 <span>Advanced Filters</span>

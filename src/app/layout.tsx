@@ -30,17 +30,25 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ThemeProvider
-          attribute='class'
-          defaultTheme='system'
-          enableSystem
-          disableTransitionOnChange
-        >
-          <QueryProvider>
+        <QueryProvider>
+          <ThemeProvider
+            attribute='class'
+            defaultTheme='system'
+            enableSystem
+            disableTransitionOnChange
+          >
             {children}
-            <Toaster richColors closeButton position='top-right' />
-          </QueryProvider>
-        </ThemeProvider>
+          </ThemeProvider>
+        </QueryProvider>
+        <Toaster
+          toastOptions={{
+            className: 'toast-item',
+            // Add test ID for individual toasts
+            ...(process.env.NODE_ENV === 'test' && {
+              'data-testid': 'toast-item',
+            }),
+          }}
+        />
       </body>
     </html>
   );

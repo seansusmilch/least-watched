@@ -197,13 +197,16 @@ export function SonarrSettings({ initialSettings }: SonarrSettingsProps) {
             Configure your Sonarr instances for TV show management
           </p>
         </div>
-        <Button onClick={() => setIsAddDialogOpen(true)}>
+        <Button
+          onClick={() => setIsAddDialogOpen(true)}
+          data-testid='add-sonarr-instance'
+        >
           <Plus className='mr-2 h-4 w-4' />
           Add Instance
         </Button>
       </div>
 
-      <div className='grid gap-4'>
+      <div className='grid gap-4' data-testid='instance-list'>
         {optimisticSettings.map((setting) => (
           <Card key={setting.id}>
             <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
@@ -325,7 +328,7 @@ export function SonarrSettings({ initialSettings }: SonarrSettingsProps) {
 
       {/* Add/Edit Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent>
+        <DialogContent data-testid='add-instance-dialog'>
           <DialogHeader>
             <DialogTitle>
               {editingId ? 'Edit Sonarr Instance' : 'Add Sonarr Instance'}
@@ -342,6 +345,7 @@ export function SonarrSettings({ initialSettings }: SonarrSettingsProps) {
               <Input
                 id='name'
                 name='name'
+                data-testid='instance-name'
                 defaultValue={editingSetting?.name || ''}
                 required
               />
@@ -352,6 +356,7 @@ export function SonarrSettings({ initialSettings }: SonarrSettingsProps) {
                 id='url'
                 name='url'
                 type='url'
+                data-testid='instance-url'
                 defaultValue={editingSetting?.url || ''}
                 placeholder='http://localhost:8989'
                 required
@@ -362,6 +367,7 @@ export function SonarrSettings({ initialSettings }: SonarrSettingsProps) {
               <Input
                 id='apiKey'
                 name='apiKey'
+                data-testid='instance-api-key'
                 defaultValue={editingSetting?.apiKey || ''}
                 required
               />
@@ -385,7 +391,7 @@ export function SonarrSettings({ initialSettings }: SonarrSettingsProps) {
               >
                 Cancel
               </Button>
-              <Button type='submit'>
+              <Button type='submit' data-testid='save-instance'>
                 {editingId ? 'Update' : 'Create'} Instance
               </Button>
             </DialogFooter>

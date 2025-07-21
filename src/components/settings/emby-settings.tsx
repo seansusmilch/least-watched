@@ -22,10 +22,10 @@ import type { EmbySettings } from '@/lib/utils/single-emby-settings';
 type ConnectionStatus = 'idle' | 'testing' | 'success' | 'error';
 
 interface EmbySettingsProps {
-  initialSettings: EmbySettings[];
+  initialSettings: EmbySettings | null;
 }
 
-export function EmbySettings({ initialSettings }: EmbySettingsProps) {
+export function EmbySettingsTab({ initialSettings }: EmbySettingsProps) {
   const {
     settingsQuery,
     createMutation,
@@ -45,7 +45,6 @@ export function EmbySettings({ initialSettings }: EmbySettingsProps) {
   const isLoading = settingsQuery.isLoading || settingsQuery.isFetching;
 
   // Get the single Emby instance (first one) or null if none exists
-  const embyInstance = settings.length > 0 ? settings[0] : null;
 
   const handleTestConnection = async () => {
     setConnectionStatus('testing');
@@ -82,7 +81,7 @@ export function EmbySettings({ initialSettings }: EmbySettingsProps) {
     };
 
     try {
-      if (embyInstance) {
+      if (settings) {
         // Update existing instance
         const result = await updateMutation.mutateAsync({
           input,
@@ -109,12 +108,12 @@ export function EmbySettings({ initialSettings }: EmbySettingsProps) {
 
   const handleEdit = () => {
     setIsEditing(true);
-    setPreferEmbyDateAdded(embyInstance?.preferEmbyDateAdded ?? false);
+    setPreferEmbyDateAdded(settings?.preferEmbyDateAdded ?? false);
   };
 
   const handleCancel = () => {
     setIsEditing(false);
-    setPreferEmbyDateAdded(embyInstance?.preferEmbyDateAdded ?? false);
+    setPreferEmbyDateAdded(settings?.preferEmbyDateAdded ?? false);
   };
 
   return (
@@ -141,7 +140,7 @@ export function EmbySettings({ initialSettings }: EmbySettingsProps) {
               </p>
             </CardContent>
           </Card>
-        ) : !embyInstance && !isEditing ? (
+        ) : !settings && !isEditing ? (
           <Card>
             <CardContent className='flex flex-col items-center justify-center py-12'>
               <Play className='h-12 w-12 text-muted-foreground' />
@@ -151,7 +150,11 @@ export function EmbySettings({ initialSettings }: EmbySettingsProps) {
               <p className='mt-2 text-sm text-muted-foreground'>
                 Set up your Emby server to get started
               </p>
-              <Button className='mt-4' onClick={handleEdit}>
+              <Button
+                className='mt-4'
+                onClick={handleEdit}
+                data-testid='add-emby-instance'
+              >
                 Configure Emby
               </Button>
             </CardContent>
@@ -167,16 +170,16 @@ export function EmbySettings({ initialSettings }: EmbySettingsProps) {
                     </div>
                     <div>
                       <CardTitle className='text-lg'>
-                        {embyInstance?.name}
+                        {settings?.name}
                       </CardTitle>
-                      <CardDescription>{embyInstance?.url}</CardDescription>
+                      <CardDescription>{settings?.url}</CardDescription>
                     </div>
                   </div>
                   <div className='flex items-center gap-2'>
                     <Badge
-                      variant={embyInstance?.enabled ? 'default' : 'secondary'}
+                      variant={settings?.enabled ? 'default' : 'secondary'}
                     >
-                      {embyInstance?.enabled ? 'Enabled' : 'Disabled'}
+                      {settings?.enabled ? 'Enabled' : 'Disabled'}
                     </Badge>
                     <Badge
                       variant={
@@ -201,13 +204,13 @@ export function EmbySettings({ initialSettings }: EmbySettingsProps) {
                     <div>
                       <Label className='text-sm font-medium'>API Key</Label>
                       <p className='text-sm text-muted-foreground'>
-                        {embyInstance?.apiKey.substring(0, 8)}...
+                        {settings?.apiKey.substring(0, 8)}...
                       </p>
                     </div>
                     <div>
                       <Label className='text-sm font-medium'>User ID</Label>
                       <p className='text-sm text-muted-foreground'>
-                        {embyInstance?.userId ? embyInstance.userId : 'Not set'}
+                        {settings?.userId ? settings.userId : 'Not set'}
                       </p>
                     </div>
                   </div>
@@ -241,12 +244,12 @@ export function EmbySettings({ initialSettings }: EmbySettingsProps) {
               <>
                 <CardHeader>
                   <CardTitle>
-                    {embyInstance
+                    {settings
                       ? 'Edit Emby Configuration'
                       : 'Configure Emby Server'}
                   </CardTitle>
                   <CardDescription>
-                    {embyInstance
+                    {settings
                       ? 'Update your Emby server configuration'
                       : 'Add your Emby server details to manage your media'}
                   </CardDescription>
@@ -258,7 +261,8 @@ export function EmbySettings({ initialSettings }: EmbySettingsProps) {
                       <Input
                         id='name'
                         name='name'
-                        defaultValue={embyInstance?.name || 'Emby Server'}
+                        data-testid='instance-name'
+                        defaultValue={settings?.name || 'Emby Server'}
                         required
                       />
                     </div>
@@ -268,7 +272,8 @@ export function EmbySettings({ initialSettings }: EmbySettingsProps) {
                         id='url'
                         name='url'
                         type='url'
-                        defaultValue={embyInstance?.url || ''}
+                        data-testid='instance-url'
+                        defaultValue={settings?.url || ''}
                         placeholder='http://localhost:8096'
                         required
                       />
@@ -278,7 +283,8 @@ export function EmbySettings({ initialSettings }: EmbySettingsProps) {
                       <Input
                         id='apiKey'
                         name='apiKey'
-                        defaultValue={embyInstance?.apiKey || ''}
+                        data-testid='instance-api-key'
+                        defaultValue={settings?.apiKey || ''}
                         required
                       />
                     </div>
@@ -287,7 +293,7 @@ export function EmbySettings({ initialSettings }: EmbySettingsProps) {
                       <Input
                         id='userId'
                         name='userId'
-                        defaultValue={embyInstance?.userId || ''}
+                        defaultValue={settings?.userId || ''}
                         placeholder='Enter user ID'
                       />
                     </div>
@@ -295,7 +301,7 @@ export function EmbySettings({ initialSettings }: EmbySettingsProps) {
                       <Checkbox
                         id='enabled'
                         name='enabled'
-                        defaultChecked={embyInstance?.enabled ?? true}
+                        defaultChecked={settings?.enabled ?? true}
                       />
                       <Label htmlFor='enabled'>Enabled</Label>
                     </div>
@@ -313,9 +319,9 @@ export function EmbySettings({ initialSettings }: EmbySettingsProps) {
                       </Label>
                     </div>
                     <div className='flex gap-2 pt-4'>
-                      <Button type='submit'>
+                      <Button type='submit' data-testid='save-instance'>
                         <Save className='mr-2 h-4 w-4' />
-                        {embyInstance ? 'Update' : 'Save'}
+                        {settings ? 'Update' : 'Save'}
                       </Button>
                       <Button
                         type='button'

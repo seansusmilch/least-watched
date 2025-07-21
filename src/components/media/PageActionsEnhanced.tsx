@@ -134,6 +134,7 @@ export function PageActionsEnhanced({
     <div className='flex items-center space-x-2'>
       {/* Process Media Button */}
       <Button
+        data-testid='process-media-button'
         onClick={handleProcess}
         disabled={
           shouldDisable ||

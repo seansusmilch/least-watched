@@ -2,17 +2,17 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Monitor, Globe, Database } from 'lucide-react';
+import { Monitor, Globe, Database, CheckCircle, X } from 'lucide-react';
 import type { ServiceSettings } from '@/lib/utils/prefixed-settings';
 
 import { SonarrSettings } from './sonarr-settings';
 import { RadarrSettings } from './radarr-settings';
-import { EmbySettings } from './emby-settings';
-
+import { EmbySettingsTab } from './emby-settings';
+import type { EmbySettings } from '@/lib/utils/single-emby-settings';
 interface MediaServicesProps {
   sonarrSettings: ServiceSettings[];
   radarrSettings: ServiceSettings[];
-  embySettings: ServiceSettings[];
+  embySettings: EmbySettings | null;
 }
 
 export function MediaServices({
@@ -20,8 +20,7 @@ export function MediaServices({
   radarrSettings,
   embySettings,
 }: MediaServicesProps) {
-  // For Emby, show 1 if there's an enabled instance, 0 if none or disabled
-  const embyStatus = embySettings.length > 0 && embySettings[0].enabled ? 1 : 0;
+  const embyStatus = embySettings?.enabled;
 
   return (
     <div className='space-y-6'>
@@ -54,7 +53,11 @@ export function MediaServices({
             <Database className='h-4 w-4' />
             Emby
             <Badge variant='secondary' className='ml-1'>
-              {embyStatus}
+              {embyStatus ? (
+                <CheckCircle className='h-4 w-4' />
+              ) : (
+                <X className='h-4 w-4' />
+              )}
             </Badge>
           </TabsTrigger>
         </TabsList>
@@ -68,7 +71,7 @@ export function MediaServices({
         </TabsContent>
 
         <TabsContent value='emby' className='space-y-4'>
-          <EmbySettings initialSettings={embySettings} />
+          <EmbySettingsTab initialSettings={embySettings} />
         </TabsContent>
       </Tabs>
     </div>

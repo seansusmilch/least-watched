@@ -101,7 +101,10 @@ export function MediaProcessingProgress({
           {progress && !hasError && (
             <div className='space-y-3'>
               <div className='flex items-center justify-between'>
-                <Label className='text-sm font-medium'>
+                <Label
+                  className='text-sm font-medium'
+                  data-testid='progress-message'
+                >
                   {progress.phase || 'Processing media library...'}
                 </Label>
                 <div className='flex items-center space-x-2'>
@@ -110,13 +113,20 @@ export function MediaProcessingProgress({
                       {progress.current}/{progress.total}
                     </span>
                   )}
-                  <span className='text-sm text-muted-foreground font-medium'>
+                  <span
+                    className='text-sm text-muted-foreground font-medium'
+                    data-testid='progress-percentage'
+                  >
                     {progressPercentage}%
                   </span>
                 </div>
               </div>
 
-              <Progress value={progressPercentage} className='w-full h-3' />
+              <Progress
+                value={progressPercentage}
+                className='w-full h-3'
+                data-testid='progress-bar'
+              />
 
               {progress.currentItem && (
                 <p className='text-xs text-muted-foreground mt-2 truncate'>

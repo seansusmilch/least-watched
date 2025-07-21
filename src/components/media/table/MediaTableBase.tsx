@@ -189,6 +189,7 @@ export function MediaTableBase({ table }: MediaTableBaseProps) {
           </div>
 
           <div
+            data-testid='media-table'
             ref={tableContainerRef}
             className='h-[70vh] scrollbar-hide overflow-auto'
           >

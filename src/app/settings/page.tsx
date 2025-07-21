@@ -40,15 +40,27 @@ export default async function SettingsPage() {
         {/* Settings Tabs */}
         <Tabs defaultValue='services' className='space-y-4'>
           <TabsList className='grid w-full grid-cols-3'>
-            <TabsTrigger value='services' className='flex items-center gap-2'>
+            <TabsTrigger
+              value='services'
+              data-testid='media-services-tab'
+              className='flex items-center gap-2'
+            >
               <Server className='h-4 w-4' />
               Media Services
             </TabsTrigger>
-            <TabsTrigger value='deletion' className='flex items-center gap-2'>
+            <TabsTrigger
+              value='deletion'
+              data-testid='deletion-score-tab'
+              className='flex items-center gap-2'
+            >
               <Trash2 className='h-4 w-4' />
               Deletion Scoring
             </TabsTrigger>
-            <TabsTrigger value='advanced' className='flex items-center gap-2'>
+            <TabsTrigger
+              value='advanced'
+              data-testid='advanced-settings-tab'
+              className='flex items-center gap-2'
+            >
               <Settings className='h-4 w-4' />
               Advanced
             </TabsTrigger>

@@ -35,13 +35,27 @@ export interface RadarrMovie {
 }
 
 abstract class BaseApiClient {
+  private readonly DEFAULT_TIMEOUT = 10000; // 10 seconds
+
   protected async fetchWithAuth(
     url: string,
-    apiKey: string
+    apiKey: string,
+    timeoutMs: number = this.DEFAULT_TIMEOUT
   ): Promise<Response> {
-    return fetch(url, {
-      headers: { 'X-Api-Key': apiKey },
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetch(url, {
+        headers: { 'X-Api-Key': apiKey },
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      return response;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      throw error;
+    }
   }
 
   protected async safeApiCall<T>(
@@ -57,7 +71,13 @@ abstract class BaseApiClient {
       }
       return await response.json();
     } catch (error) {
-      console.error(`${context}:`, error);
+      // Only log full error details in development
+      if (process.env.NODE_ENV === 'development') {
+        console.error(`${context}:`, error);
+      } else {
+        // In production, just log that the service is unavailable
+        console.warn(`${context}: Service unavailable, using default data`);
+      }
       return defaultValue;
     }
   }

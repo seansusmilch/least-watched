@@ -13,7 +13,7 @@ export function useEmbySettings() {
   const queryClient = useQueryClient();
 
   // Query: Fetch Emby setting (returns array for compatibility)
-  const settingsQuery = useQuery<EmbySettings[]>({
+  const settingsQuery = useQuery<EmbySettings | null>({
     queryKey: ['emby-settings'],
     queryFn: getEmbySettings,
   });

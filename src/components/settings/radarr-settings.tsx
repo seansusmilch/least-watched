@@ -212,13 +212,16 @@ export function RadarrSettings({ initialSettings }: RadarrSettingsProps) {
             Configure your Radarr instances for movie management
           </p>
         </div>
-        <Button onClick={() => setIsAddDialogOpen(true)}>
+        <Button
+          onClick={() => setIsAddDialogOpen(true)}
+          data-testid='add-radarr-instance'
+        >
           <Plus className='mr-2 h-4 w-4' />
           Add Instance
         </Button>
       </div>
 
-      <div className='grid gap-4'>
+      <div className='grid gap-4' data-testid='instance-list'>
         {optimisticSettings.map((setting) => (
           <Card key={setting.id}>
             <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
@@ -339,7 +342,7 @@ export function RadarrSettings({ initialSettings }: RadarrSettingsProps) {
 
       {/* Add/Edit Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent>
+        <DialogContent data-testid='add-instance-dialog'>
           <DialogHeader>
             <DialogTitle>
               {editingId ? 'Edit Radarr Instance' : 'Add Radarr Instance'}
@@ -356,6 +359,7 @@ export function RadarrSettings({ initialSettings }: RadarrSettingsProps) {
               <Input
                 id='name'
                 name='name'
+                data-testid='instance-name'
                 defaultValue={editingSetting?.name || ''}
                 required
               />
@@ -366,6 +370,7 @@ export function RadarrSettings({ initialSettings }: RadarrSettingsProps) {
                 id='url'
                 name='url'
                 type='url'
+                data-testid='instance-url'
                 defaultValue={editingSetting?.url || ''}
                 placeholder='http://localhost:7878'
                 required
@@ -376,6 +381,7 @@ export function RadarrSettings({ initialSettings }: RadarrSettingsProps) {
               <Input
                 id='apiKey'
                 name='apiKey'
+                data-testid='instance-api-key'
                 defaultValue={editingSetting?.apiKey || ''}
                 required
               />
@@ -400,7 +406,7 @@ export function RadarrSettings({ initialSettings }: RadarrSettingsProps) {
               >
                 Cancel
               </Button>
-              <Button type='submit'>
+              <Button type='submit' data-testid='save-instance'>
                 {editingId ? 'Update' : 'Create'} Instance
               </Button>
             </DialogFooter>
