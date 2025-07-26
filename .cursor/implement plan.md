@@ -1,1 +1,0 @@
-implement the plan step by step. after each step, ask the user for confirmation before proceeding to the next step.

@@ -12,6 +12,7 @@ import {
   refreshFolderSpaceData,
 } from '@/lib/actions/media-processing';
 import { useProgress } from '@/hooks/use-progress';
+import { LatestUpdateTimestamp } from './LatestUpdateTimestamp';
 
 interface PageActionsEnhancedProps {
   selectedItems?: string[];
@@ -132,6 +133,9 @@ export function PageActionsEnhanced({
 
   return (
     <div className='flex items-center space-x-2'>
+      {/* Latest Update Timestamp */}
+      <LatestUpdateTimestamp />
+
       {/* Process Media Button */}
       <Button
         data-testid='process-media-button'
