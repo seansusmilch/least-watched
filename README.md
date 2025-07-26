@@ -9,6 +9,7 @@ A Next.js application for managing and tracking your least-watched media across 
 - **Smart Deletion Scoring**: Calculate deletion priority scores based on multiple configurable factors
 - **Media Processing**: Automated media scanning and data aggregation
 - **Advanced Filtering**: Filter media by genre, quality, source, folder, and more
+- **Settings Export/Import**: Export and import deletion scoring settings as JSON files
 - **Settings Management**: Centralized configuration for all your media services
 - **Database Seeding**: Pre-populate your database with test data using configuration files
 - **Database-driven**: SQLite database with Prisma ORM for reliable data storage
@@ -228,6 +229,61 @@ The application calculates deletion scores based on multiple configurable factor
 - **Folder Space**: Content in low-space folders gets priority
 
 All scoring factors are configurable in the settings with adjustable weights and thresholds.
+
+## Settings Export/Import
+
+The application supports exporting and importing deletion scoring settings as JSON files, making it easy to:
+
+- **Backup Settings**: Save your current configuration for safekeeping
+- **Share Configurations**: Share optimized settings with other users
+- **Migrate Settings**: Transfer settings between different installations
+- **Version Control**: Track changes to your scoring configuration
+
+### Exporting Settings
+
+1. Navigate to **Settings** → **Deletion Scoring** tab
+2. Click the **Export Settings** button
+3. A JSON file will be downloaded with your current configuration
+4. The file includes metadata like export date and version
+
+### Importing Settings
+
+1. Navigate to **Settings** → **Deletion Scoring** tab
+2. Click the **Import Settings** button
+3. Select a valid JSON settings file
+4. The application will validate the file and apply the settings
+5. You'll see a success message if the import was successful
+
+### File Format
+
+The exported JSON file has the following structure:
+
+```json
+{
+  "version": "1.0",
+  "exportedAt": "2024-01-15T10:30:00.000Z",
+  "settings": {
+    "enabled": true,
+    "daysUnwatchedEnabled": true,
+    "daysUnwatchedMaxPoints": 30,
+    // ... all other scoring parameters
+  }
+}
+```
+
+### Validation
+
+The import process validates:
+- File format (must be valid JSON)
+- Required fields presence
+- Data structure compatibility
+- Settings integrity
+
+If validation fails, you'll see an error message explaining the issue.
+
+### Example File
+
+See `deletion-score-settings-example.json` in the project root for a complete example of the export format.
 
 ## Seeding Configuration
 

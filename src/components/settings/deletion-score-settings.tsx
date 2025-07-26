@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Card,
   CardContent,
@@ -13,7 +13,15 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
-import { Loader2, Save, Trash2, Info, RotateCcw } from 'lucide-react';
+import {
+  Loader2,
+  Save,
+  Trash2,
+  Info,
+  RotateCcw,
+  Download,
+  Upload,
+} from 'lucide-react';
 import {
   Dialog,
   DialogClose,
@@ -30,6 +38,7 @@ import {
   type DeletionScoreSettings,
 } from '@/lib/actions/settings';
 import { toast } from 'sonner';
+import { FileInput } from '@/components/ui/file-input';
 
 const getDefaultSettings = (): DeletionScoreSettings => ({
   enabled: true,
@@ -82,6 +91,8 @@ export function DeletionScoreSettings() {
   const [saving, setSaving] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [showSaveConfirmDialog, setShowSaveConfirmDialog] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadSettings();
@@ -99,6 +110,12 @@ export function DeletionScoreSettings() {
   };
 
   const handleSaveClick = () => {
+    // Check validation first
+    if (!validation.isValid) {
+      toast.error(validation.message);
+      return;
+    }
+
     // Show confirmation dialog if deletion scoring is enabled
     if (settings.enabled) {
       setShowSaveConfirmDialog(true);
@@ -131,6 +148,36 @@ export function DeletionScoreSettings() {
     setShowResetDialog(false);
   };
 
+  const handleExportSettings = () => {
+    try {
+      const exportData = {
+        version: '1.0',
+        exportedAt: new Date().toISOString(),
+        settings: settings,
+      };
+
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+        type: 'application/json',
+      });
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `deletion-score-settings-${
+        new Date().toISOString().split('T')[0]
+      }.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast.success('Settings exported successfully!');
+    } catch (error) {
+      console.error('Failed to export settings:', error);
+      toast.error('Failed to export settings. Please try again.');
+    }
+  };
+
   if (loading) {
     return (
       <div className='flex items-center justify-center p-8'>
@@ -149,6 +196,44 @@ export function DeletionScoreSettings() {
     return total;
   };
 
+  const getPointsBreakdown = () => {
+    const breakdown = [];
+    if (settings.daysUnwatchedEnabled) {
+      breakdown.push(`Days Unwatched: ${settings.daysUnwatchedMaxPoints} pts`);
+    }
+    if (settings.neverWatchedEnabled) {
+      breakdown.push(`Never Watched: ${settings.neverWatchedPoints} pts`);
+    }
+    if (settings.sizeOnDiskEnabled) {
+      breakdown.push(`Size on Disk: ${settings.sizeOnDiskMaxPoints} pts`);
+    }
+    if (settings.ageSinceAddedEnabled) {
+      breakdown.push(`Age Since Added: ${settings.ageSinceAddedMaxPoints} pts`);
+    }
+    if (settings.folderSpaceEnabled) {
+      breakdown.push(`Folder Space: ${settings.folderSpaceMaxPoints} pts`);
+    }
+    return breakdown;
+  };
+
+  const validateSettings = () => {
+    if (!settings.enabled) return { isValid: true, message: '' };
+
+    const totalPoints = calculateTotalMaxPoints();
+    if (totalPoints !== 100) {
+      const breakdown = getPointsBreakdown();
+      return {
+        isValid: false,
+        message: `Deletion score factors must add up to exactly 100 points. Current total: ${totalPoints} points.\n\nBreakdown:\n${breakdown
+          .map((item) => `• ${item}`)
+          .join('\n')}\n\nPlease adjust your settings.`,
+      };
+    }
+    return { isValid: true, message: '' };
+  };
+
+  const validation = validateSettings();
+
   return (
     <Card>
       <CardHeader>
@@ -159,7 +244,26 @@ export function DeletionScoreSettings() {
         <CardDescription>
           Configure how deletion scores are calculated for media items. Higher
           scores indicate items that are better candidates for deletion. Total
-          possible score: {calculateTotalMaxPoints()}/100
+          possible score:{' '}
+          <span
+            className={
+              validation.isValid && settings.enabled
+                ? 'text-green-600 font-semibold'
+                : 'text-foreground'
+            }
+          >
+            {calculateTotalMaxPoints()}/100
+          </span>
+          {!validation.isValid && (
+            <div className='mt-2 text-destructive font-medium whitespace-pre-line'>
+              {validation.message}
+            </div>
+          )}
+          {validation.isValid && settings.enabled && (
+            <div className='mt-2 text-green-600 font-medium'>
+              ✓ Settings are valid and ready to save
+            </div>
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent className='space-y-6'>
@@ -619,6 +723,106 @@ export function DeletionScoreSettings() {
         {/* Action Buttons */}
         <div className='flex justify-between pt-4'>
           <div className='flex space-x-2'>
+            <Button
+              variant='outline'
+              onClick={handleExportSettings}
+              disabled={saving}
+              data-testid='export-settings'
+            >
+              <Download className='h-4 w-4 mr-2' />
+              Export Settings
+            </Button>
+
+            <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+              <DialogTrigger asChild>
+                <Button
+                  variant='outline'
+                  disabled={saving}
+                  data-testid='import-settings'
+                >
+                  <Upload className='h-4 w-4 mr-2' />
+                  Import Settings
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Import Deletion Score Settings</DialogTitle>
+                  <DialogDescription>
+                    Select a JSON file containing deletion score settings to
+                    import. This will replace your current settings.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className='py-4'>
+                  <FileInput
+                    ref={fileInputRef}
+                    accept='.json'
+                    onFileSelect={async (file) => {
+                      if (file) {
+                        try {
+                          const text = await file.text();
+                          const importData = JSON.parse(text);
+
+                          // Validate the imported data structure
+                          if (
+                            !importData.settings ||
+                            typeof importData.settings !== 'object'
+                          ) {
+                            throw new Error(
+                              'Invalid file format: missing settings object'
+                            );
+                          }
+
+                          const importedSettings =
+                            importData.settings as DeletionScoreSettings;
+
+                          // Basic validation of required fields
+                          const requiredFields = [
+                            'enabled',
+                            'daysUnwatchedEnabled',
+                            'daysUnwatchedMaxPoints',
+                            'neverWatchedEnabled',
+                            'neverWatchedPoints',
+                            'sizeOnDiskEnabled',
+                            'sizeOnDiskMaxPoints',
+                            'ageSinceAddedEnabled',
+                            'ageSinceAddedMaxPoints',
+                            'folderSpaceEnabled',
+                            'folderSpaceMaxPoints',
+                          ];
+
+                          for (const field of requiredFields) {
+                            if (!(field in importedSettings)) {
+                              throw new Error(
+                                `Invalid file format: missing required field '${field}'`
+                              );
+                            }
+                          }
+
+                          setSettings(importedSettings);
+                          setShowImportDialog(false);
+                          toast.success('Settings imported successfully!');
+                        } catch (error) {
+                          console.error('Failed to import settings:', error);
+                          toast.error(
+                            'Failed to import settings. Please check the file format and try again.'
+                          );
+                        }
+                      }
+                    }}
+                    buttonText='Choose JSON file'
+                    placeholder='Drag and drop a JSON file here, or click to browse'
+                    maxSize={1024 * 1024} // 1MB limit
+                    data-testid='import-file-input'
+                  />
+                </div>
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button variant='outline'>Cancel</Button>
+                  </DialogClose>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
             <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
               <DialogTrigger asChild>
                 <Button
@@ -652,7 +856,7 @@ export function DeletionScoreSettings() {
 
           <Button
             onClick={handleSaveClick}
-            disabled={saving}
+            disabled={saving || !validation.isValid}
             data-testid='save-score-settings'
           >
             {saving ? (
@@ -691,7 +895,9 @@ export function DeletionScoreSettings() {
               <DialogClose asChild>
                 <Button variant='outline'>Cancel</Button>
               </DialogClose>
-              <Button onClick={handleSave}>Save & Recalculate</Button>
+              <Button onClick={handleSave} disabled={!validation.isValid}>
+                Save & Recalculate
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

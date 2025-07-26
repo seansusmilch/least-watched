@@ -66,6 +66,34 @@ export async function setDeletionScoreSettings(
   settings: DeletionScoreSettings
 ): Promise<{ success: boolean; message: string }> {
   try {
+    // Validate that enabled factors add up to 100 points
+    if (settings.enabled) {
+      let totalPoints = 0;
+
+      if (settings.daysUnwatchedEnabled) {
+        totalPoints += settings.daysUnwatchedMaxPoints;
+      }
+      if (settings.neverWatchedEnabled) {
+        totalPoints += settings.neverWatchedPoints;
+      }
+      if (settings.sizeOnDiskEnabled) {
+        totalPoints += settings.sizeOnDiskMaxPoints;
+      }
+      if (settings.ageSinceAddedEnabled) {
+        totalPoints += settings.ageSinceAddedMaxPoints;
+      }
+      if (settings.folderSpaceEnabled) {
+        totalPoints += settings.folderSpaceMaxPoints;
+      }
+
+      if (totalPoints !== 100) {
+        return {
+          success: false,
+          message: `Deletion score factors must add up to exactly 100 points. Current total: ${totalPoints} points. Please adjust your settings.`,
+        };
+      }
+    }
+
     await setAppSetting({
       key: 'deletionScoreSettings',
       value: JSON.stringify(settings),
