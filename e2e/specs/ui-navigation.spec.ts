@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/database';
 
 test.describe('UI Navigation Tests', () => {
   test('should display the main page with expected elements', async ({

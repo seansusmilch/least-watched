@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/database';
 
 test.describe('Simple Infrastructure Test', () => {
   test('should be able to access the application', async ({ page }) => {
