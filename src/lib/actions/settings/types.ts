@@ -58,11 +58,11 @@ export interface DeletionScoreSettings {
   // Days Unwatched Factor (max 35 points)
   daysUnwatchedEnabled: boolean;
   daysUnwatchedMaxPoints: number;
-  daysUnwatched30Days: number; // <= 30 days
-  daysUnwatched90Days: number; // 31-90 days
-  daysUnwatched180Days: number; // 91-180 days
-  daysUnwatched365Days: number; // 181-365 days
-  daysUnwatchedOver365: number; // > 365 days
+  daysUnwatched30DaysPercent: number; // <= 30 days (percentage of max points)
+  daysUnwatched90DaysPercent: number; // 31-90 days (percentage of max points)
+  daysUnwatched180DaysPercent: number; // 91-180 days (percentage of max points)
+  daysUnwatched365DaysPercent: number; // 181-365 days (percentage of max points)
+  daysUnwatchedOver365Percent: number; // > 365 days (percentage of max points)
 
   // Never Watched Bonus (max 20 points)
   neverWatchedEnabled: boolean;
@@ -71,27 +71,27 @@ export interface DeletionScoreSettings {
   // Size on Disk Factor (max 30 points)
   sizeOnDiskEnabled: boolean;
   sizeOnDiskMaxPoints: number;
-  sizeOnDisk1GB: number; // < 1GB
-  sizeOnDisk5GB: number; // 1-5GB
-  sizeOnDisk10GB: number; // 5-10GB
-  sizeOnDisk20GB: number; // 10-20GB
-  sizeOnDisk50GB: number; // 20-50GB
-  sizeOnDiskOver50GB: number; // >= 50GB
+  sizeOnDisk1GBPercent: number; // < 1GB (percentage of max points)
+  sizeOnDisk5GBPercent: number; // 1-5GB (percentage of max points)
+  sizeOnDisk10GBPercent: number; // 5-10GB (percentage of max points)
+  sizeOnDisk20GBPercent: number; // 10-20GB (percentage of max points)
+  sizeOnDisk50GBPercent: number; // 20-50GB (percentage of max points)
+  sizeOnDiskOver50GBPercent: number; // >= 50GB (percentage of max points)
 
   // Age Since Added Factor (max 15 points)
   ageSinceAddedEnabled: boolean;
   ageSinceAddedMaxPoints: number;
-  ageSinceAdded180Days: number; // 180-365 days
-  ageSinceAdded365Days: number; // 365-730 days
-  ageSinceAddedOver730: number; // > 730 days
+  ageSinceAdded180DaysPercent: number; // 180-365 days (percentage of max points)
+  ageSinceAdded365DaysPercent: number; // 365-730 days (percentage of max points)
+  ageSinceAddedOver730Percent: number; // > 730 days (percentage of max points)
 
   // Folder Space Factor (max 20 points)
   folderSpaceEnabled: boolean;
   folderSpaceMaxPoints: number;
-  folderSpace10Percent: number; // < 10% remaining
-  folderSpace20Percent: number; // 10-20% remaining
-  folderSpace30Percent: number; // 20-30% remaining
-  folderSpace50Percent: number; // 30-50% remaining
+  folderSpace10PercentPercent: number; // < 10% remaining (percentage of max points)
+  folderSpace20PercentPercent: number; // 10-20% remaining (percentage of max points)
+  folderSpace30PercentPercent: number; // 20-30% remaining (percentage of max points)
+  folderSpace50PercentPercent: number; // 30-50% remaining (percentage of max points)
 }
 
 export interface FolderInfo {

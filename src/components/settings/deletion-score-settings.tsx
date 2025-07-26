@@ -40,53 +40,300 @@ import {
 import { toast } from 'sonner';
 import { FileInput } from '@/components/ui/file-input';
 
+// Types for scoring factors
+interface ScoringFactor {
+  key: string;
+  title: string;
+  description: string;
+  enabledKey: keyof DeletionScoreSettings;
+  maxPointsKey: keyof DeletionScoreSettings;
+  maxPoints: number;
+  color: string;
+  breakdowns?: ScoringBreakdown[];
+}
+
+interface ScoringBreakdown {
+  key: keyof DeletionScoreSettings;
+  label: string;
+  maxValue: number;
+}
+
+// Scoring factor configurations
+const SCORING_FACTORS: ScoringFactor[] = [
+  {
+    key: 'daysUnwatched',
+    title: 'Days Unwatched',
+    description:
+      "Media that hasn't been watched recently gets higher scores. The longer since last watched (or added if never watched), the higher the deletion score.",
+    enabledKey: 'daysUnwatchedEnabled',
+    maxPointsKey: 'daysUnwatchedMaxPoints',
+    maxPoints: 30,
+    color: 'bg-blue-500',
+    breakdowns: [
+      { key: 'daysUnwatched30DaysPercent', label: '≤30 days', maxValue: 100 },
+      { key: 'daysUnwatched90DaysPercent', label: '31-90 days', maxValue: 100 },
+      {
+        key: 'daysUnwatched180DaysPercent',
+        label: '91-180 days',
+        maxValue: 100,
+      },
+      {
+        key: 'daysUnwatched365DaysPercent',
+        label: '181-365 days',
+        maxValue: 100,
+      },
+      { key: 'daysUnwatchedOver365Percent', label: '>365 days', maxValue: 100 },
+    ],
+  },
+  {
+    key: 'neverWatched',
+    title: 'Never Watched Bonus',
+    description:
+      'Media that has never been watched receives additional points, making it more likely to be suggested for deletion.',
+    enabledKey: 'neverWatchedEnabled',
+    maxPointsKey: 'neverWatchedPoints',
+    maxPoints: 20,
+    color: 'bg-orange-500',
+  },
+  {
+    key: 'sizeOnDisk',
+    title: 'Size on Disk',
+    description:
+      'Larger media files receive higher scores. Deleting high-scoring items will free up more storage space.',
+    enabledKey: 'sizeOnDiskEnabled',
+    maxPointsKey: 'sizeOnDiskMaxPoints',
+    maxPoints: 35,
+    color: 'bg-green-500',
+    breakdowns: [
+      { key: 'sizeOnDisk1GBPercent', label: '<1GB', maxValue: 100 },
+      { key: 'sizeOnDisk5GBPercent', label: '1-5GB', maxValue: 100 },
+      { key: 'sizeOnDisk10GBPercent', label: '5-10GB', maxValue: 100 },
+      { key: 'sizeOnDisk20GBPercent', label: '10-20GB', maxValue: 100 },
+      { key: 'sizeOnDisk50GBPercent', label: '20-50GB', maxValue: 100 },
+      { key: 'sizeOnDiskOver50GBPercent', label: '≥50GB', maxValue: 100 },
+    ],
+  },
+  {
+    key: 'ageSinceAdded',
+    title: 'Age Since Added',
+    description:
+      'Media that was added to your library long ago receives higher scores. Recently added media is protected with lower scores.',
+    enabledKey: 'ageSinceAddedEnabled',
+    maxPointsKey: 'ageSinceAddedMaxPoints',
+    maxPoints: 15,
+    color: 'bg-purple-500',
+    breakdowns: [
+      {
+        key: 'ageSinceAdded180DaysPercent',
+        label: '180-365 days',
+        maxValue: 100,
+      },
+      {
+        key: 'ageSinceAdded365DaysPercent',
+        label: '365-730 days',
+        maxValue: 100,
+      },
+      { key: 'ageSinceAddedOver730Percent', label: '>730 days', maxValue: 100 },
+    ],
+  },
+  {
+    key: 'folderSpace',
+    title: 'Folder Space',
+    description:
+      'Media stored in folders with limited remaining space receives higher scores, helping to free up space in critical locations.',
+    enabledKey: 'folderSpaceEnabled',
+    maxPointsKey: 'folderSpaceMaxPoints',
+    maxPoints: 10,
+    color: 'bg-red-500',
+    breakdowns: [
+      {
+        key: 'folderSpace10PercentPercent',
+        label: '<10% remaining',
+        maxValue: 100,
+      },
+      {
+        key: 'folderSpace20PercentPercent',
+        label: '10-20% remaining',
+        maxValue: 100,
+      },
+      {
+        key: 'folderSpace30PercentPercent',
+        label: '20-30% remaining',
+        maxValue: 100,
+      },
+      {
+        key: 'folderSpace50PercentPercent',
+        label: '30-50% remaining',
+        maxValue: 100,
+      },
+    ],
+  },
+];
+
 const getDefaultSettings = (): DeletionScoreSettings => ({
   enabled: true,
-
-  // Days Unwatched - Most important factor (30 points)
   daysUnwatchedEnabled: true,
   daysUnwatchedMaxPoints: 30,
-  daysUnwatched30Days: 0,
-  daysUnwatched90Days: 5,
-  daysUnwatched180Days: 15,
-  daysUnwatched365Days: 22,
-  daysUnwatchedOver365: 30,
-
-  // Never Watched - Good bonus (20 points)
+  daysUnwatched30DaysPercent: 0,
+  daysUnwatched90DaysPercent: 16.67,
+  daysUnwatched180DaysPercent: 50,
+  daysUnwatched365DaysPercent: 73.33,
+  daysUnwatchedOver365Percent: 100,
   neverWatchedEnabled: true,
   neverWatchedPoints: 20,
-
-  // Size on Disk - Important for space saving (35 points)
   sizeOnDiskEnabled: true,
   sizeOnDiskMaxPoints: 35,
-  sizeOnDisk1GB: 0,
-  sizeOnDisk5GB: 0,
-  sizeOnDisk10GB: 10,
-  sizeOnDisk20GB: 15,
-  sizeOnDisk50GB: 25,
-  sizeOnDiskOver50GB: 35,
-
-  // Age Since Added - Moderate importance (15 points)
+  sizeOnDisk1GBPercent: 0,
+  sizeOnDisk5GBPercent: 0,
+  sizeOnDisk10GBPercent: 28.57,
+  sizeOnDisk20GBPercent: 42.86,
+  sizeOnDisk50GBPercent: 71.43,
+  sizeOnDiskOver50GBPercent: 100,
   ageSinceAddedEnabled: true,
   ageSinceAddedMaxPoints: 15,
-  ageSinceAdded180Days: 5,
-  ageSinceAdded365Days: 10,
-  ageSinceAddedOver730: 15,
-
-  // Folder Space - Tiebreaker factor (10 points) - Disabled by default
+  ageSinceAdded180DaysPercent: 33.33,
+  ageSinceAdded365DaysPercent: 66.67,
+  ageSinceAddedOver730Percent: 100,
   folderSpaceEnabled: false,
   folderSpaceMaxPoints: 10,
-  folderSpace10Percent: 10,
-  folderSpace20Percent: 8,
-  folderSpace30Percent: 6,
-  folderSpace50Percent: 3,
+  folderSpace10PercentPercent: 100,
+  folderSpace20PercentPercent: 80,
+  folderSpace30PercentPercent: 60,
+  folderSpace50PercentPercent: 30,
 });
 
-export function DeletionScoreSettings() {
-  const [settings, setSettings] = useState<DeletionScoreSettings>(
-    getDefaultSettings()
-  );
+// Helper function to convert percentage to actual points
+const getActualPoints = (
+  percentage: number | undefined | null,
+  maxPoints: number
+) => {
+  if (
+    percentage === undefined ||
+    percentage === null ||
+    typeof percentage !== 'number' ||
+    typeof maxPoints !== 'number' ||
+    isNaN(percentage) ||
+    isNaN(maxPoints)
+  ) {
+    return 0;
+  }
+  return Math.round((percentage / 100) * maxPoints);
+};
 
+// Reusable component for scoring breakdown sliders
+function ScoringBreakdownSlider({
+  label,
+  value,
+  onChange,
+  maxValue,
+  maxPoints,
+}: {
+  label: string;
+  value: number | undefined;
+  onChange: (value: number) => void;
+  maxValue: number;
+  maxPoints: number;
+}) {
+  const safeValue = value ?? 0;
+
+  return (
+    <div className='flex items-center space-x-3 p-3 bg-muted/50 rounded-lg'>
+      <div className='w-20 text-xs text-muted-foreground'>{label}</div>
+      <div className='flex-1'>
+        <Slider
+          value={[safeValue]}
+          onValueChange={([newValue]) => onChange(newValue)}
+          max={maxValue}
+          step={1}
+          className='w-full'
+        />
+      </div>
+      <div className='w-12 text-sm font-medium text-center'>
+        {getActualPoints(safeValue, maxPoints)} pts
+      </div>
+    </div>
+  );
+}
+
+// Reusable component for scoring factors
+function ScoringFactorSection({
+  factor,
+  settings,
+  setSettings,
+}: {
+  factor: ScoringFactor;
+  settings: DeletionScoreSettings;
+  setSettings: (settings: DeletionScoreSettings) => void;
+}) {
+  const isEnabled = settings[factor.enabledKey] as boolean;
+  const maxPoints = settings[factor.maxPointsKey] as number;
+
+  return (
+    <div className='space-y-4'>
+      <div className='flex items-center justify-between'>
+        <div>
+          <h3 className='text-lg font-semibold'>{factor.title}</h3>
+          <p className='text-sm text-muted-foreground'>{factor.description}</p>
+        </div>
+        <Switch
+          checked={isEnabled}
+          onCheckedChange={(checked) =>
+            setSettings({ ...settings, [factor.enabledKey]: checked })
+          }
+        />
+      </div>
+
+      {isEnabled && (
+        <div className='space-y-4 pl-4'>
+          <div className='space-y-3'>
+            <div className='flex items-center justify-between'>
+              <Label className='text-base font-medium'>Weight</Label>
+              <div className='text-sm text-muted-foreground'>
+                {maxPoints} pts ({((maxPoints / 100) * 100).toFixed(0)}% of
+                total score)
+              </div>
+            </div>
+            <Slider
+              value={[maxPoints]}
+              onValueChange={([value]) =>
+                setSettings({ ...settings, [factor.maxPointsKey]: value })
+              }
+              max={50}
+              step={1}
+              className='w-full'
+            />
+          </div>
+
+          {factor.breakdowns && (
+            <div className='space-y-3'>
+              <Label className='text-sm font-medium text-muted-foreground'>
+                {factor.title}-based scoring breakdown:
+              </Label>
+              <div className='grid grid-cols-1 gap-3'>
+                {factor.breakdowns.map((breakdown) => (
+                  <ScoringBreakdownSlider
+                    key={breakdown.key}
+                    label={breakdown.label}
+                    value={settings[breakdown.key] as number | undefined}
+                    onChange={(value) =>
+                      setSettings({ ...settings, [breakdown.key]: value })
+                    }
+                    maxValue={breakdown.maxValue}
+                    maxPoints={maxPoints}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function DeletionScoreSettings() {
+  const [settings, setSettings] =
+    useState<DeletionScoreSettings>(getDefaultSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
@@ -101,26 +348,62 @@ export function DeletionScoreSettings() {
   const loadSettings = async () => {
     try {
       const loadedSettings = await getDeletionScoreSettings();
-      setSettings(loadedSettings);
+
+      // Ensure all percentage properties exist with fallback values
+      const validatedSettings = {
+        ...getDefaultSettings(), // Start with defaults
+        ...loadedSettings, // Override with loaded settings
+      };
+
+      setSettings(validatedSettings);
     } catch (error) {
       console.error('Failed to load deletion score settings:', error);
+      setSettings(getDefaultSettings());
     } finally {
       setLoading(false);
     }
   };
 
+  const calculateTotalMaxPoints = () => {
+    return SCORING_FACTORS.reduce((total, factor) => {
+      if (settings[factor.enabledKey] as boolean) {
+        total += settings[factor.maxPointsKey] as number;
+      }
+      return total;
+    }, 0);
+  };
+
+  const validateSettings = () => {
+    if (!settings.enabled) return { isValid: true, message: '' };
+
+    const totalPoints = calculateTotalMaxPoints();
+    if (totalPoints !== 100) {
+      const breakdown = SCORING_FACTORS.filter(
+        (factor) => settings[factor.enabledKey] as boolean
+      )
+        .map(
+          (factor) => `• ${factor.title}: ${settings[factor.maxPointsKey]} pts`
+        )
+        .join('\n');
+
+      return {
+        isValid: false,
+        message: `Deletion score factors must add up to exactly 100 points. Current total: ${totalPoints} points.\n\nBreakdown:\n${breakdown}\n\nPlease adjust your settings.`,
+      };
+    }
+    return { isValid: true, message: '' };
+  };
+
   const handleSaveClick = () => {
-    // Check validation first
+    const validation = validateSettings();
     if (!validation.isValid) {
       toast.error(validation.message);
       return;
     }
 
-    // Show confirmation dialog if deletion scoring is enabled
     if (settings.enabled) {
       setShowSaveConfirmDialog(true);
     } else {
-      // If disabled, save directly without confirmation
       handleSave();
     }
   };
@@ -178,59 +461,13 @@ export function DeletionScoreSettings() {
     }
   };
 
-  if (loading) {
+  if (loading || !settings) {
     return (
       <div className='flex items-center justify-center p-8'>
         <Loader2 className='h-8 w-8 animate-spin' />
       </div>
     );
   }
-
-  const calculateTotalMaxPoints = () => {
-    let total = 0;
-    if (settings.daysUnwatchedEnabled) total += settings.daysUnwatchedMaxPoints;
-    if (settings.neverWatchedEnabled) total += settings.neverWatchedPoints;
-    if (settings.sizeOnDiskEnabled) total += settings.sizeOnDiskMaxPoints;
-    if (settings.ageSinceAddedEnabled) total += settings.ageSinceAddedMaxPoints;
-    if (settings.folderSpaceEnabled) total += settings.folderSpaceMaxPoints;
-    return total;
-  };
-
-  const getPointsBreakdown = () => {
-    const breakdown = [];
-    if (settings.daysUnwatchedEnabled) {
-      breakdown.push(`Days Unwatched: ${settings.daysUnwatchedMaxPoints} pts`);
-    }
-    if (settings.neverWatchedEnabled) {
-      breakdown.push(`Never Watched: ${settings.neverWatchedPoints} pts`);
-    }
-    if (settings.sizeOnDiskEnabled) {
-      breakdown.push(`Size on Disk: ${settings.sizeOnDiskMaxPoints} pts`);
-    }
-    if (settings.ageSinceAddedEnabled) {
-      breakdown.push(`Age Since Added: ${settings.ageSinceAddedMaxPoints} pts`);
-    }
-    if (settings.folderSpaceEnabled) {
-      breakdown.push(`Folder Space: ${settings.folderSpaceMaxPoints} pts`);
-    }
-    return breakdown;
-  };
-
-  const validateSettings = () => {
-    if (!settings.enabled) return { isValid: true, message: '' };
-
-    const totalPoints = calculateTotalMaxPoints();
-    if (totalPoints !== 100) {
-      const breakdown = getPointsBreakdown();
-      return {
-        isValid: false,
-        message: `Deletion score factors must add up to exactly 100 points. Current total: ${totalPoints} points.\n\nBreakdown:\n${breakdown
-          .map((item) => `• ${item}`)
-          .join('\n')}\n\nPlease adjust your settings.`,
-      };
-    }
-    return { isValid: true, message: '' };
-  };
 
   const validation = validateSettings();
 
@@ -243,27 +480,7 @@ export function DeletionScoreSettings() {
         </CardTitle>
         <CardDescription>
           Configure how deletion scores are calculated for media items. Higher
-          scores indicate items that are better candidates for deletion. Total
-          possible score:{' '}
-          <span
-            className={
-              validation.isValid && settings.enabled
-                ? 'text-green-600 font-semibold'
-                : 'text-foreground'
-            }
-          >
-            {calculateTotalMaxPoints()}/100
-          </span>
-          {!validation.isValid && (
-            <div className='mt-2 text-destructive font-medium whitespace-pre-line'>
-              {validation.message}
-            </div>
-          )}
-          {validation.isValid && settings.enabled && (
-            <div className='mt-2 text-green-600 font-medium'>
-              ✓ Settings are valid and ready to save
-            </div>
-          )}
+          scores indicate items that are better candidates for deletion.
         </CardDescription>
       </CardHeader>
       <CardContent className='space-y-6'>
@@ -286,423 +503,17 @@ export function DeletionScoreSettings() {
 
         <Separator />
 
-        {/* Days Unwatched Factor */}
-        <div className='space-y-4'>
-          <div className='flex items-center justify-between'>
-            <div>
-              <h3 className='text-lg font-semibold'>Days Unwatched</h3>
-              <p className='text-sm text-muted-foreground'>
-                Media that hasn&apos;t been watched recently gets higher scores.
-                The longer since last watched (or added if never watched), the
-                higher the deletion score.
-              </p>
-            </div>
-            <Switch
-              checked={settings.daysUnwatchedEnabled}
-              onCheckedChange={(checked) =>
-                setSettings({ ...settings, daysUnwatchedEnabled: checked })
-              }
+        {/* Scoring Factors */}
+        {SCORING_FACTORS.map((factor, index) => (
+          <div key={factor.key}>
+            <ScoringFactorSection
+              factor={factor}
+              settings={settings}
+              setSettings={setSettings}
             />
+            {index < SCORING_FACTORS.length - 1 && <Separator />}
           </div>
-
-          {settings.daysUnwatchedEnabled && (
-            <div className='space-y-3 pl-4'>
-              <div className='space-y-2'>
-                <Label>Max Points: {settings.daysUnwatchedMaxPoints}</Label>
-                <Slider
-                  value={[settings.daysUnwatchedMaxPoints]}
-                  onValueChange={([value]) =>
-                    setSettings({ ...settings, daysUnwatchedMaxPoints: value })
-                  }
-                  max={50}
-                  step={1}
-                  data-testid='last-watched-weight'
-                />
-              </div>
-
-              <div className='grid grid-cols-2 gap-4'>
-                <div className='space-y-1'>
-                  <Label>≤30 days: {settings.daysUnwatched30Days} pts</Label>
-                  <Slider
-                    value={[settings.daysUnwatched30Days]}
-                    onValueChange={([value]) =>
-                      setSettings({ ...settings, daysUnwatched30Days: value })
-                    }
-                    max={settings.daysUnwatchedMaxPoints}
-                    step={1}
-                  />
-                </div>
-                <div className='space-y-1'>
-                  <Label>31-90 days: {settings.daysUnwatched90Days} pts</Label>
-                  <Slider
-                    value={[settings.daysUnwatched90Days]}
-                    onValueChange={([value]) =>
-                      setSettings({ ...settings, daysUnwatched90Days: value })
-                    }
-                    max={settings.daysUnwatchedMaxPoints}
-                    step={1}
-                  />
-                </div>
-                <div className='space-y-1'>
-                  <Label>
-                    91-180 days: {settings.daysUnwatched180Days} pts
-                  </Label>
-                  <Slider
-                    value={[settings.daysUnwatched180Days]}
-                    onValueChange={([value]) =>
-                      setSettings({ ...settings, daysUnwatched180Days: value })
-                    }
-                    max={settings.daysUnwatchedMaxPoints}
-                    step={1}
-                  />
-                </div>
-                <div className='space-y-1'>
-                  <Label>
-                    181-365 days: {settings.daysUnwatched365Days} pts
-                  </Label>
-                  <Slider
-                    value={[settings.daysUnwatched365Days]}
-                    onValueChange={([value]) =>
-                      setSettings({ ...settings, daysUnwatched365Days: value })
-                    }
-                    max={settings.daysUnwatchedMaxPoints}
-                    step={1}
-                  />
-                </div>
-                <div className='space-y-1 col-span-2'>
-                  <Label>
-                    &gt;365 days: {settings.daysUnwatchedOver365} pts
-                  </Label>
-                  <Slider
-                    value={[settings.daysUnwatchedOver365]}
-                    onValueChange={([value]) =>
-                      setSettings({ ...settings, daysUnwatchedOver365: value })
-                    }
-                    max={settings.daysUnwatchedMaxPoints}
-                    step={1}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <Separator />
-
-        {/* Never Watched Bonus */}
-        <div className='space-y-4'>
-          <div className='flex items-center justify-between'>
-            <div>
-              <h3 className='text-lg font-semibold'>Never Watched Bonus</h3>
-              <p className='text-sm text-muted-foreground'>
-                Media that has never been watched receives additional points,
-                making it more likely to be suggested for deletion.
-              </p>
-            </div>
-            <Switch
-              checked={settings.neverWatchedEnabled}
-              onCheckedChange={(checked) =>
-                setSettings({ ...settings, neverWatchedEnabled: checked })
-              }
-            />
-          </div>
-
-          {settings.neverWatchedEnabled && (
-            <div className='space-y-2 pl-4'>
-              <Label>Bonus Points: {settings.neverWatchedPoints}</Label>
-              <Slider
-                value={[settings.neverWatchedPoints]}
-                onValueChange={([value]) =>
-                  setSettings({ ...settings, neverWatchedPoints: value })
-                }
-                max={30}
-                step={1}
-                data-testid='play-count-weight'
-              />
-            </div>
-          )}
-        </div>
-
-        <Separator />
-
-        {/* Size on Disk Factor */}
-        <div className='space-y-4'>
-          <div className='flex items-center justify-between'>
-            <div>
-              <h3 className='text-lg font-semibold'>Size on Disk</h3>
-              <p className='text-sm text-muted-foreground'>
-                Larger media files receive higher scores. Deleting high-scoring
-                items will free up more storage space.
-              </p>
-            </div>
-            <Switch
-              checked={settings.sizeOnDiskEnabled}
-              onCheckedChange={(checked) =>
-                setSettings({ ...settings, sizeOnDiskEnabled: checked })
-              }
-            />
-          </div>
-
-          {settings.sizeOnDiskEnabled && (
-            <div className='space-y-3 pl-4'>
-              <div className='space-y-2'>
-                <Label>Max Points: {settings.sizeOnDiskMaxPoints}</Label>
-                <Slider
-                  value={[settings.sizeOnDiskMaxPoints]}
-                  onValueChange={([value]) =>
-                    setSettings({ ...settings, sizeOnDiskMaxPoints: value })
-                  }
-                  max={50}
-                  step={1}
-                  data-testid='file-size-weight'
-                />
-              </div>
-
-              <div className='grid grid-cols-2 gap-4'>
-                <div className='space-y-1'>
-                  <Label>&lt;1GB: {settings.sizeOnDisk1GB} pts</Label>
-                  <Slider
-                    value={[settings.sizeOnDisk1GB]}
-                    onValueChange={([value]) =>
-                      setSettings({ ...settings, sizeOnDisk1GB: value })
-                    }
-                    max={settings.sizeOnDiskMaxPoints}
-                    step={1}
-                  />
-                </div>
-                <div className='space-y-1'>
-                  <Label>1-5GB: {settings.sizeOnDisk5GB} pts</Label>
-                  <Slider
-                    value={[settings.sizeOnDisk5GB]}
-                    onValueChange={([value]) =>
-                      setSettings({ ...settings, sizeOnDisk5GB: value })
-                    }
-                    max={settings.sizeOnDiskMaxPoints}
-                    step={1}
-                  />
-                </div>
-                <div className='space-y-1'>
-                  <Label>5-10GB: {settings.sizeOnDisk10GB} pts</Label>
-                  <Slider
-                    value={[settings.sizeOnDisk10GB]}
-                    onValueChange={([value]) =>
-                      setSettings({ ...settings, sizeOnDisk10GB: value })
-                    }
-                    max={settings.sizeOnDiskMaxPoints}
-                    step={1}
-                  />
-                </div>
-                <div className='space-y-1'>
-                  <Label>10-20GB: {settings.sizeOnDisk20GB} pts</Label>
-                  <Slider
-                    value={[settings.sizeOnDisk20GB]}
-                    onValueChange={([value]) =>
-                      setSettings({ ...settings, sizeOnDisk20GB: value })
-                    }
-                    max={settings.sizeOnDiskMaxPoints}
-                    step={1}
-                  />
-                </div>
-                <div className='space-y-1'>
-                  <Label>20-50GB: {settings.sizeOnDisk50GB} pts</Label>
-                  <Slider
-                    value={[settings.sizeOnDisk50GB]}
-                    onValueChange={([value]) =>
-                      setSettings({ ...settings, sizeOnDisk50GB: value })
-                    }
-                    max={settings.sizeOnDiskMaxPoints}
-                    step={1}
-                  />
-                </div>
-                <div className='space-y-1'>
-                  <Label>≥50GB: {settings.sizeOnDiskOver50GB} pts</Label>
-                  <Slider
-                    value={[settings.sizeOnDiskOver50GB]}
-                    onValueChange={([value]) =>
-                      setSettings({ ...settings, sizeOnDiskOver50GB: value })
-                    }
-                    max={settings.sizeOnDiskMaxPoints}
-                    step={1}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <Separator />
-
-        {/* Age Since Added Factor */}
-        <div className='space-y-4'>
-          <div className='flex items-center justify-between'>
-            <div>
-              <h3 className='text-lg font-semibold'>Age Since Added</h3>
-              <p className='text-sm text-muted-foreground'>
-                Media that was added to your library long ago receives higher
-                scores. Recently added media is protected with lower scores.
-              </p>
-            </div>
-            <Switch
-              checked={settings.ageSinceAddedEnabled}
-              onCheckedChange={(checked) =>
-                setSettings({ ...settings, ageSinceAddedEnabled: checked })
-              }
-            />
-          </div>
-
-          {settings.ageSinceAddedEnabled && (
-            <div className='space-y-3 pl-4'>
-              <div className='space-y-2'>
-                <Label>Max Points: {settings.ageSinceAddedMaxPoints}</Label>
-                <Slider
-                  value={[settings.ageSinceAddedMaxPoints]}
-                  onValueChange={([value]) =>
-                    setSettings({ ...settings, ageSinceAddedMaxPoints: value })
-                  }
-                  max={30}
-                  step={1}
-                  data-testid='rating-weight'
-                />
-              </div>
-
-              <div className='grid grid-cols-2 gap-4'>
-                <div className='space-y-1'>
-                  <Label>
-                    180-365 days: {settings.ageSinceAdded180Days} pts
-                  </Label>
-                  <Slider
-                    value={[settings.ageSinceAdded180Days]}
-                    onValueChange={([value]) =>
-                      setSettings({ ...settings, ageSinceAdded180Days: value })
-                    }
-                    max={settings.ageSinceAddedMaxPoints}
-                    step={1}
-                  />
-                </div>
-                <div className='space-y-1'>
-                  <Label>
-                    365-730 days: {settings.ageSinceAdded365Days} pts
-                  </Label>
-                  <Slider
-                    value={[settings.ageSinceAdded365Days]}
-                    onValueChange={([value]) =>
-                      setSettings({ ...settings, ageSinceAdded365Days: value })
-                    }
-                    max={settings.ageSinceAddedMaxPoints}
-                    step={1}
-                  />
-                </div>
-                <div className='space-y-1 col-span-2'>
-                  <Label>
-                    &gt;730 days: {settings.ageSinceAddedOver730} pts
-                  </Label>
-                  <Slider
-                    value={[settings.ageSinceAddedOver730]}
-                    onValueChange={([value]) =>
-                      setSettings({ ...settings, ageSinceAddedOver730: value })
-                    }
-                    max={settings.ageSinceAddedMaxPoints}
-                    step={1}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <Separator />
-
-        {/* Folder Space Factor */}
-        <div className='space-y-4'>
-          <div className='flex items-center justify-between'>
-            <div>
-              <h3 className='text-lg font-semibold'>Folder Space</h3>
-              <p className='text-sm text-muted-foreground'>
-                Media stored in folders with limited remaining space receives
-                higher scores, helping to free up space in critical locations.
-              </p>
-            </div>
-            <Switch
-              checked={settings.folderSpaceEnabled}
-              onCheckedChange={(checked) =>
-                setSettings({ ...settings, folderSpaceEnabled: checked })
-              }
-            />
-          </div>
-
-          {settings.folderSpaceEnabled && (
-            <div className='space-y-3 pl-4'>
-              <div className='space-y-2'>
-                <Label>Max Points: {settings.folderSpaceMaxPoints}</Label>
-                <Slider
-                  value={[settings.folderSpaceMaxPoints]}
-                  onValueChange={([value]) =>
-                    setSettings({ ...settings, folderSpaceMaxPoints: value })
-                  }
-                  max={30}
-                  step={1}
-                />
-              </div>
-
-              <div className='grid grid-cols-2 gap-4'>
-                <div className='space-y-1'>
-                  <Label>
-                    &lt;10% remaining: {settings.folderSpace10Percent} pts
-                  </Label>
-                  <Slider
-                    value={[settings.folderSpace10Percent]}
-                    onValueChange={([value]) =>
-                      setSettings({ ...settings, folderSpace10Percent: value })
-                    }
-                    max={settings.folderSpaceMaxPoints}
-                    step={1}
-                  />
-                </div>
-                <div className='space-y-1'>
-                  <Label>
-                    10-20% remaining: {settings.folderSpace20Percent} pts
-                  </Label>
-                  <Slider
-                    value={[settings.folderSpace20Percent]}
-                    onValueChange={([value]) =>
-                      setSettings({ ...settings, folderSpace20Percent: value })
-                    }
-                    max={settings.folderSpaceMaxPoints}
-                    step={1}
-                  />
-                </div>
-                <div className='space-y-1'>
-                  <Label>
-                    20-30% remaining: {settings.folderSpace30Percent} pts
-                  </Label>
-                  <Slider
-                    value={[settings.folderSpace30Percent]}
-                    onValueChange={([value]) =>
-                      setSettings({ ...settings, folderSpace30Percent: value })
-                    }
-                    max={settings.folderSpaceMaxPoints}
-                    step={1}
-                  />
-                </div>
-                <div className='space-y-1'>
-                  <Label>
-                    30-50% remaining: {settings.folderSpace50Percent} pts
-                  </Label>
-                  <Slider
-                    value={[settings.folderSpace50Percent]}
-                    onValueChange={([value]) =>
-                      setSettings({ ...settings, folderSpace50Percent: value })
-                    }
-                    max={settings.folderSpaceMaxPoints}
-                    step={1}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <Separator />
+        ))}
 
         {/* Info Box */}
         <div className='rounded-lg bg-muted p-4'>
@@ -719,6 +530,59 @@ export function DeletionScoreSettings() {
             </div>
           </div>
         </div>
+
+        {/* Visual Score Summary */}
+        {settings.enabled && (
+          <div className='p-4 bg-muted/30 rounded-lg border'>
+            <div className='flex items-center justify-between mb-3'>
+              <h4 className='font-semibold'>Score Distribution</h4>
+              <div
+                className={`text-sm font-medium ${
+                  validation.isValid ? 'text-green-600' : 'text-destructive'
+                }`}
+              >
+                {calculateTotalMaxPoints()}/100 pts
+              </div>
+            </div>
+
+            <div className='space-y-2'>
+              {SCORING_FACTORS.map((factor) => {
+                const isEnabled = settings[factor.enabledKey] as boolean;
+                const maxPoints = settings[factor.maxPointsKey] as number;
+
+                if (!isEnabled) return null;
+
+                return (
+                  <div key={factor.key} className='flex items-center space-x-3'>
+                    <div className='w-24 text-sm text-muted-foreground'>
+                      {factor.title}
+                    </div>
+                    <div className='flex-1 bg-muted rounded-full h-2'>
+                      <div
+                        className={`${factor.color} h-2 rounded-full transition-all duration-200`}
+                        style={{ width: `${(maxPoints / 100) * 100}%` }}
+                      />
+                    </div>
+                    <div className='w-12 text-sm font-medium text-center'>
+                      {maxPoints} pts
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {!validation.isValid && (
+              <div className='mt-3 text-destructive font-medium whitespace-pre-line text-sm'>
+                {validation.message}
+              </div>
+            )}
+            {validation.isValid && (
+              <div className='mt-3 text-green-600 font-medium text-sm'>
+                ✓ Settings are valid and ready to save
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Action Buttons */}
         <div className='flex justify-between pt-4'>
@@ -762,7 +626,6 @@ export function DeletionScoreSettings() {
                           const text = await file.text();
                           const importData = JSON.parse(text);
 
-                          // Validate the imported data structure
                           if (
                             !importData.settings ||
                             typeof importData.settings !== 'object'
@@ -776,19 +639,13 @@ export function DeletionScoreSettings() {
                             importData.settings as DeletionScoreSettings;
 
                           // Basic validation of required fields
-                          const requiredFields = [
-                            'enabled',
-                            'daysUnwatchedEnabled',
-                            'daysUnwatchedMaxPoints',
-                            'neverWatchedEnabled',
-                            'neverWatchedPoints',
-                            'sizeOnDiskEnabled',
-                            'sizeOnDiskMaxPoints',
-                            'ageSinceAddedEnabled',
-                            'ageSinceAddedMaxPoints',
-                            'folderSpaceEnabled',
-                            'folderSpaceMaxPoints',
-                          ];
+                          const requiredFields = SCORING_FACTORS.flatMap(
+                            (factor) => [
+                              factor.enabledKey,
+                              factor.maxPointsKey,
+                              ...(factor.breakdowns?.map((b) => b.key) || []),
+                            ]
+                          );
 
                           for (const field of requiredFields) {
                             if (!(field in importedSettings)) {
@@ -811,7 +668,7 @@ export function DeletionScoreSettings() {
                     }}
                     buttonText='Choose JSON file'
                     placeholder='Drag and drop a JSON file here, or click to browse'
-                    maxSize={1024 * 1024} // 1MB limit
+                    maxSize={1024 * 1024}
                     data-testid='import-file-input'
                   />
                 </div>
