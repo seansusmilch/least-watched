@@ -19,12 +19,12 @@ export async function getDeletionScoreSettings(): Promise<DeletionScoreSettings>
 
       // Days Unwatched Factor
       daysUnwatchedEnabled: true,
-      daysUnwatchedMaxPoints: 35,
+      daysUnwatchedMaxPoints: 30,
       daysUnwatched30Days: 0,
-      daysUnwatched90Days: 10,
+      daysUnwatched90Days: 5,
       daysUnwatched180Days: 15,
-      daysUnwatched365Days: 25,
-      daysUnwatchedOver365: 35,
+      daysUnwatched365Days: 22,
+      daysUnwatchedOver365: 30,
 
       // Never Watched Bonus
       neverWatchedEnabled: true,
@@ -32,13 +32,13 @@ export async function getDeletionScoreSettings(): Promise<DeletionScoreSettings>
 
       // Size on Disk Factor
       sizeOnDiskEnabled: true,
-      sizeOnDiskMaxPoints: 30,
+      sizeOnDiskMaxPoints: 35,
       sizeOnDisk1GB: 0,
-      sizeOnDisk5GB: 10,
-      sizeOnDisk10GB: 15,
-      sizeOnDisk20GB: 20,
+      sizeOnDisk5GB: 0,
+      sizeOnDisk10GB: 10,
+      sizeOnDisk20GB: 15,
       sizeOnDisk50GB: 25,
-      sizeOnDiskOver50GB: 30,
+      sizeOnDiskOver50GB: 35,
 
       // Age Since Added Factor
       ageSinceAddedEnabled: true,
@@ -48,12 +48,12 @@ export async function getDeletionScoreSettings(): Promise<DeletionScoreSettings>
       ageSinceAddedOver730: 15,
 
       // Folder Space Factor
-      folderSpaceEnabled: true,
-      folderSpaceMaxPoints: 20,
-      folderSpace10Percent: 20,
-      folderSpace20Percent: 15,
-      folderSpace30Percent: 10,
-      folderSpace50Percent: 5,
+      folderSpaceEnabled: false,
+      folderSpaceMaxPoints: 10,
+      folderSpace10Percent: 10,
+      folderSpace20Percent: 8,
+      folderSpace30Percent: 6,
+      folderSpace50Percent: 3,
     };
   } catch (error) {
     console.error('Failed to get deletion score settings:', error);

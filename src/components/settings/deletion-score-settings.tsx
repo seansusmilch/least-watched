@@ -47,7 +47,7 @@ const getDefaultSettings = (): DeletionScoreSettings => ({
   daysUnwatchedEnabled: true,
   daysUnwatchedMaxPoints: 30,
   daysUnwatched30Days: 0,
-  daysUnwatched90Days: 8,
+  daysUnwatched90Days: 5,
   daysUnwatched180Days: 15,
   daysUnwatched365Days: 22,
   daysUnwatchedOver365: 30,
@@ -56,15 +56,15 @@ const getDefaultSettings = (): DeletionScoreSettings => ({
   neverWatchedEnabled: true,
   neverWatchedPoints: 20,
 
-  // Size on Disk - Important for space saving (25 points)
+  // Size on Disk - Important for space saving (35 points)
   sizeOnDiskEnabled: true,
-  sizeOnDiskMaxPoints: 25,
+  sizeOnDiskMaxPoints: 35,
   sizeOnDisk1GB: 0,
-  sizeOnDisk5GB: 8,
-  sizeOnDisk10GB: 12,
-  sizeOnDisk20GB: 16,
-  sizeOnDisk50GB: 20,
-  sizeOnDiskOver50GB: 25,
+  sizeOnDisk5GB: 0,
+  sizeOnDisk10GB: 10,
+  sizeOnDisk20GB: 15,
+  sizeOnDisk50GB: 25,
+  sizeOnDiskOver50GB: 35,
 
   // Age Since Added - Moderate importance (15 points)
   ageSinceAddedEnabled: true,
@@ -73,8 +73,8 @@ const getDefaultSettings = (): DeletionScoreSettings => ({
   ageSinceAdded365Days: 10,
   ageSinceAddedOver730: 15,
 
-  // Folder Space - Tiebreaker factor (10 points)
-  folderSpaceEnabled: true,
+  // Folder Space - Tiebreaker factor (10 points) - Disabled by default
+  folderSpaceEnabled: false,
   folderSpaceMaxPoints: 10,
   folderSpace10Percent: 10,
   folderSpace20Percent: 8,
