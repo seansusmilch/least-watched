@@ -28,7 +28,7 @@ export function LatestUpdateTimestamp() {
   if (!latestUpdate) {
     return (
       <div className='flex items-center text-sm text-muted-foreground'>
-        <span>Last updated: N/A</span>
+        <span>Last updated: Never</span>
       </div>
     );
   }
