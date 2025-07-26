@@ -1,5 +1,3 @@
-import { type EmbySettings } from '../utils/single-emby-settings';
-
 export interface MediaProcessingProgress {
   phase: string;
   current: number;

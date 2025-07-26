@@ -85,7 +85,10 @@ export class MediaStorage {
         overview: item.overview,
 
         // Deletion score
-        deletionScore: deletionScore === null ? undefined : deletionScore,
+        deletionScore:
+          deletionScore === null || isNaN(deletionScore as number)
+            ? undefined
+            : deletionScore,
       };
 
       // Note: For true upsert efficiency, we would need unique constraints in the schema
@@ -133,7 +136,10 @@ export class MediaStorage {
           ...itemData,
           sonarrId: item.sonarrId,
           radarrId: item.radarrId,
-          deletionScore: deletionScore === null ? 0 : deletionScore,
+          deletionScore:
+            deletionScore === null || isNaN(deletionScore as number)
+              ? 0
+              : deletionScore,
         },
       });
 

@@ -124,31 +124,47 @@ export function DeletionScoreBreakdown({
     setExpandedCategories(newExpanded);
   };
 
-  const getCategoryExplanation = (categoryKey: string, data: any) => {
+  const getCategoryExplanation = (
+    categoryKey: string,
+    data:
+      | ScoreBreakdownData['daysUnwatched']
+      | ScoreBreakdownData['neverWatched']
+      | ScoreBreakdownData['sizeOnDisk']
+      | ScoreBreakdownData['ageSinceAdded']
+      | ScoreBreakdownData['folderSpace']
+  ) => {
     switch (categoryKey) {
-      case 'daysUnwatched':
-        return `This item has been unwatched for ${data.daysSince} days. Items that haven't been watched recently get higher deletion scores. The longer since last watched (or added if never watched), the higher the score.`;
+      case 'daysUnwatched': {
+        const daysData = data as ScoreBreakdownData['daysUnwatched'];
+        return `This item has been unwatched for ${daysData.daysSince} days. Items that haven't been watched recently get higher deletion scores. The longer since last watched (or added if never watched), the higher the score.`;
+      }
 
-      case 'neverWatched':
-        return data.applies
+      case 'neverWatched': {
+        const neverData = data as ScoreBreakdownData['neverWatched'];
+        return neverData.applies
           ? 'This item has never been watched, earning a bonus score. Items that have never been viewed are considered better candidates for deletion.'
           : "This item has been watched at least once, so no 'never watched' bonus is applied.";
+      }
 
       case 'sizeOnDisk':
         return `This item takes up ${formatFileSize(
           item.sizeOnDisk || 0
         )} of disk space. Larger files get higher deletion scores as they free up more space when deleted.`;
 
-      case 'ageSinceAdded':
+      case 'ageSinceAdded': {
+        const ageData = data as ScoreBreakdownData['ageSinceAdded'];
         return item.dateAdded
-          ? `This item was added ${data.daysSince} days ago. Older items that have been in your library longer get higher deletion scores.`
+          ? `This item was added ${ageData.daysSince} days ago. Older items that have been in your library longer get higher deletion scores.`
           : 'No date added information available for this item.';
+      }
 
-      case 'folderSpace':
-        return data.remainingPercent !== null &&
-          data.remainingPercent !== undefined
-          ? `The folder containing this item has ${data.remainingPercent}% remaining space. Items in folders with less available space get higher deletion scores.`
+      case 'folderSpace': {
+        const folderData = data as ScoreBreakdownData['folderSpace'];
+        return folderData.remainingPercent !== null &&
+          folderData.remainingPercent !== undefined
+          ? `The folder containing this item has ${folderData.remainingPercent}% remaining space. Items in folders with less available space get higher deletion scores.`
           : 'No folder space information available for this item.';
+      }
 
       default:
         return '';
