@@ -12,6 +12,18 @@ export const formatDate = (date?: Date | string | null) => {
     : 'N/A';
 };
 
+export const formatDateTime = (date?: Date | string | null) => {
+  if (!date) return 'N/A';
+
+  const luxonDate =
+    typeof date === 'string'
+      ? DateTime.fromISO(date)
+      : DateTime.fromJSDate(date);
+  return luxonDate.isValid
+    ? luxonDate.toLocaleString(DateTime.DATETIME_SHORT)
+    : 'N/A';
+};
+
 export const formatFileSize = (sizeInBytes: number | bigint) => {
   const TB = 1024 * 1024 * 1024 * 1024;
   const GB = 1024 * 1024 * 1024;
