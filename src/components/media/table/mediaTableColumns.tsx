@@ -230,7 +230,7 @@ export const createMediaTableColumns = () => [
     },
     enableSorting: true,
     enableColumnFilter: true,
-    size: 190,
+    size: 160,
   }),
 
   // Deletion Score column
@@ -272,6 +272,6 @@ export const createMediaTableColumns = () => [
     },
     enableSorting: true,
     enableColumnFilter: true,
-    size: 180,
+    size: 160,
   }),
 ];
