@@ -14,6 +14,12 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+import {
   Loader2,
   Save,
   Trash2,
@@ -305,25 +311,44 @@ function ScoringFactorSection({
           </div>
 
           {factor.breakdowns && (
-            <div className='space-y-3'>
-              <Label className='text-sm font-medium text-muted-foreground'>
-                {factor.title}-based scoring breakdown:
-              </Label>
-              <div className='grid grid-cols-1 gap-3'>
-                {factor.breakdowns.map((breakdown) => (
-                  <ScoringBreakdownSlider
-                    key={breakdown.key}
-                    label={breakdown.label}
-                    value={settings[breakdown.key] as number | undefined}
-                    onChange={(value) =>
-                      setSettings({ ...settings, [breakdown.key]: value })
-                    }
-                    maxValue={breakdown.maxValue}
-                    maxPoints={maxPoints}
-                  />
-                ))}
-              </div>
-            </div>
+            <Accordion
+              type='single'
+              collapsible
+              className='w-full'
+              data-testid={`${factor.key}-breakdown-accordion`}
+            >
+              <AccordionItem value='breakdown' className='border-none'>
+                <AccordionTrigger
+                  className='py-2 hover:no-underline text-sm font-medium text-muted-foreground justify-end'
+                  data-testid={`${factor.key}-breakdown-trigger`}
+                >
+                  Fine-grained scoring breakdown
+                </AccordionTrigger>
+                <AccordionContent
+                  className='space-y-3 pt-2'
+                  data-testid={`${factor.key}-breakdown-content`}
+                >
+                  <div className='text-xs text-muted-foreground mb-2'>
+                    Adjust how {factor.title.toLowerCase()} contributes to the
+                    deletion score:
+                  </div>
+                  <div className='grid grid-cols-1 gap-3'>
+                    {factor.breakdowns.map((breakdown) => (
+                      <ScoringBreakdownSlider
+                        key={breakdown.key}
+                        label={breakdown.label}
+                        value={settings[breakdown.key] as number | undefined}
+                        onChange={(value) =>
+                          setSettings({ ...settings, [breakdown.key]: value })
+                        }
+                        maxValue={breakdown.maxValue}
+                        maxPoints={maxPoints}
+                      />
+                    ))}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           )}
         </div>
       )}
@@ -511,6 +536,7 @@ export function DeletionScoreSettings() {
               settings={settings}
               setSettings={setSettings}
             />
+            {factor.key === 'neverWatched' && <div className='pb-8' />}
             {index < SCORING_FACTORS.length - 1 && <Separator />}
           </div>
         ))}
