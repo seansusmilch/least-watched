@@ -13,12 +13,16 @@ interface MediaServicesProps {
   sonarrSettings: ServiceSettings[];
   radarrSettings: ServiceSettings[];
   embySettings: EmbySettings | null;
+  activeSubTab?: string | null;
+  onSubTabChange?: (value: string) => void;
 }
 
 export function MediaServices({
   sonarrSettings,
   radarrSettings,
   embySettings,
+  activeSubTab,
+  onSubTabChange,
 }: MediaServicesProps) {
   const embyStatus = embySettings?.enabled;
 
@@ -33,7 +37,11 @@ export function MediaServices({
       </div>
 
       {/* Service Configuration Tabs */}
-      <Tabs defaultValue='sonarr' className='space-y-4'>
+      <Tabs
+        value={activeSubTab || 'sonarr'}
+        onValueChange={onSubTabChange}
+        className='space-y-4'
+      >
         <TabsList className='grid w-full grid-cols-3'>
           <TabsTrigger value='sonarr' className='flex items-center gap-2'>
             <Monitor className='h-4 w-4' />
