@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useEffect } from 'react';
+import { useCallback, useMemo, useRef, useEffect, useState } from 'react';
 
 /**
  * Custom hook for debouncing function calls
@@ -7,7 +7,7 @@ export function useDebounce<T extends (...args: unknown[]) => unknown>(
   callback: T,
   delay: number
 ): T {
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   return useCallback(
     ((...args: Parameters<T>) => {
@@ -28,7 +28,7 @@ export function useThrottle<T extends (...args: unknown[]) => unknown>(
   delay: number
 ): T {
   const lastCall = useRef(0);
-  const lastCallTimer = useRef<NodeJS.Timeout>();
+  const lastCallTimer = useRef<NodeJS.Timeout | undefined>(undefined);
 
   return useCallback(
     ((...args: Parameters<T>) => {
@@ -216,6 +216,3 @@ export function useCleanup() {
 
   return addCleanup;
 }
-
-// Import React hooks that we're using
-import { useState } from 'react';

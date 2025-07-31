@@ -47,9 +47,8 @@ const SidebarProvider = dynamic(() => import('./sidebar').then(mod => ({ default
   ssr: false,
 });
 
-const useSidebar = dynamic(() => import('./sidebar').then(mod => ({ default: mod.useSidebar })), {
-  ssr: false,
-});
+// Import useSidebar directly since it's a hook, not a component
+import { useSidebar } from './sidebar';
 
 // Wrapper component that provides lazy loading
 export function LazySidebar({ children, ...props }: React.ComponentProps<typeof SidebarComponent>) {
