@@ -8,16 +8,31 @@ import './globals.css';
 const geistSans = Geist({
   variable: '--font-geist-sans',
   subsets: ['latin'],
+  display: 'swap', // Optimize font loading
+  preload: true,
 });
 
 const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
   subsets: ['latin'],
+  display: 'swap', // Optimize font loading
+  preload: true,
 });
 
 export const metadata: Metadata = {
   title: 'Least Watched',
   description: 'Track your least watched media',
+  // Performance optimizations
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+  },
+  // Preload critical resources
+  other: {
+    'dns-prefetch': '//fonts.googleapis.com',
+    'preconnect': '//fonts.googleapis.com',
+  },
 };
 
 export default function RootLayout({
@@ -27,6 +42,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang='en' suppressHydrationWarning>
+      <head>
+        {/* Preload critical resources */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
