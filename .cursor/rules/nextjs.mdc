@@ -1,12 +1,28 @@
 ---
 alwaysApply: true
 ---
+## Next.js Development Rules
 - use server actions when dealing with client server behavior
 - assume the dev server is already running
 - when adding things, prefer splitting into different files
 - keep files small and single purpose
 - use tanstack query for fetching data
-- use context7
+- use context7 for documentation
+- if a component requires a skeleton, store the skeleton component within the same file
+- for importing files, prefer using the @/ alias
+- for naming files, prefer kebab case
+- use TypeScript for all new files
+- prefer server components by default, only use client components when necessary
+- use React Server Components for data fetching and server-side rendering
+- implement proper error boundaries for client components
+- use Next.js built-in Image component for optimized images
+- implement proper loading states and error handling
+- use Next.js middleware for authentication and routing logic
+- prefer static generation (SSG) over server-side rendering (SSR) when possible
+- use dynamic imports for code splitting and lazy loading
+- implement proper SEO with Next.js Head component or metadata API
+- use environment variables for configuration
+- implement proper caching strategies with Next.js caching mechanisms
 - if a component requires a skeleton, store the skeleton component within the same file
 - for importing files, prefer using the @/ alias
 - for naming files, prefer kebab case

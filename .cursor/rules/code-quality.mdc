@@ -1,0 +1,19 @@
+---
+alwaysApply: true
+---
+## Code Quality and Best Practices
+- write self-documenting code with clear variable and function names
+- implement proper TypeScript types for all data structures
+- use strict TypeScript configuration
+- implement proper error handling with try-catch blocks
+- use meaningful commit messages with conventional commits
+- implement proper code comments for complex logic
+- use consistent code formatting and style
+- implement proper unit tests for critical functions
+- use dependency injection when appropriate
+- implement proper separation of concerns
+- use design patterns appropriately (DRY, SOLID principles)
+- implement proper input validation and sanitization
+- use proper async/await patterns instead of callbacks
+- implement proper memory management and cleanup
+- use proper error boundaries and fallback UI

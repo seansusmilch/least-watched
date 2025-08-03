@@ -1,6 +1,21 @@
 ---
 alwaysApply: true
 ---
+## Media Sources Safety Rules
+- do not under any circumstance write code that will modify data in any external source
+- that includes Emby, Sonarr, and Radarr
+- you should only write code that READS data from these sources
+- never implement delete, update, or create operations for media items
+- only use GET requests to external media APIs
+- implement proper error handling for API failures
+- use read-only API keys when available
+- implement rate limiting for API calls to avoid overwhelming external services
+- cache API responses to reduce load on external services
+- validate all data received from external APIs before processing
+- implement proper timeout handling for API calls
+- log all API interactions for debugging purposes
+- use environment variables for API endpoints and credentials
+- implement proper fallback behavior when external services are unavailable
 - do not under any circumstance write code that will modify data in any external source
 - that includes Emby, Sonarr, and Radarr
 - you should only write code that READS data from these sources

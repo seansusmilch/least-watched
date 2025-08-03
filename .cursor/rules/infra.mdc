@@ -1,4 +1,19 @@
 ---
 alwaysApply: true
 ---
-use bun for node commands
+## Infrastructure and Development Rules
+- use bun for node commands
+- use Docker for containerization and consistent environments
+- implement proper environment variable management
+- use .env files for local development
+- implement proper logging and monitoring
+- use health checks for all services
+- implement proper error handling and graceful degradation
+- use semantic versioning for releases
+- implement proper CI/CD pipelines
+- use linting and formatting tools (ESLint, Prettier)
+- implement proper security practices (HTTPS, CORS, etc.)
+- use proper resource limits and monitoring
+- implement proper backup and disaster recovery procedures
+- use infrastructure as code when possible
+- implement proper testing strategies (unit, integration, e2e)
