@@ -304,7 +304,7 @@ function ScoringFactorSection({
               onValueChange={([value]) =>
                 setSettings({ ...settings, [factor.maxPointsKey]: value })
               }
-              max={50}
+              max={100}
               step={1}
               className='w-full'
             />
