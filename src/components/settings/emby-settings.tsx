@@ -8,15 +8,15 @@ import {
   CardTitle,
   CardDescription,
 } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { TestTube, Loader2, Play, Edit2, Save, X } from 'lucide-react';
+import { Loader2, Play, Save, X } from 'lucide-react';
 
 import { useEmbySettings } from '@/hooks/useEmbySettings';
+import { EmbyInstanceCard } from './emby-instance-card';
 import type { EmbySettings } from '@/lib/utils/single-emby-settings';
 
 type ConnectionStatus = 'idle' | 'testing' | 'success' | 'error';
@@ -35,16 +35,11 @@ export function EmbySettingsTab({ initialSettings }: EmbySettingsProps) {
 
   const [isEditing, setIsEditing] = useState(false);
   const [preferEmbyDateAdded, setPreferEmbyDateAdded] = useState(false);
-
-  // Connection status state for test connection feedback
   const [connectionStatus, setConnectionStatus] =
     useState<ConnectionStatus>('idle');
 
-  // Use fetched settings or fallback to initialSettings
   const settings = settingsQuery.data || initialSettings;
   const isLoading = settingsQuery.isLoading || settingsQuery.isFetching;
-
-  // Get the single Emby instance (first one) or null if none exists
 
   const handleTestConnection = async () => {
     setConnectionStatus('testing');
@@ -82,17 +77,13 @@ export function EmbySettingsTab({ initialSettings }: EmbySettingsProps) {
 
     try {
       if (settings) {
-        // Update existing instance
-        const result = await updateMutation.mutateAsync({
-          input,
-        });
+        const result = await updateMutation.mutateAsync({ input });
         if (result.success) {
           toast.success('Emby settings updated successfully!');
         } else {
           toast.error(result.message || 'Failed to update settings');
         }
       } else {
-        // Create new instance
         const result = await createMutation.mutateAsync(input);
         if (result.success) {
           toast.success('Emby settings created successfully!');
@@ -114,6 +105,11 @@ export function EmbySettingsTab({ initialSettings }: EmbySettingsProps) {
   const handleCancel = () => {
     setIsEditing(false);
     setPreferEmbyDateAdded(settings?.preferEmbyDateAdded ?? false);
+  };
+
+  const handleDelete = async () => {
+    // Implement delete functionality if needed
+    toast.info('Delete functionality not implemented for single Emby instance');
   };
 
   return (
@@ -159,183 +155,106 @@ export function EmbySettingsTab({ initialSettings }: EmbySettingsProps) {
               </Button>
             </CardContent>
           </Card>
+        ) : !isEditing ? (
+          <EmbyInstanceCard
+            setting={settings!}
+            connectionStatus={connectionStatus}
+            onTestConnection={handleTestConnection}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
         ) : (
           <Card>
-            {!isEditing ? (
-              <>
-                <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-                  <div className='flex items-center gap-3'>
-                    <div className='flex h-10 w-10 items-center justify-center rounded-lg bg-green-500 text-white'>
-                      <Play className='h-5 w-5' />
-                    </div>
-                    <div>
-                      <CardTitle className='text-lg'>
-                        {settings?.name}
-                      </CardTitle>
-                      <CardDescription>{settings?.url}</CardDescription>
-                    </div>
-                  </div>
-                  <div className='flex items-center gap-2'>
-                    <Badge
-                      variant={settings?.enabled ? 'default' : 'secondary'}
-                    >
-                      {settings?.enabled ? 'Enabled' : 'Disabled'}
-                    </Badge>
-                    <Badge
-                      variant={
-                        connectionStatus === 'success'
-                          ? 'success'
-                          : connectionStatus === 'error'
-                          ? 'destructive'
-                          : 'secondary'
-                      }
-                    >
-                      {connectionStatus === 'testing' && (
-                        <Loader2 className='mr-1 h-3 w-3 animate-spin' />
-                      )}
-                      {connectionStatus === 'success' && 'Connected'}
-                      {connectionStatus === 'error' && 'Failed'}
-                      {connectionStatus === 'idle' && 'Unknown'}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
-                    <div>
-                      <Label className='text-sm font-medium'>API Key</Label>
-                      <p className='text-sm text-muted-foreground'>
-                        {settings?.apiKey.substring(0, 8)}...
-                      </p>
-                    </div>
-                    <div>
-                      <Label className='text-sm font-medium'>User ID</Label>
-                      <p className='text-sm text-muted-foreground'>
-                        {settings?.userId ? settings.userId : 'Not set'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className='mt-4 flex flex-wrap gap-2'>
-                    <Button
-                      variant='outline'
-                      size='sm'
-                      onClick={handleTestConnection}
-                      disabled={connectionStatus === 'testing'}
-                    >
-                      {connectionStatus === 'testing' ? (
-                        <>
-                          <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                          Testing...
-                        </>
-                      ) : (
-                        <>
-                          <TestTube className='mr-2 h-4 w-4' />
-                          Test Connection
-                        </>
-                      )}
-                    </Button>
-                    <Button variant='outline' size='sm' onClick={handleEdit}>
-                      <Edit2 className='mr-2 h-4 w-4' />
-                      Edit
-                    </Button>
-                  </div>
-                </CardContent>
-              </>
-            ) : (
-              <>
-                <CardHeader>
-                  <CardTitle>
-                    {settings
-                      ? 'Edit Emby Configuration'
-                      : 'Configure Emby Server'}
-                  </CardTitle>
-                  <CardDescription>
-                    {settings
-                      ? 'Update your Emby server configuration'
-                      : 'Add your Emby server details to manage your media'}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form action={handleSubmit} className='space-y-4'>
-                    <div>
-                      <Label htmlFor='name'>Name</Label>
-                      <Input
-                        id='name'
-                        name='name'
-                        data-testid='instance-name'
-                        defaultValue={settings?.name || 'Emby Server'}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor='url'>URL</Label>
-                      <Input
-                        id='url'
-                        name='url'
-                        type='url'
-                        data-testid='instance-url'
-                        defaultValue={settings?.url || ''}
-                        placeholder='http://localhost:8096'
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor='apiKey'>API Key</Label>
-                      <Input
-                        id='apiKey'
-                        name='apiKey'
-                        data-testid='instance-api-key'
-                        defaultValue={settings?.apiKey || ''}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor='userId'>User ID (Optional)</Label>
-                      <Input
-                        id='userId'
-                        name='userId'
-                        defaultValue={settings?.userId || ''}
-                        placeholder='Enter user ID'
-                      />
-                    </div>
-                    <div className='flex items-center space-x-2'>
-                      <Checkbox
-                        id='enabled'
-                        name='enabled'
-                        defaultChecked={settings?.enabled ?? true}
-                      />
-                      <Label htmlFor='enabled'>Enabled</Label>
-                    </div>
-                    <div className='flex items-center space-x-2'>
-                      <Checkbox
-                        id='preferEmbyDateAdded'
-                        name='preferEmbyDateAdded'
-                        checked={preferEmbyDateAdded}
-                        onCheckedChange={(checked) =>
-                          setPreferEmbyDateAdded(checked === true)
-                        }
-                      />
-                      <Label htmlFor='preferEmbyDateAdded'>
-                        Prefer Emby Date Added
-                      </Label>
-                    </div>
-                    <div className='flex gap-2 pt-4'>
-                      <Button type='submit' data-testid='save-instance'>
-                        <Save className='mr-2 h-4 w-4' />
-                        {settings ? 'Update' : 'Save'}
-                      </Button>
-                      <Button
-                        type='button'
-                        variant='outline'
-                        onClick={handleCancel}
-                      >
-                        <X className='mr-2 h-4 w-4' />
-                        Cancel
-                      </Button>
-                    </div>
-                  </form>
-                </CardContent>
-              </>
-            )}
+            <CardHeader>
+              <CardTitle>
+                {settings ? 'Edit Emby Configuration' : 'Configure Emby Server'}
+              </CardTitle>
+              <CardDescription>
+                {settings
+                  ? 'Update your Emby server configuration'
+                  : 'Add your Emby server details to manage your media'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form action={handleSubmit} className='space-y-4'>
+                <div>
+                  <Label htmlFor='name'>Name</Label>
+                  <Input
+                    id='name'
+                    name='name'
+                    data-testid='instance-name'
+                    defaultValue={settings?.name || 'Emby Server'}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor='url'>URL</Label>
+                  <Input
+                    id='url'
+                    name='url'
+                    type='url'
+                    data-testid='instance-url'
+                    defaultValue={settings?.url || ''}
+                    placeholder='http://localhost:8096'
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor='apiKey'>API Key</Label>
+                  <Input
+                    id='apiKey'
+                    name='apiKey'
+                    data-testid='instance-api-key'
+                    defaultValue={settings?.apiKey || ''}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor='userId'>User ID (Optional)</Label>
+                  <Input
+                    id='userId'
+                    name='userId'
+                    defaultValue={settings?.userId || ''}
+                    placeholder='Enter user ID'
+                  />
+                </div>
+                <div className='flex items-center space-x-2'>
+                  <Checkbox
+                    id='enabled'
+                    name='enabled'
+                    defaultChecked={settings?.enabled ?? true}
+                  />
+                  <Label htmlFor='enabled'>Enabled</Label>
+                </div>
+                <div className='flex items-center space-x-2'>
+                  <Checkbox
+                    id='preferEmbyDateAdded'
+                    name='preferEmbyDateAdded'
+                    checked={preferEmbyDateAdded}
+                    onCheckedChange={(checked) =>
+                      setPreferEmbyDateAdded(checked === true)
+                    }
+                  />
+                  <Label htmlFor='preferEmbyDateAdded'>
+                    Prefer Emby Date Added
+                  </Label>
+                </div>
+                <div className='flex gap-2 pt-4'>
+                  <Button type='submit' data-testid='save-instance'>
+                    <Save className='mr-2 h-4 w-4' />
+                    {settings ? 'Update' : 'Save'}
+                  </Button>
+                  <Button
+                    type='button'
+                    variant='outline'
+                    onClick={handleCancel}
+                  >
+                    <X className='mr-2 h-4 w-4' />
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
           </Card>
         )}
       </div>

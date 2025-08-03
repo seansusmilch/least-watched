@@ -15,6 +15,7 @@ import {
   Loader2,
   Tv,
   Clapperboard,
+  Play,
 } from 'lucide-react';
 import type { ServiceSettings } from '@/lib/utils/prefixed-settings';
 
@@ -23,7 +24,7 @@ type ConnectionStatus = 'idle' | 'testing' | 'success' | 'error';
 interface ServiceInstanceCardProps {
   setting: ServiceSettings;
   connectionStatus?: ConnectionStatus;
-  serviceType: 'sonarr' | 'radarr';
+  serviceType: 'sonarr' | 'radarr' | 'emby';
   onTestConnection: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -43,11 +44,16 @@ export function ServiceInstanceCard({
     if (serviceType === 'sonarr') {
       return <Tv className='h-5 w-5' />;
     }
-    return <Clapperboard className='h-5 w-5 text-black' />;
+    if (serviceType === 'radarr') {
+      return <Clapperboard className='h-5 w-5 text-black' />;
+    }
+    return <Play className='h-5 w-5' />;
   };
 
   const getServiceColor = () => {
-    return serviceType === 'sonarr' ? 'bg-blue-500' : 'bg-yellow-500';
+    if (serviceType === 'sonarr') return 'bg-blue-500';
+    if (serviceType === 'radarr') return 'bg-yellow-500';
+    return 'bg-green-500';
   };
 
   return (
@@ -95,9 +101,13 @@ export function ServiceInstanceCard({
             </p>
           </div>
           <div>
-            <span className='text-sm font-medium'>Selected Folders</span>
+            <span className='text-sm font-medium'>
+              {serviceType === 'emby' ? 'User ID' : 'Selected Folders'}
+            </span>
             <p className='text-sm text-muted-foreground'>
-              {setting.selectedFolders && setting.selectedFolders.length > 0
+              {serviceType === 'emby'
+                ? setting.userId || 'Not set'
+                : setting.selectedFolders && setting.selectedFolders.length > 0
                 ? `${setting.selectedFolders.length} folder(s) selected`
                 : 'No folders selected'}
             </p>
@@ -122,10 +132,12 @@ export function ServiceInstanceCard({
               </>
             )}
           </Button>
-          <Button variant='outline' size='sm' onClick={onSelectFolders}>
-            <Folder className='mr-2 h-4 w-4' />
-            Select Folders
-          </Button>
+          {serviceType !== 'emby' && (
+            <Button variant='outline' size='sm' onClick={onSelectFolders}>
+              <Folder className='mr-2 h-4 w-4' />
+              Select Folders
+            </Button>
+          )}
           <Button variant='outline' size='sm' onClick={onEdit}>
             <Edit2 className='mr-2 h-4 w-4' />
             Edit
