@@ -10,11 +10,13 @@ const DEFAULT_DELETION_SCORE_SETTINGS: DeletionScoreSettings = {
   // Days Unwatched Factor
   daysUnwatchedEnabled: true,
   daysUnwatchedMaxPoints: 30,
-  daysUnwatched30DaysPercent: 0, // 0% of max points
-  daysUnwatched90DaysPercent: 16.67, // ~5/30 = 16.67%
-  daysUnwatched180DaysPercent: 50, // 15/30 = 50%
-  daysUnwatched365DaysPercent: 73.33, // 22/30 = 73.33%
-  daysUnwatchedOver365Percent: 100, // 30/30 = 100%
+  daysUnwatchedBreakpoints: [
+    { value: 30, percent: 0 },
+    { value: 90, percent: 17 },
+    { value: 180, percent: 50 },
+    { value: 365, percent: 73 },
+    { value: 366, percent: 100 },
+  ],
 
   // Never Watched Bonus
   neverWatchedEnabled: true,
@@ -23,27 +25,33 @@ const DEFAULT_DELETION_SCORE_SETTINGS: DeletionScoreSettings = {
   // Size on Disk Factor
   sizeOnDiskEnabled: true,
   sizeOnDiskMaxPoints: 35,
-  sizeOnDisk1GBPercent: 0, // 0% of max points
-  sizeOnDisk5GBPercent: 0, // 0% of max points
-  sizeOnDisk10GBPercent: 28.57, // 10/35 = 28.57%
-  sizeOnDisk20GBPercent: 42.86, // 15/35 = 42.86%
-  sizeOnDisk50GBPercent: 71.43, // 25/35 = 71.43%
-  sizeOnDiskOver50GBPercent: 100, // 35/35 = 100%
+  sizeOnDiskBreakpoints: [
+    { value: 1, percent: 0 },
+    { value: 5, percent: 0 },
+    { value: 10, percent: 29 },
+    { value: 20, percent: 43 },
+    { value: 50, percent: 71 },
+    { value: 51, percent: 100 },
+  ],
 
   // Age Since Added Factor
   ageSinceAddedEnabled: true,
   ageSinceAddedMaxPoints: 15,
-  ageSinceAdded180DaysPercent: 33.33, // 5/15 = 33.33%
-  ageSinceAdded365DaysPercent: 66.67, // 10/15 = 66.67%
-  ageSinceAddedOver730Percent: 100, // 15/15 = 100%
+  ageSinceAddedBreakpoints: [
+    { value: 180, percent: 33 },
+    { value: 365, percent: 67 },
+    { value: 730, percent: 100 },
+  ],
 
   // Folder Space Factor
   folderSpaceEnabled: false,
   folderSpaceMaxPoints: 10,
-  folderSpace10PercentPercent: 100, // 10/10 = 100%
-  folderSpace20PercentPercent: 80, // 8/10 = 80%
-  folderSpace30PercentPercent: 60, // 6/10 = 60%
-  folderSpace50PercentPercent: 30, // 3/10 = 30%
+  folderSpaceBreakpoints: [
+    { value: 10, percent: 100 },
+    { value: 20, percent: 80 },
+    { value: 30, percent: 60 },
+    { value: 50, percent: 30 },
+  ],
 };
 
 // Deletion Score Settings

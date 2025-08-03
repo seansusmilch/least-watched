@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -27,6 +27,7 @@ import {
   RotateCcw,
   Download,
   Upload,
+  Plus,
 } from 'lucide-react';
 import {
   Dialog,
@@ -41,12 +42,33 @@ import {
 import {
   getDeletionScoreSettings,
   setDeletionScoreSettings,
-  type DeletionScoreSettings,
 } from '@/lib/actions/settings';
 import { toast } from 'sonner';
 import { FileInput } from '@/components/ui/file-input';
+import { Input } from '@/components/ui/input';
 
-// Types for scoring factors
+import { Breakpoint } from '@/lib/actions/settings/types';
+
+// This is a local definition for the component's state.
+// The actual type from the API might differ during migration.
+interface DeletionScoreSettings {
+  enabled: boolean;
+  daysUnwatchedEnabled: boolean;
+  daysUnwatchedMaxPoints: number;
+  daysUnwatchedBreakpoints: Breakpoint[];
+  neverWatchedEnabled: boolean;
+  neverWatchedPoints: number;
+  sizeOnDiskEnabled: boolean;
+  sizeOnDiskMaxPoints: number;
+  sizeOnDiskBreakpoints: Breakpoint[];
+  ageSinceAddedEnabled: boolean;
+  ageSinceAddedMaxPoints: number;
+  ageSinceAddedBreakpoints: Breakpoint[];
+  folderSpaceEnabled: boolean;
+  folderSpaceMaxPoints: number;
+  folderSpaceBreakpoints: Breakpoint[];
+}
+
 interface ScoringFactor {
   key: string;
   title: string;
@@ -55,13 +77,8 @@ interface ScoringFactor {
   maxPointsKey: keyof DeletionScoreSettings;
   maxPoints: number;
   color: string;
-  breakdowns?: ScoringBreakdown[];
-}
-
-interface ScoringBreakdown {
-  key: keyof DeletionScoreSettings;
-  label: string;
-  maxValue: number;
+  breakdownsKey?: keyof DeletionScoreSettings;
+  breakdownUnit?: string;
 }
 
 // Scoring factor configurations
@@ -75,21 +92,8 @@ const SCORING_FACTORS: ScoringFactor[] = [
     maxPointsKey: 'daysUnwatchedMaxPoints',
     maxPoints: 30,
     color: 'bg-blue-500',
-    breakdowns: [
-      { key: 'daysUnwatched30DaysPercent', label: '≤30 days', maxValue: 100 },
-      { key: 'daysUnwatched90DaysPercent', label: '31-90 days', maxValue: 100 },
-      {
-        key: 'daysUnwatched180DaysPercent',
-        label: '91-180 days',
-        maxValue: 100,
-      },
-      {
-        key: 'daysUnwatched365DaysPercent',
-        label: '181-365 days',
-        maxValue: 100,
-      },
-      { key: 'daysUnwatchedOver365Percent', label: '>365 days', maxValue: 100 },
-    ],
+    breakdownsKey: 'daysUnwatchedBreakpoints',
+    breakdownUnit: 'days',
   },
   {
     key: 'neverWatched',
@@ -110,14 +114,8 @@ const SCORING_FACTORS: ScoringFactor[] = [
     maxPointsKey: 'sizeOnDiskMaxPoints',
     maxPoints: 35,
     color: 'bg-green-500',
-    breakdowns: [
-      { key: 'sizeOnDisk1GBPercent', label: '<1GB', maxValue: 100 },
-      { key: 'sizeOnDisk5GBPercent', label: '1-5GB', maxValue: 100 },
-      { key: 'sizeOnDisk10GBPercent', label: '5-10GB', maxValue: 100 },
-      { key: 'sizeOnDisk20GBPercent', label: '10-20GB', maxValue: 100 },
-      { key: 'sizeOnDisk50GBPercent', label: '20-50GB', maxValue: 100 },
-      { key: 'sizeOnDiskOver50GBPercent', label: '≥50GB', maxValue: 100 },
-    ],
+    breakdownsKey: 'sizeOnDiskBreakpoints',
+    breakdownUnit: 'GB',
   },
   {
     key: 'ageSinceAdded',
@@ -128,19 +126,8 @@ const SCORING_FACTORS: ScoringFactor[] = [
     maxPointsKey: 'ageSinceAddedMaxPoints',
     maxPoints: 15,
     color: 'bg-purple-500',
-    breakdowns: [
-      {
-        key: 'ageSinceAdded180DaysPercent',
-        label: '180-365 days',
-        maxValue: 100,
-      },
-      {
-        key: 'ageSinceAdded365DaysPercent',
-        label: '365-730 days',
-        maxValue: 100,
-      },
-      { key: 'ageSinceAddedOver730Percent', label: '>730 days', maxValue: 100 },
-    ],
+    breakdownsKey: 'ageSinceAddedBreakpoints',
+    breakdownUnit: 'days',
   },
   {
     key: 'folderSpace',
@@ -151,28 +138,8 @@ const SCORING_FACTORS: ScoringFactor[] = [
     maxPointsKey: 'folderSpaceMaxPoints',
     maxPoints: 10,
     color: 'bg-red-500',
-    breakdowns: [
-      {
-        key: 'folderSpace10PercentPercent',
-        label: '<10% remaining',
-        maxValue: 100,
-      },
-      {
-        key: 'folderSpace20PercentPercent',
-        label: '10-20% remaining',
-        maxValue: 100,
-      },
-      {
-        key: 'folderSpace30PercentPercent',
-        label: '20-30% remaining',
-        maxValue: 100,
-      },
-      {
-        key: 'folderSpace50PercentPercent',
-        label: '30-50% remaining',
-        maxValue: 100,
-      },
-    ],
+    breakdownsKey: 'folderSpaceBreakpoints',
+    breakdownUnit: '%',
   },
 ];
 
@@ -180,32 +147,40 @@ const getDefaultSettings = (): DeletionScoreSettings => ({
   enabled: true,
   daysUnwatchedEnabled: true,
   daysUnwatchedMaxPoints: 30,
-  daysUnwatched30DaysPercent: 0,
-  daysUnwatched90DaysPercent: 16.67,
-  daysUnwatched180DaysPercent: 50,
-  daysUnwatched365DaysPercent: 73.33,
-  daysUnwatchedOver365Percent: 100,
+  daysUnwatchedBreakpoints: [
+    { value: 30, percent: 0 },
+    { value: 90, percent: 17 },
+    { value: 180, percent: 50 },
+    { value: 365, percent: 73 },
+    { value: 366, percent: 100 },
+  ],
   neverWatchedEnabled: true,
   neverWatchedPoints: 20,
   sizeOnDiskEnabled: true,
   sizeOnDiskMaxPoints: 35,
-  sizeOnDisk1GBPercent: 0,
-  sizeOnDisk5GBPercent: 0,
-  sizeOnDisk10GBPercent: 28.57,
-  sizeOnDisk20GBPercent: 42.86,
-  sizeOnDisk50GBPercent: 71.43,
-  sizeOnDiskOver50GBPercent: 100,
+  sizeOnDiskBreakpoints: [
+    { value: 1, percent: 0 },
+    { value: 5, percent: 0 },
+    { value: 10, percent: 29 },
+    { value: 20, percent: 43 },
+    { value: 50, percent: 71 },
+    { value: 51, percent: 100 },
+  ],
   ageSinceAddedEnabled: true,
   ageSinceAddedMaxPoints: 15,
-  ageSinceAdded180DaysPercent: 33.33,
-  ageSinceAdded365DaysPercent: 66.67,
-  ageSinceAddedOver730Percent: 100,
+  ageSinceAddedBreakpoints: [
+    { value: 180, percent: 33 },
+    { value: 365, percent: 67 },
+    { value: 730, percent: 100 },
+  ],
   folderSpaceEnabled: false,
   folderSpaceMaxPoints: 10,
-  folderSpace10PercentPercent: 100,
-  folderSpace20PercentPercent: 80,
-  folderSpace30PercentPercent: 60,
-  folderSpace50PercentPercent: 30,
+  folderSpaceBreakpoints: [
+    { value: 10, percent: 100 },
+    { value: 20, percent: 80 },
+    { value: 30, percent: 60 },
+    { value: 50, percent: 30 },
+  ],
 });
 
 // Helper function to convert percentage to actual points
@@ -226,37 +201,127 @@ const getActualPoints = (
   return Math.round((percentage / 100) * maxPoints);
 };
 
-// Reusable component for scoring breakdown sliders
-function ScoringBreakdownSlider({
-  label,
-  value,
+function BreakpointEditor({
+  breakpoints,
   onChange,
-  maxValue,
   maxPoints,
+  unit,
 }: {
-  label: string;
-  value: number | undefined;
-  onChange: (value: number) => void;
-  maxValue: number;
+  breakpoints: Breakpoint[];
+  onChange: (newBreakpoints: Breakpoint[]) => void;
   maxPoints: number;
+  unit: string;
 }) {
-  const safeValue = value ?? 0;
+  const handleBreakpointChange = (
+    index: number,
+    field: keyof Breakpoint,
+    value: number | string
+  ) => {
+    const newBreakpoints = [...breakpoints];
+    newBreakpoints[index] = { ...newBreakpoints[index], [field]: value };
+    onChange(newBreakpoints);
+  };
+
+  const handleBlur = () => {
+    const newBreakpoints = [...breakpoints].sort((a, b) => a.value - b.value);
+    const values = newBreakpoints.map((bp) => bp.value);
+    const hasDuplicates = new Set(values).size !== values.length;
+    if (hasDuplicates) {
+      toast.error('Breakpoint values must be unique.');
+    }
+    onChange(newBreakpoints);
+  };
+
+  const addBreakpoint = () => {
+    const lastValue =
+      breakpoints.length > 0 ? breakpoints[breakpoints.length - 1].value : 0;
+    onChange([
+      ...breakpoints,
+      { value: lastValue + 1, percent: 100 },
+    ]);
+  };
+
+  const removeBreakpoint = (index: number) => {
+    const newBreakpoints = breakpoints.filter((_, i) => i !== index);
+    onChange(newBreakpoints);
+  };
 
   return (
-    <div className='flex items-center space-x-3 p-3 bg-muted/50 rounded-lg'>
-      <div className='w-20 text-xs text-muted-foreground'>{label}</div>
-      <div className='flex-1'>
-        <Slider
-          value={[safeValue]}
-          onValueChange={([newValue]) => onChange(newValue)}
-          max={maxValue}
-          step={1}
-          className='w-full'
-        />
-      </div>
-      <div className='w-12 text-sm font-medium text-center'>
-        {getActualPoints(safeValue, maxPoints)} pts
-      </div>
+    <div className='space-y-3'>
+      {breakpoints.map((bp, index) => {
+        const sortedBreakpoints = [...breakpoints].sort(
+          (a, b) => a.value - b.value
+        );
+        const sortedIndex = sortedBreakpoints.findIndex(
+          (item) => item.value === bp.value && item.percent === bp.percent
+        );
+        const previousSortedBp =
+          sortedIndex > 0 ? sortedBreakpoints[sortedIndex - 1] : null;
+
+        return (
+          <div
+            key={index}
+            className='flex items-center space-x-2 p-2 bg-muted/50 rounded-lg'
+          >
+            <div className='flex-1'>
+              <div className='flex items-center space-x-2'>
+                <Input
+                  type='number'
+                  value={bp.value}
+                  onBlur={handleBlur}
+                  onChange={(e) =>
+                    handleBreakpointChange(
+                      index,
+                      'value',
+                      parseInt(e.target.value, 10) || 0
+                    )
+                  }
+                  className='w-24'
+                />
+                <span className='text-sm text-muted-foreground'>{unit}</span>
+                <Slider
+                  value={[bp.percent]}
+                  onValueChange={([newValue]) =>
+                    handleBreakpointChange(index, 'percent', newValue)
+                  }
+                  max={100}
+                  step={1}
+                  className='flex-1'
+                />
+                <div className='w-16 text-sm font-medium text-center'>
+                  {getActualPoints(bp.percent, maxPoints)} pts
+                </div>
+                <Button
+                  variant='ghost'
+                  size='icon'
+                  onClick={() => removeBreakpoint(index)}
+                >
+                  <Trash2 className='h-4 w-4' />
+                </Button>
+              </div>
+              <div className='text-xs text-muted-foreground mt-1 pl-1'>
+                {(() => {
+                  if (sortedBreakpoints.length === 1) {
+                    return 'Applies to all values';
+                  }
+                  if (sortedIndex === 0) {
+                    return `Applies to values ≤ ${bp.value} ${unit}`;
+                  }
+                  const previousValue = previousSortedBp?.value;
+                  if (sortedIndex === sortedBreakpoints.length - 1) {
+                    return `Applies to values > ${previousValue} ${unit}`;
+                  }
+                  return `Applies to values > ${previousValue} ${unit} and ≤ ${bp.value} ${unit}`;
+                })()}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+      <Button variant='outline' onClick={addBreakpoint}>
+        <Plus className='h-4 w-4 mr-2' />
+        Add Breakpoint
+      </Button>
     </div>
   );
 }
@@ -310,7 +375,7 @@ function ScoringFactorSection({
             />
           </div>
 
-          {factor.breakdowns && (
+          {factor.breakdownsKey && (
             <Accordion
               type='single'
               collapsible
@@ -328,24 +393,34 @@ function ScoringFactorSection({
                   className='space-y-3 pt-2'
                   data-testid={`${factor.key}-breakdown-content`}
                 >
-                  <div className='text-xs text-muted-foreground mb-2'>
-                    Adjust how {factor.title.toLowerCase()} contributes to the
-                    deletion score:
+                  <div className='text-xs text-muted-foreground mb-2 space-y-1'>
+                    <p>
+                      Each breakpoint defines a score tier. An item&apos;s value
+                      (e.g., days unwatched) is checked against the breakpoints
+                      in ascending order.
+                    </p>
+                    <p>
+                      The <strong>first</strong> breakpoint value that is{' '}
+                      <strong>greater than or equal to</strong> the item&apos;s
+                      value determines the score. The last breakpoint applies to
+                      all values above the previous tier.
+                    </p>
                   </div>
-                  <div className='grid grid-cols-1 gap-3'>
-                    {factor.breakdowns.map((breakdown) => (
-                      <ScoringBreakdownSlider
-                        key={breakdown.key}
-                        label={breakdown.label}
-                        value={settings[breakdown.key] as number | undefined}
-                        onChange={(value) =>
-                          setSettings({ ...settings, [breakdown.key]: value })
-                        }
-                        maxValue={breakdown.maxValue}
-                        maxPoints={maxPoints}
-                      />
-                    ))}
-                  </div>
+                  <BreakpointEditor
+                    breakpoints={
+                      (settings[factor.breakdownsKey] as
+                        | Breakpoint[]
+                        | undefined) || []
+                    }
+                    onChange={(newBreakpoints) =>
+                      setSettings({
+                        ...settings,
+                        [factor.breakdownsKey as string]: newBreakpoints,
+                      })
+                    }
+                    maxPoints={maxPoints}
+                    unit={factor.breakdownUnit || ''}
+                  />
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
@@ -357,8 +432,7 @@ function ScoringFactorSection({
 }
 
 export function DeletionScoreSettings() {
-  const [settings, setSettings] =
-    useState<DeletionScoreSettings>(getDefaultSettings);
+  const [settings, setSettings] = useState<DeletionScoreSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
@@ -366,20 +440,86 @@ export function DeletionScoreSettings() {
   const [showImportDialog, setShowImportDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    loadSettings();
-  }, []);
+  type OldSettings = Omit<
+    DeletionScoreSettings,
+    | 'daysUnwatchedBreakpoints'
+    | 'sizeOnDiskBreakpoints'
+    | 'ageSinceAddedBreakpoints'
+    | 'folderSpaceBreakpoints'
+  > & { [key: string]: number };
 
-  const loadSettings = async () => {
-    try {
-      const loadedSettings = await getDeletionScoreSettings();
+  const migrateSettings = useCallback(
+    (settings: OldSettings | undefined): DeletionScoreSettings | undefined => {
+      if (!settings) return undefined;
+      if (settings.daysUnwatchedBreakpoints) {
+        return settings as DeletionScoreSettings;
+      }
 
-      // Ensure all percentage properties exist with fallback values
-      const validatedSettings = {
-        ...getDefaultSettings(), // Start with defaults
-        ...loadedSettings, // Override with loaded settings
+      const newSettings: Partial<DeletionScoreSettings> = {
+        ...getDefaultSettings(),
+        ...settings,
       };
 
+      const migrateFactor = (
+        baseKey: string,
+        breakdownKey: keyof DeletionScoreSettings,
+        breakdowns: { key: string; value: number }[]
+      ) => {
+        newSettings[breakdownKey] = breakdowns
+          .map((b) => {
+            const percent = settings[`${baseKey}${b.key}`];
+            return percent !== undefined
+              ? { value: b.value, percent }
+              : null;
+          })
+          .filter(Boolean) as Breakpoint[];
+
+        breakdowns.forEach((b) => delete newSettings[`${baseKey}${b.key}`]);
+      };
+
+      migrateFactor('daysUnwatched', 'daysUnwatchedBreakpoints', [
+        { key: '30DaysPercent', value: 30 },
+        { key: '90DaysPercent', value: 90 },
+        { key: '180DaysPercent', value: 180 },
+        { key: '365DaysPercent', value: 365 },
+        { key: 'Over365Percent', value: 366 },
+      ]);
+
+      migrateFactor('sizeOnDisk', 'sizeOnDiskBreakpoints', [
+        { key: '1GBPercent', value: 1 },
+        { key: '5GBPercent', value: 5 },
+        { key: '10GBPercent', value: 10 },
+        { key: '20GBPercent', value: 20 },
+        { key: '50GBPercent', value: 50 },
+        { key: 'Over50GBPercent', value: 51 },
+      ]);
+
+      migrateFactor('ageSinceAdded', 'ageSinceAddedBreakpoints', [
+        { key: '180DaysPercent', value: 180 },
+        { key: '365DaysPercent', value: 365 },
+        { key: 'Over730Percent', value: 730 },
+      ]);
+
+      migrateFactor('folderSpace', 'folderSpaceBreakpoints', [
+        { key: '10PercentPercent', value: 10 },
+        { key: '20PercentPercent', value: 20 },
+        { key: '30PercentPercent', value: 30 },
+        { key: '50PercentPercent', value: 50 },
+      ]);
+
+      return newSettings as DeletionScoreSettings;
+    },
+    []
+  );
+
+  const loadSettings = useCallback(async () => {
+    try {
+      const loadedSettings = await getDeletionScoreSettings();
+      const migratedSettings = migrateSettings(loadedSettings);
+      const validatedSettings = {
+        ...getDefaultSettings(),
+        ...migratedSettings,
+      };
       setSettings(validatedSettings);
     } catch (error) {
       console.error('Failed to load deletion score settings:', error);
@@ -387,9 +527,14 @@ export function DeletionScoreSettings() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [migrateSettings]);
+
+  useEffect(() => {
+    loadSettings();
+  }, [loadSettings]);
 
   const calculateTotalMaxPoints = () => {
+    if (!settings) return 0;
     return SCORING_FACTORS.reduce((total, factor) => {
       if (settings[factor.enabledKey] as boolean) {
         total += settings[factor.maxPointsKey] as number;
@@ -399,6 +544,7 @@ export function DeletionScoreSettings() {
   };
 
   const validateSettings = () => {
+    if (!settings) return { isValid: false, message: 'Settings not loaded.' };
     if (!settings.enabled) return { isValid: true, message: '' };
 
     const totalPoints = calculateTotalMaxPoints();
@@ -416,6 +562,22 @@ export function DeletionScoreSettings() {
         message: `Deletion score factors must add up to exactly 100 points. Current total: ${totalPoints} points.\n\nBreakdown:\n${breakdown}\n\nPlease adjust your settings.`,
       };
     }
+
+    for (const factor of SCORING_FACTORS) {
+      if (factor.breakdownsKey) {
+        const breakpoints = settings[factor.breakdownsKey] as Breakpoint[];
+        if (breakpoints) {
+          const values = breakpoints.map((bp) => bp.value);
+          if (new Set(values).size !== values.length) {
+            return {
+              isValid: false,
+              message: `Breakpoints for ${factor.title} must have unique values.`,
+            };
+          }
+        }
+      }
+    }
+
     return { isValid: true, message: '' };
   };
 
@@ -426,7 +588,7 @@ export function DeletionScoreSettings() {
       return;
     }
 
-    if (settings.enabled) {
+    if (settings?.enabled) {
       setShowSaveConfirmDialog(true);
     } else {
       handleSave();
@@ -434,6 +596,7 @@ export function DeletionScoreSettings() {
   };
 
   const handleSave = async () => {
+    if (!settings) return;
     setShowSaveConfirmDialog(false);
     setSaving(true);
     try {
@@ -457,9 +620,10 @@ export function DeletionScoreSettings() {
   };
 
   const handleExportSettings = () => {
+    if (!settings) return;
     try {
       const exportData = {
-        version: '1.0',
+        version: '2.0',
         exportedAt: new Date().toISOString(),
         settings: settings,
       };
@@ -666,11 +830,16 @@ export function DeletionScoreSettings() {
 
                           // Basic validation of required fields
                           const requiredFields = SCORING_FACTORS.flatMap(
-                            (factor) => [
-                              factor.enabledKey,
-                              factor.maxPointsKey,
-                              ...(factor.breakdowns?.map((b) => b.key) || []),
-                            ]
+                            (factor) => {
+                              const keys = [
+                                factor.enabledKey,
+                                factor.maxPointsKey,
+                              ];
+                              if (factor.breakdownsKey) {
+                                keys.push(factor.breakdownsKey);
+                              }
+                              return keys;
+                            }
                           );
 
                           for (const field of requiredFields) {
@@ -681,13 +850,39 @@ export function DeletionScoreSettings() {
                             }
                           }
 
+                          for (const factor of SCORING_FACTORS) {
+                            if (factor.breakdownsKey) {
+                              const breakpoints =
+                                importedSettings[factor.breakdownsKey];
+                              if (!Array.isArray(breakpoints)) {
+                                throw new Error(
+                                  `Invalid file format: '${factor.breakdownsKey}' must be an array.`
+                                );
+                              }
+                              for (const bp of breakpoints) {
+                                if (
+                                  typeof bp.value !== 'number' ||
+                                  typeof bp.percent !== 'number'
+                                ) {
+                                  throw new Error(
+                                    `Invalid breakpoint in '${factor.breakdownsKey}'. Each breakpoint must have a 'value' and 'percent' as numbers.`
+                                  );
+                                }
+                              }
+                            }
+                          }
+
                           setSettings(importedSettings);
                           setShowImportDialog(false);
                           toast.success('Settings imported successfully!');
                         } catch (error) {
                           console.error('Failed to import settings:', error);
                           toast.error(
-                            'Failed to import settings. Please check the file format and try again.'
+                            `Failed to import settings: ${
+                              error instanceof Error
+                                ? error.message
+                                : String(error)
+                            }`
                           );
                         }
                       }

@@ -52,46 +52,37 @@ export interface EnhancedProcessingSettings {
   enablePlaybackProgress: boolean;
 }
 
+export interface Breakpoint {
+  value: number;
+  percent: number;
+}
+
 export interface DeletionScoreSettings {
   enabled: boolean;
 
-  // Days Unwatched Factor (max 35 points)
+  // Days Unwatched Factor
   daysUnwatchedEnabled: boolean;
   daysUnwatchedMaxPoints: number;
-  daysUnwatched30DaysPercent: number; // <= 30 days (percentage of max points)
-  daysUnwatched90DaysPercent: number; // 31-90 days (percentage of max points)
-  daysUnwatched180DaysPercent: number; // 91-180 days (percentage of max points)
-  daysUnwatched365DaysPercent: number; // 181-365 days (percentage of max points)
-  daysUnwatchedOver365Percent: number; // > 365 days (percentage of max points)
+  daysUnwatchedBreakpoints: Breakpoint[];
 
-  // Never Watched Bonus (max 20 points)
+  // Never Watched Bonus
   neverWatchedEnabled: boolean;
   neverWatchedPoints: number;
 
-  // Size on Disk Factor (max 30 points)
+  // Size on Disk Factor
   sizeOnDiskEnabled: boolean;
   sizeOnDiskMaxPoints: number;
-  sizeOnDisk1GBPercent: number; // < 1GB (percentage of max points)
-  sizeOnDisk5GBPercent: number; // 1-5GB (percentage of max points)
-  sizeOnDisk10GBPercent: number; // 5-10GB (percentage of max points)
-  sizeOnDisk20GBPercent: number; // 10-20GB (percentage of max points)
-  sizeOnDisk50GBPercent: number; // 20-50GB (percentage of max points)
-  sizeOnDiskOver50GBPercent: number; // >= 50GB (percentage of max points)
+  sizeOnDiskBreakpoints: Breakpoint[];
 
-  // Age Since Added Factor (max 15 points)
+  // Age Since Added Factor
   ageSinceAddedEnabled: boolean;
   ageSinceAddedMaxPoints: number;
-  ageSinceAdded180DaysPercent: number; // 180-365 days (percentage of max points)
-  ageSinceAdded365DaysPercent: number; // 365-730 days (percentage of max points)
-  ageSinceAddedOver730Percent: number; // > 730 days (percentage of max points)
+  ageSinceAddedBreakpoints: Breakpoint[];
 
-  // Folder Space Factor (max 20 points)
+  // Folder Space Factor
   folderSpaceEnabled: boolean;
   folderSpaceMaxPoints: number;
-  folderSpace10PercentPercent: number; // < 10% remaining (percentage of max points)
-  folderSpace20PercentPercent: number; // 10-20% remaining (percentage of max points)
-  folderSpace30PercentPercent: number; // 20-30% remaining (percentage of max points)
-  folderSpace50PercentPercent: number; // 30-50% remaining (percentage of max points)
+  folderSpaceBreakpoints: Breakpoint[];
 }
 
 export interface FolderInfo {

@@ -185,6 +185,41 @@ export class DeletionScoreCalculator {
     return Math.round(maxPoints * (percentage / 100));
   }
 
+  private getPointsForValue(
+    value: number,
+    breakpoints: { value: number; percent: number }[],
+    maxPoints: number
+  ): { points: number; category: string } {
+    if (breakpoints.length === 0) {
+      return { points: 0, category: '' };
+    }
+
+    const sortedBreakpoints = [...breakpoints].sort((a, b) => a.value - b.value);
+
+    let foundBreakpoint = sortedBreakpoints.find((bp) => value <= bp.value);
+
+    if (!foundBreakpoint) {
+      foundBreakpoint = sortedBreakpoints[sortedBreakpoints.length - 1];
+    }
+
+    const index = sortedBreakpoints.indexOf(foundBreakpoint);
+    const prevValue = index > 0 ? sortedBreakpoints[index - 1].value : 0;
+
+    let category = ``;
+    if (index === 0) {
+      category = `≤${foundBreakpoint.value}`;
+    } else if (value > foundBreakpoint.value) {
+      category = `>${foundBreakpoint.value}`;
+    } else {
+      category = `${prevValue + 1}-${foundBreakpoint.value}`;
+    }
+
+    return {
+      points: this.calculatePercentagePoints(maxPoints, foundBreakpoint.percent),
+      category: category,
+    };
+  }
+
   /**
    * Perform the actual deletion score calculation with breakdown
    */
@@ -206,37 +241,13 @@ export class DeletionScoreCalculator {
     let daysUnwatchedCategory = '';
 
     if (settings.daysUnwatchedEnabled) {
-      if (daysSinceReference <= 30) {
-        daysUnwatchedPoints = this.calculatePercentagePoints(
-          settings.daysUnwatchedMaxPoints,
-          settings.daysUnwatched30DaysPercent
-        );
-        daysUnwatchedCategory = '≤30 days';
-      } else if (daysSinceReference <= 90) {
-        daysUnwatchedPoints = this.calculatePercentagePoints(
-          settings.daysUnwatchedMaxPoints,
-          settings.daysUnwatched90DaysPercent
-        );
-        daysUnwatchedCategory = '31-90 days';
-      } else if (daysSinceReference <= 180) {
-        daysUnwatchedPoints = this.calculatePercentagePoints(
-          settings.daysUnwatchedMaxPoints,
-          settings.daysUnwatched180DaysPercent
-        );
-        daysUnwatchedCategory = '91-180 days';
-      } else if (daysSinceReference <= 365) {
-        daysUnwatchedPoints = this.calculatePercentagePoints(
-          settings.daysUnwatchedMaxPoints,
-          settings.daysUnwatched365DaysPercent
-        );
-        daysUnwatchedCategory = '181-365 days';
-      } else {
-        daysUnwatchedPoints = this.calculatePercentagePoints(
-          settings.daysUnwatchedMaxPoints,
-          settings.daysUnwatchedOver365Percent
-        );
-        daysUnwatchedCategory = '>365 days';
-      }
+      const { points, category } = this.getPointsForValue(
+        daysSinceReference,
+        settings.daysUnwatchedBreakpoints,
+        settings.daysUnwatchedMaxPoints
+      );
+      daysUnwatchedPoints = points;
+      daysUnwatchedCategory = category;
       totalScore += daysUnwatchedPoints;
     }
 
@@ -256,43 +267,13 @@ export class DeletionScoreCalculator {
     let sizeOnDiskCategory = '';
 
     if (settings.sizeOnDiskEnabled && item.sizeOnDisk) {
-      if (sizeInGB < 1) {
-        sizeOnDiskPoints = this.calculatePercentagePoints(
-          settings.sizeOnDiskMaxPoints,
-          settings.sizeOnDisk1GBPercent
-        );
-        sizeOnDiskCategory = '<1GB';
-      } else if (sizeInGB < 5) {
-        sizeOnDiskPoints = this.calculatePercentagePoints(
-          settings.sizeOnDiskMaxPoints,
-          settings.sizeOnDisk5GBPercent
-        );
-        sizeOnDiskCategory = '1-5GB';
-      } else if (sizeInGB < 10) {
-        sizeOnDiskPoints = this.calculatePercentagePoints(
-          settings.sizeOnDiskMaxPoints,
-          settings.sizeOnDisk10GBPercent
-        );
-        sizeOnDiskCategory = '5-10GB';
-      } else if (sizeInGB < 20) {
-        sizeOnDiskPoints = this.calculatePercentagePoints(
-          settings.sizeOnDiskMaxPoints,
-          settings.sizeOnDisk20GBPercent
-        );
-        sizeOnDiskCategory = '10-20GB';
-      } else if (sizeInGB < 50) {
-        sizeOnDiskPoints = this.calculatePercentagePoints(
-          settings.sizeOnDiskMaxPoints,
-          settings.sizeOnDisk50GBPercent
-        );
-        sizeOnDiskCategory = '20-50GB';
-      } else {
-        sizeOnDiskPoints = this.calculatePercentagePoints(
-          settings.sizeOnDiskMaxPoints,
-          settings.sizeOnDiskOver50GBPercent
-        );
-        sizeOnDiskCategory = '≥50GB';
-      }
+      const { points, category } = this.getPointsForValue(
+        sizeInGB,
+        settings.sizeOnDiskBreakpoints,
+        settings.sizeOnDiskMaxPoints
+      );
+      sizeOnDiskPoints = points;
+      sizeOnDiskCategory = category;
       totalScore += sizeOnDiskPoints;
     }
 
@@ -306,27 +287,13 @@ export class DeletionScoreCalculator {
     let ageSinceAddedCategory = '';
 
     if (settings.ageSinceAddedEnabled && item.dateAdded) {
-      if (daysSinceAdded > 730) {
-        ageSinceAddedPoints = this.calculatePercentagePoints(
-          settings.ageSinceAddedMaxPoints,
-          settings.ageSinceAddedOver730Percent
-        );
-        ageSinceAddedCategory = '>730 days';
-      } else if (daysSinceAdded > 365) {
-        ageSinceAddedPoints = this.calculatePercentagePoints(
-          settings.ageSinceAddedMaxPoints,
-          settings.ageSinceAdded365DaysPercent
-        );
-        ageSinceAddedCategory = '365-730 days';
-      } else if (daysSinceAdded > 180) {
-        ageSinceAddedPoints = this.calculatePercentagePoints(
-          settings.ageSinceAddedMaxPoints,
-          settings.ageSinceAdded180DaysPercent
-        );
-        ageSinceAddedCategory = '180-365 days';
-      } else {
-        ageSinceAddedCategory = '≤180 days';
-      }
+      const { points, category } = this.getPointsForValue(
+        daysSinceAdded,
+        settings.ageSinceAddedBreakpoints,
+        settings.ageSinceAddedMaxPoints
+      );
+      ageSinceAddedPoints = points;
+      ageSinceAddedCategory = category;
       totalScore += ageSinceAddedPoints;
     }
 
@@ -339,33 +306,13 @@ export class DeletionScoreCalculator {
       item.folderRemainingSpacePercent !== null &&
       item.folderRemainingSpacePercent !== undefined
     ) {
-      if (item.folderRemainingSpacePercent < 10) {
-        folderSpacePoints = this.calculatePercentagePoints(
-          settings.folderSpaceMaxPoints,
-          settings.folderSpace10PercentPercent
-        );
-        folderSpaceCategory = '<10% remaining';
-      } else if (item.folderRemainingSpacePercent < 20) {
-        folderSpacePoints = this.calculatePercentagePoints(
-          settings.folderSpaceMaxPoints,
-          settings.folderSpace20PercentPercent
-        );
-        folderSpaceCategory = '10-20% remaining';
-      } else if (item.folderRemainingSpacePercent < 30) {
-        folderSpacePoints = this.calculatePercentagePoints(
-          settings.folderSpaceMaxPoints,
-          settings.folderSpace30PercentPercent
-        );
-        folderSpaceCategory = '20-30% remaining';
-      } else if (item.folderRemainingSpacePercent < 50) {
-        folderSpacePoints = this.calculatePercentagePoints(
-          settings.folderSpaceMaxPoints,
-          settings.folderSpace50PercentPercent
-        );
-        folderSpaceCategory = '30-50% remaining';
-      } else {
-        folderSpaceCategory = '≥50% remaining';
-      }
+      const { points, category } = this.getPointsForValue(
+        item.folderRemainingSpacePercent,
+        settings.folderSpaceBreakpoints,
+        settings.folderSpaceMaxPoints
+      );
+      folderSpacePoints = points;
+      folderSpaceCategory = category;
       totalScore += folderSpacePoints;
     }
 
