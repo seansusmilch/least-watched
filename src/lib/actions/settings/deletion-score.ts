@@ -8,6 +8,8 @@ const DEFAULT_DELETION_SCORE_SETTINGS: DeletionScoreSettings = {
   enabled: true,
 
   // Days Unwatched Factor
+  // Higher scores for media that hasn't been watched recently
+  // Breakpoints: 0 days (0%), 30 days (0%), 90 days (17%), 180 days (50%), 365 days (73%), 366+ days (100%)
   daysUnwatchedEnabled: true,
   daysUnwatchedMaxPoints: 30,
   daysUnwatchedBreakpoints: [
@@ -19,10 +21,13 @@ const DEFAULT_DELETION_SCORE_SETTINGS: DeletionScoreSettings = {
   ],
 
   // Never Watched Bonus
+  // Additional points for media that has never been watched
   neverWatchedEnabled: true,
   neverWatchedPoints: 20,
 
   // Size on Disk Factor
+  // Higher scores for larger files to free up more storage space
+  // Breakpoints: 0 GB (0%), 1 GB (0%), 5 GB (0%), 10 GB (29%), 20 GB (43%), 50 GB (71%), 51+ GB (100%)
   sizeOnDiskEnabled: true,
   sizeOnDiskMaxPoints: 35,
   sizeOnDiskBreakpoints: [
@@ -35,6 +40,8 @@ const DEFAULT_DELETION_SCORE_SETTINGS: DeletionScoreSettings = {
   ],
 
   // Age Since Added Factor
+  // Higher scores for older media to protect recently added content
+  // Breakpoints: 0 days (0%), 180 days (33%), 365 days (67%), 730+ days (100%)
   ageSinceAddedEnabled: true,
   ageSinceAddedMaxPoints: 15,
   ageSinceAddedBreakpoints: [
@@ -44,6 +51,8 @@ const DEFAULT_DELETION_SCORE_SETTINGS: DeletionScoreSettings = {
   ],
 
   // Folder Space Factor
+  // Higher scores for media in folders with limited remaining space
+  // Breakpoints: 0% (0%), 10% (100%), 20% (80%), 30% (60%), 50% (30%)
   folderSpaceEnabled: false,
   folderSpaceMaxPoints: 10,
   folderSpaceBreakpoints: [

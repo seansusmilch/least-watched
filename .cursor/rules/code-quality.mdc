@@ -7,7 +7,7 @@ alwaysApply: true
 - use strict TypeScript configuration
 - implement proper error handling with try-catch blocks
 - use meaningful commit messages with conventional commits
-- implement proper code comments for complex logic
+- avoid writing useless comments
 - use consistent code formatting and style
 - implement proper unit tests for critical functions
 - use dependency injection when appropriate

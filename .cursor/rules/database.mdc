@@ -7,6 +7,7 @@ alwaysApply: true
 - before doing a reset, evaluate if a reset is truly necessary
 - if a reset is necessary, ask the user for confirmation before continuing
 - use migrations for all database schema changes
+- use prisma migrations whenever the db structure changes
 - validate schema changes in development before applying to production
 - implement proper error handling for database operations
 - use transactions for operations that modify multiple records

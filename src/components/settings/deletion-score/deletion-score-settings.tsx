@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -224,21 +224,25 @@ function BreakpointEditor({
 
   const handleBlur = () => {
     const newBreakpoints = [...breakpoints].sort((a, b) => a.value - b.value);
+
     const values = newBreakpoints.map((bp) => bp.value);
     const hasDuplicates = new Set(values).size !== values.length;
     if (hasDuplicates) {
       toast.error('Breakpoint values must be unique.');
+      return;
     }
-    onChange(newBreakpoints);
+
+    const currentValues = breakpoints.map((bp) => bp.value);
+    const newValues = newBreakpoints.map((bp) => bp.value);
+    if (JSON.stringify(currentValues) !== JSON.stringify(newValues)) {
+      onChange(newBreakpoints);
+    }
   };
 
   const addBreakpoint = () => {
     const lastValue =
       breakpoints.length > 0 ? breakpoints[breakpoints.length - 1].value : 0;
-    onChange([
-      ...breakpoints,
-      { value: lastValue + 1, percent: 100 },
-    ]);
+    onChange([...breakpoints, { value: lastValue + 1, percent: 100 }]);
   };
 
   const removeBreakpoint = (index: number) => {
@@ -249,15 +253,6 @@ function BreakpointEditor({
   return (
     <div className='space-y-3'>
       {breakpoints.map((bp, index) => {
-        const sortedBreakpoints = [...breakpoints].sort(
-          (a, b) => a.value - b.value
-        );
-        const sortedIndex = sortedBreakpoints.findIndex(
-          (item) => item.value === bp.value && item.percent === bp.percent
-        );
-        const previousSortedBp =
-          sortedIndex > 0 ? sortedBreakpoints[sortedIndex - 1] : null;
-
         return (
           <div
             key={index}
@@ -301,17 +296,8 @@ function BreakpointEditor({
               </div>
               <div className='text-xs text-muted-foreground mt-1 pl-1'>
                 {(() => {
-                  if (sortedBreakpoints.length === 1) {
-                    return 'Applies to all values';
-                  }
-                  if (sortedIndex === 0) {
-                    return `Applies to values ≤ ${bp.value} ${unit}`;
-                  }
-                  const previousValue = previousSortedBp?.value;
-                  if (sortedIndex === sortedBreakpoints.length - 1) {
-                    return `Applies to values > ${previousValue} ${unit}`;
-                  }
-                  return `Applies to values > ${previousValue} ${unit} and ≤ ${bp.value} ${unit}`;
+                  // All breakpoints apply to values greater than the breakpoint value
+                  return `Applies to values > ${bp.value} ${unit}`;
                 })()}
               </div>
             </div>
@@ -397,13 +383,17 @@ function ScoringFactorSection({
                     <p>
                       Each breakpoint defines a score tier. An item&apos;s value
                       (e.g., days unwatched) is checked against the breakpoints
-                      in ascending order.
+                      in descending order.
                     </p>
                     <p>
-                      The <strong>first</strong> breakpoint value that is{' '}
-                      <strong>greater than or equal to</strong> the item&apos;s
-                      value determines the score. The last breakpoint applies to
-                      all values above the previous tier.
+                      The <strong>first</strong> breakpoint where the
+                      item&apos;s value is <strong>greater than</strong> the
+                      breakpoint value determines the score. Values that
+                      don&apos;t exceed any breakpoint get 0 points.
+                    </p>
+                    <p className='text-xs text-blue-600 font-medium'>
+                      💡 Tip: Values that don&apos;t exceed any breakpoint will
+                      get 0 points for this factor.
                     </p>
                   </div>
                   <BreakpointEditor
@@ -468,9 +458,7 @@ export function DeletionScoreSettings() {
         newSettings[breakdownKey] = breakdowns
           .map((b) => {
             const percent = settings[`${baseKey}${b.key}`];
-            return percent !== undefined
-              ? { value: b.value, percent }
-              : null;
+            return percent !== undefined ? { value: b.value, percent } : null;
           })
           .filter(Boolean) as Breakpoint[];
 
@@ -566,12 +554,21 @@ export function DeletionScoreSettings() {
     for (const factor of SCORING_FACTORS) {
       if (factor.breakdownsKey) {
         const breakpoints = settings[factor.breakdownsKey] as Breakpoint[];
-        if (breakpoints) {
+        if (breakpoints && breakpoints.length > 0) {
           const values = breakpoints.map((bp) => bp.value);
           if (new Set(values).size !== values.length) {
             return {
               isValid: false,
               message: `Breakpoints for ${factor.title} must have unique values.`,
+            };
+          }
+
+          // Check that breakpoints are in ascending order
+          const sortedValues = [...values].sort((a, b) => a - b);
+          if (JSON.stringify(values) !== JSON.stringify(sortedValues)) {
+            return {
+              isValid: false,
+              message: `Breakpoints for ${factor.title} must be in ascending order.`,
             };
           }
         }
@@ -670,6 +667,12 @@ export function DeletionScoreSettings() {
         <CardDescription>
           Configure how deletion scores are calculated for media items. Higher
           scores indicate items that are better candidates for deletion.
+          <br />
+          <span className='text-xs text-muted-foreground'>
+            Breakpoints are checked from highest to lowest value. The first
+            breakpoint where an item&apos;s value exceeds the breakpoint value
+            determines the score.
+          </span>
         </CardDescription>
       </CardHeader>
       <CardContent className='space-y-6'>

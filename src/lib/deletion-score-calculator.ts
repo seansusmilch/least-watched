@@ -54,6 +54,17 @@ export class DeletionScoreCalculator {
     item: MediaItemForScoring,
     settings: DeletionScoreSettings
   ): number {
+    // Validate inputs
+    if (!item || !item.id) {
+      console.warn('Invalid media item provided for scoring');
+      return 0;
+    }
+
+    if (!settings) {
+      console.warn('No settings provided for scoring calculation');
+      return 0;
+    }
+
     if (!settings.enabled) {
       return 0;
     }
@@ -87,11 +98,30 @@ export class DeletionScoreCalculator {
     item: MediaItemForScoring,
     settings: DeletionScoreSettings
   ): ScoreBreakdownData {
+    // Validate inputs
+    if (!item || !item.id) {
+      console.warn('Invalid media item provided for breakdown calculation');
+      return this.getEmptyBreakdown(settings);
+    }
+
+    if (!settings) {
+      console.warn('No settings provided for breakdown calculation');
+      return this.getEmptyBreakdown(settings);
+    }
+
     if (!settings.enabled) {
       return this.getEmptyBreakdown(settings);
     }
 
-    return this.performCalculation(item, settings);
+    try {
+      return this.performCalculation(item, settings);
+    } catch (error) {
+      console.error(
+        `Error calculating score breakdown for item ${item.id}:`,
+        error
+      );
+      return this.getEmptyBreakdown(settings);
+    }
   }
 
   /**
@@ -101,11 +131,31 @@ export class DeletionScoreCalculator {
     items: MediaItemForScoring[],
     settings: DeletionScoreSettings
   ): Map<string, number> {
+    // Validate inputs
+    if (!Array.isArray(items)) {
+      console.warn('Invalid items array provided for batch scoring');
+      return new Map();
+    }
+
+    if (!settings) {
+      console.warn('No settings provided for batch scoring');
+      return new Map();
+    }
+
     const scores = new Map<string, number>();
 
     for (const item of items) {
-      const score = this.calculateScore(item, settings);
-      scores.set(item.id, score);
+      try {
+        const score = this.calculateScore(item, settings);
+        scores.set(item.id, score);
+      } catch (error) {
+        console.error(
+          `Error calculating score for item ${item?.id || 'unknown'}:`,
+          error
+        );
+        // Continue with other items instead of failing completely
+        scores.set(item?.id || 'unknown', 0);
+      }
     }
 
     return scores;
@@ -117,39 +167,48 @@ export class DeletionScoreCalculator {
   private getEmptyBreakdown(
     settings: DeletionScoreSettings
   ): ScoreBreakdownData {
+    // Handle case where settings might be undefined
+    const safeSettings = settings || {
+      daysUnwatchedMaxPoints: 0,
+      neverWatchedPoints: 0,
+      sizeOnDiskMaxPoints: 0,
+      ageSinceAddedMaxPoints: 0,
+      folderSpaceMaxPoints: 0,
+    };
+
     return {
       daysUnwatched: {
         enabled: false,
         daysSince: 0,
         pointsEarned: 0,
-        maxPoints: settings.daysUnwatchedMaxPoints,
+        maxPoints: safeSettings.daysUnwatchedMaxPoints || 0,
         category: '',
       },
       neverWatched: {
         enabled: false,
         applies: false,
         pointsEarned: 0,
-        maxPoints: settings.neverWatchedPoints,
+        maxPoints: safeSettings.neverWatchedPoints || 0,
       },
       sizeOnDisk: {
         enabled: false,
         sizeInGB: 0,
         pointsEarned: 0,
-        maxPoints: settings.sizeOnDiskMaxPoints,
+        maxPoints: safeSettings.sizeOnDiskMaxPoints || 0,
         category: '',
       },
       ageSinceAdded: {
         enabled: false,
         daysSince: 0,
         pointsEarned: 0,
-        maxPoints: settings.ageSinceAddedMaxPoints,
+        maxPoints: safeSettings.ageSinceAddedMaxPoints || 0,
         category: '',
       },
       folderSpace: {
         enabled: false,
         remainingPercent: null,
         pointsEarned: 0,
-        maxPoints: settings.folderSpaceMaxPoints,
+        maxPoints: safeSettings.folderSpaceMaxPoints || 0,
         category: '',
       },
       totalScore: 0,
@@ -182,41 +241,89 @@ export class DeletionScoreCalculator {
       );
       return 0;
     }
-    return Math.round(maxPoints * (percentage / 100));
+
+    // Ensure percentage is within valid range
+    const clampedPercentage = Math.max(0, Math.min(100, percentage));
+    const points = Math.round(maxPoints * (clampedPercentage / 100));
+
+    // Ensure points are within valid range
+    return Math.max(0, Math.min(maxPoints, points));
   }
 
+  /**
+   * Calculate points for a value based on breakpoints.
+   *
+   * Breakpoints are checked in descending order (highest to lowest).
+   * The first breakpoint where the item's value is GREATER THAN the breakpoint value
+   * determines the score. If no breakpoint is exceeded, the item gets 0 points.
+   *
+   * Example: For breakpoints [50, 20, 10] and item value 25:
+   * - Check 50: 25 > 50? No, continue
+   * - Check 20: 25 > 20? Yes! Use this breakpoint's percentage
+   */
   private getPointsForValue(
     value: number,
     breakpoints: { value: number; percent: number }[],
-    maxPoints: number
+    maxPoints: number,
+    unit: string = ''
   ): { points: number; category: string } {
-    if (breakpoints.length === 0) {
-      return { points: 0, category: '' };
+    // Validate inputs
+    if (!Array.isArray(breakpoints) || breakpoints.length === 0) {
+      console.warn('No breakpoints provided for scoring calculation');
+      return { points: 0, category: 'No breakpoints defined' };
     }
 
-    const sortedBreakpoints = [...breakpoints].sort((a, b) => a.value - b.value);
-
-    let foundBreakpoint = sortedBreakpoints.find((bp) => value <= bp.value);
-
-    if (!foundBreakpoint) {
-      foundBreakpoint = sortedBreakpoints[sortedBreakpoints.length - 1];
+    if (typeof value !== 'number' || isNaN(value) || !isFinite(value)) {
+      console.warn(`Invalid value provided for scoring: ${value}`);
+      return { points: 0, category: 'Invalid value' };
     }
 
-    const index = sortedBreakpoints.indexOf(foundBreakpoint);
-    const prevValue = index > 0 ? sortedBreakpoints[index - 1].value : 0;
-
-    let category = ``;
-    if (index === 0) {
-      category = `≤${foundBreakpoint.value}`;
-    } else if (value > foundBreakpoint.value) {
-      category = `>${foundBreakpoint.value}`;
-    } else {
-      category = `${prevValue + 1}-${foundBreakpoint.value}`;
+    if (
+      typeof maxPoints !== 'number' ||
+      isNaN(maxPoints) ||
+      !isFinite(maxPoints)
+    ) {
+      console.warn(`Invalid maxPoints provided for scoring: ${maxPoints}`);
+      return { points: 0, category: 'Invalid configuration' };
     }
 
+    // Validate breakpoint structure
+    for (const bp of breakpoints) {
+      if (
+        typeof bp.value !== 'number' ||
+        typeof bp.percent !== 'number' ||
+        isNaN(bp.value) ||
+        isNaN(bp.percent) ||
+        !isFinite(bp.value) ||
+        !isFinite(bp.percent)
+      ) {
+        console.warn('Invalid breakpoint structure detected:', bp);
+        return { points: 0, category: 'Invalid breakpoints' };
+      }
+    }
+
+    // Sort breakpoints from highest value to lowest for efficient checking
+    const sortedBreakpoints = [...breakpoints].sort(
+      (a, b) => b.value - a.value
+    );
+
+    // Find the first breakpoint where the item's value is greater than the breakpoint value
+    for (const breakpoint of sortedBreakpoints) {
+      if (value > breakpoint.value) {
+        return {
+          points: this.calculatePercentagePoints(maxPoints, breakpoint.percent),
+          category: `Greater than ${breakpoint.value}${unit ? ` ${unit}` : ''}`,
+        };
+      }
+    }
+
+    // If the value doesn't exceed any breakpoint, it gets 0 points
+    const lowestBreakpoint = sortedBreakpoints[sortedBreakpoints.length - 1];
     return {
-      points: this.calculatePercentagePoints(maxPoints, foundBreakpoint.percent),
-      category: category,
+      points: 0,
+      category: `Less than or equal to ${lowestBreakpoint.value}${
+        unit ? ` ${unit}` : ''
+      }`,
     };
   }
 
@@ -227,6 +334,12 @@ export class DeletionScoreCalculator {
     item: MediaItemForScoring,
     settings: DeletionScoreSettings
   ): ScoreBreakdownData {
+    // Validate inputs
+    if (!item || !settings) {
+      console.warn('Invalid inputs provided to performCalculation');
+      return this.getEmptyBreakdown(settings);
+    }
+
     let totalScore = 0;
 
     // 1. Days unwatched factor
@@ -244,7 +357,8 @@ export class DeletionScoreCalculator {
       const { points, category } = this.getPointsForValue(
         daysSinceReference,
         settings.daysUnwatchedBreakpoints,
-        settings.daysUnwatchedMaxPoints
+        settings.daysUnwatchedMaxPoints,
+        'days'
       );
       daysUnwatchedPoints = points;
       daysUnwatchedCategory = category;
@@ -270,7 +384,8 @@ export class DeletionScoreCalculator {
       const { points, category } = this.getPointsForValue(
         sizeInGB,
         settings.sizeOnDiskBreakpoints,
-        settings.sizeOnDiskMaxPoints
+        settings.sizeOnDiskMaxPoints,
+        'GB'
       );
       sizeOnDiskPoints = points;
       sizeOnDiskCategory = category;
@@ -290,7 +405,8 @@ export class DeletionScoreCalculator {
       const { points, category } = this.getPointsForValue(
         daysSinceAdded,
         settings.ageSinceAddedBreakpoints,
-        settings.ageSinceAddedMaxPoints
+        settings.ageSinceAddedMaxPoints,
+        'days'
       );
       ageSinceAddedPoints = points;
       ageSinceAddedCategory = category;
@@ -309,7 +425,8 @@ export class DeletionScoreCalculator {
       const { points, category } = this.getPointsForValue(
         item.folderRemainingSpacePercent,
         settings.folderSpaceBreakpoints,
-        settings.folderSpaceMaxPoints
+        settings.folderSpaceMaxPoints,
+        '%'
       );
       folderSpacePoints = points;
       folderSpaceCategory = category;
