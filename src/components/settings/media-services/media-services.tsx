@@ -5,9 +5,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Monitor, Globe, Database, CheckCircle, X } from 'lucide-react';
 import type { ServiceSettings } from '@/lib/utils/prefixed-settings';
 
-import { SonarrSettings } from './sonarr-settings';
-import { RadarrSettings } from './radarr-settings';
-import { EmbySettingsTab } from './emby-settings';
+import { SonarrSettings } from './sonarr/sonarr-settings';
+import { RadarrSettings } from './radarr/radarr-settings';
+import { EmbySettingsTab } from './emby/emby-settings';
 import type { EmbySettings } from '@/lib/utils/single-emby-settings';
 interface MediaServicesProps {
   sonarrSettings: ServiceSettings[];

@@ -1,6 +1,6 @@
 'use client';
 
-import { ServiceSettings } from './service-settings';
+import { ServiceSettings } from '../shared/service-settings';
 import {
   createSonarrSetting,
   updateSonarrSetting,

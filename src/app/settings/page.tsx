@@ -8,8 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Server, Trash2, Settings } from 'lucide-react';
 import { MediaServices } from '@/components/settings/media-services';
-import { DeletionScoreSettings } from '@/components/settings/deletion-score-settings';
-import { AdvancedSettings } from '@/components/settings/advanced-settings';
+import { DeletionScoreSettings } from '@/components/settings/deletion-score';
+import { AdvancedSettings } from '@/components/settings/advanced';
 import {
   getSonarrSettings,
   getRadarrSettings,

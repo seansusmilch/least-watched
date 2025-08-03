@@ -1,6 +1,6 @@
 'use client';
 
-import { ServiceInstanceCard } from './service-instance-card';
+import { ServiceInstanceCard } from '../shared/service-instance-card';
 import type { EmbySettings } from '@/lib/utils/single-emby-settings';
 import type { ServiceSettings } from '@/lib/utils/prefixed-settings';
 
