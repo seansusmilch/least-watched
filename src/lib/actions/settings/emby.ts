@@ -15,11 +15,7 @@ import { ZodError } from 'zod';
 import { EmbySettingsInput } from './types';
 import { type EmbySettings } from '../../utils/single-emby-settings';
 
-export interface ConnectionTestResult {
-  success: boolean;
-  connected: boolean;
-  error?: string;
-}
+
 
 // Emby Settings Actions (Single Instance)
 export async function getEmbySettings(): Promise<EmbySettings | null> {
@@ -116,11 +112,11 @@ export async function deleteEmbySetting(): Promise<FormState> {
   }
 }
 
-export async function testEmbyConnection(): Promise<ConnectionTestResult> {
+export async function testEmbyConnection() {
   try {
     const setting = await embySettingsService.get();
     if (!setting) {
-      return { success: false, connected: false, error: 'Setting not found' };
+      return { success: false, error: 'Setting not found' };
     }
 
     // Refresh API configuration to include this setting
@@ -128,16 +124,11 @@ export async function testEmbyConnection(): Promise<ConnectionTestResult> {
 
     // Test connection to the single Emby instance
     const isConnected = await apiService.testEmbyConnection();
-    return {
-      success: true,
-      connected: isConnected,
-      error: isConnected ? undefined : 'Connection failed',
-    };
+    return { success: isConnected };
   } catch (error) {
     console.error('Failed to test Emby connection:', error);
     return {
       success: false,
-      connected: false,
       error:
         error instanceof Error
           ? error.message

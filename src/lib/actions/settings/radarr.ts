@@ -135,8 +135,15 @@ export async function testRadarrConnection(id: string) {
     }
 
     const isConnected = await apiService.testRadarrConnection(configIndex);
-    return { success: isConnected, connected: isConnected };
+    return { success: isConnected };
   } catch (error) {
-    return handleServerError(error, 'Failed to test Radarr connection');
+    console.error('Failed to test Radarr connection:', error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Failed to test Radarr connection',
+    };
   }
 }

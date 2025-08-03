@@ -135,8 +135,15 @@ export async function testSonarrConnection(id: string) {
     }
 
     const isConnected = await apiService.testSonarrConnection(configIndex);
-    return { success: isConnected, connected: isConnected };
+    return { success: isConnected };
   } catch (error) {
-    return handleServerError(error, 'Failed to test Sonarr connection');
+    console.error('Failed to test Sonarr connection:', error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Failed to test Sonarr connection',
+    };
   }
 }

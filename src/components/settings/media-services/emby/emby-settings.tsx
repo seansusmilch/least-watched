@@ -45,8 +45,8 @@ export function EmbySettingsTab({ initialSettings }: EmbySettingsProps) {
     setConnectionStatus('testing');
     try {
       const result = await testConnectionMutation.mutateAsync();
-      setConnectionStatus(result.connected ? 'success' : 'error');
-      if (result.connected) {
+      setConnectionStatus(result.success ? 'success' : 'error');
+      if (result.success) {
         toast.success('Connection successful!');
       } else {
         const errorMessage = result.error || 'Unknown error';

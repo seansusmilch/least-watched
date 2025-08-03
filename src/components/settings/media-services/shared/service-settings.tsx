@@ -16,6 +16,9 @@ import type { FormState } from '@/lib/validation/schemas';
 
 type ConnectionStatus = 'idle' | 'testing' | 'success' | 'error';
 
+// Type for test connection result
+type TestConnectionResult = { success: boolean; error?: string };
+
 interface ServiceSettingsProps {
   initialSettings: ServiceSettings[];
   serviceType: 'sonarr' | 'radarr';
@@ -26,7 +29,7 @@ interface ServiceSettingsProps {
     data: Partial<ServiceFormData>
   ) => Promise<FormState>;
   deleteSetting: (id: string) => Promise<FormState>;
-  testConnection: (id: string) => Promise<any>;
+  testConnection: (id: string) => Promise<TestConnectionResult>;
 }
 
 type OptimisticAction =
@@ -93,13 +96,7 @@ export function ServiceSettings({
       if (result.success) {
         toast.success('Connection successful');
       } else {
-        const errorMessage =
-          'error' in result
-            ? result.error
-            : 'message' in result
-            ? result.message
-            : 'Unknown error';
-        toast.error(errorMessage || 'Unknown error');
+        toast.error(result.error || 'Unknown error');
       }
     } catch {
       setConnectionStatus((prev) => ({ ...prev, [setting.id]: 'error' }));
