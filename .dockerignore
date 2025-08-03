@@ -1,0 +1,10 @@
+.next/
+node_modules/
+*.db
+.cursor/
+.vscode/
+data/
+scripts/
+deletion-score-settings-example.json
+seed-config*.json
+tsconfig.tsbuildinfo

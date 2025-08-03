@@ -1,0 +1,8 @@
+services:
+  least-watched:
+    build: .
+    container_name: least-watched
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./data:/data
