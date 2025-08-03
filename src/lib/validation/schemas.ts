@@ -104,17 +104,18 @@ export const EnhancedProcessingSettingsSchema = z.object({
 });
 
 // Deletion Score Settings Schema
+const BreakpointSchema = z.object({
+  value: z.number().min(0),
+  percent: z.number().min(0).max(100),
+});
+
 export const DeletionScoreSettingsSchema = z.object({
   enabled: z.boolean(),
 
   // Days Unwatched Factor
   daysUnwatchedEnabled: z.boolean(),
   daysUnwatchedMaxPoints: z.number().min(0).max(100),
-  daysUnwatched30Days: z.number().min(0).max(100),
-  daysUnwatched90Days: z.number().min(0).max(100),
-  daysUnwatched180Days: z.number().min(0).max(100),
-  daysUnwatched365Days: z.number().min(0).max(100),
-  daysUnwatchedOver365: z.number().min(0).max(100),
+  daysUnwatchedBreakpoints: z.array(BreakpointSchema),
 
   // Never Watched Bonus
   neverWatchedEnabled: z.boolean(),
@@ -123,27 +124,17 @@ export const DeletionScoreSettingsSchema = z.object({
   // Size on Disk Factor
   sizeOnDiskEnabled: z.boolean(),
   sizeOnDiskMaxPoints: z.number().min(0).max(100),
-  sizeOnDisk1GB: z.number().min(0).max(100),
-  sizeOnDisk5GB: z.number().min(0).max(100),
-  sizeOnDisk10GB: z.number().min(0).max(100),
-  sizeOnDisk20GB: z.number().min(0).max(100),
-  sizeOnDisk50GB: z.number().min(0).max(100),
-  sizeOnDiskOver50GB: z.number().min(0).max(100),
+  sizeOnDiskBreakpoints: z.array(BreakpointSchema),
 
   // Age Since Added Factor
   ageSinceAddedEnabled: z.boolean(),
   ageSinceAddedMaxPoints: z.number().min(0).max(100),
-  ageSinceAdded180Days: z.number().min(0).max(100),
-  ageSinceAdded365Days: z.number().min(0).max(100),
-  ageSinceAddedOver730: z.number().min(0).max(100),
+  ageSinceAddedBreakpoints: z.array(BreakpointSchema),
 
   // Folder Space Factor
   folderSpaceEnabled: z.boolean(),
   folderSpaceMaxPoints: z.number().min(0).max(100),
-  folderSpace10Percent: z.number().min(0).max(100),
-  folderSpace20Percent: z.number().min(0).max(100),
-  folderSpace30Percent: z.number().min(0).max(100),
-  folderSpace50Percent: z.number().min(0).max(100),
+  folderSpaceBreakpoints: z.array(BreakpointSchema),
 });
 
 // Media Processing Schema

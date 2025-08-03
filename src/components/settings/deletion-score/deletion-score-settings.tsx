@@ -47,27 +47,10 @@ import { toast } from 'sonner';
 import { FileInput } from '@/components/ui/file-input';
 import { Input } from '@/components/ui/input';
 
-import { Breakpoint } from '@/lib/actions/settings/types';
-
-// This is a local definition for the component's state.
-// The actual type from the API might differ during migration.
-interface DeletionScoreSettings {
-  enabled: boolean;
-  daysUnwatchedEnabled: boolean;
-  daysUnwatchedMaxPoints: number;
-  daysUnwatchedBreakpoints: Breakpoint[];
-  neverWatchedEnabled: boolean;
-  neverWatchedPoints: number;
-  sizeOnDiskEnabled: boolean;
-  sizeOnDiskMaxPoints: number;
-  sizeOnDiskBreakpoints: Breakpoint[];
-  ageSinceAddedEnabled: boolean;
-  ageSinceAddedMaxPoints: number;
-  ageSinceAddedBreakpoints: Breakpoint[];
-  folderSpaceEnabled: boolean;
-  folderSpaceMaxPoints: number;
-  folderSpaceBreakpoints: Breakpoint[];
-}
+import {
+  Breakpoint,
+  type DeletionScoreSettings,
+} from '@/lib/actions/settings/types';
 
 interface ScoringFactor {
   key: string;
@@ -430,83 +413,12 @@ export function DeletionScoreSettings() {
   const [showImportDialog, setShowImportDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  type OldSettings = Omit<
-    DeletionScoreSettings,
-    | 'daysUnwatchedBreakpoints'
-    | 'sizeOnDiskBreakpoints'
-    | 'ageSinceAddedBreakpoints'
-    | 'folderSpaceBreakpoints'
-  > & { [key: string]: number };
-
-  const migrateSettings = useCallback(
-    (settings: OldSettings | undefined): DeletionScoreSettings | undefined => {
-      if (!settings) return undefined;
-      if (settings.daysUnwatchedBreakpoints) {
-        return settings as DeletionScoreSettings;
-      }
-
-      const newSettings: Partial<DeletionScoreSettings> = {
-        ...getDefaultSettings(),
-        ...settings,
-      };
-
-      const migrateFactor = (
-        baseKey: string,
-        breakdownKey: keyof DeletionScoreSettings,
-        breakdowns: { key: string; value: number }[]
-      ) => {
-        newSettings[breakdownKey] = breakdowns
-          .map((b) => {
-            const percent = settings[`${baseKey}${b.key}`];
-            return percent !== undefined ? { value: b.value, percent } : null;
-          })
-          .filter(Boolean) as Breakpoint[];
-
-        breakdowns.forEach((b) => delete newSettings[`${baseKey}${b.key}`]);
-      };
-
-      migrateFactor('daysUnwatched', 'daysUnwatchedBreakpoints', [
-        { key: '30DaysPercent', value: 30 },
-        { key: '90DaysPercent', value: 90 },
-        { key: '180DaysPercent', value: 180 },
-        { key: '365DaysPercent', value: 365 },
-        { key: 'Over365Percent', value: 366 },
-      ]);
-
-      migrateFactor('sizeOnDisk', 'sizeOnDiskBreakpoints', [
-        { key: '1GBPercent', value: 1 },
-        { key: '5GBPercent', value: 5 },
-        { key: '10GBPercent', value: 10 },
-        { key: '20GBPercent', value: 20 },
-        { key: '50GBPercent', value: 50 },
-        { key: 'Over50GBPercent', value: 51 },
-      ]);
-
-      migrateFactor('ageSinceAdded', 'ageSinceAddedBreakpoints', [
-        { key: '180DaysPercent', value: 180 },
-        { key: '365DaysPercent', value: 365 },
-        { key: 'Over730Percent', value: 730 },
-      ]);
-
-      migrateFactor('folderSpace', 'folderSpaceBreakpoints', [
-        { key: '10PercentPercent', value: 10 },
-        { key: '20PercentPercent', value: 20 },
-        { key: '30PercentPercent', value: 30 },
-        { key: '50PercentPercent', value: 50 },
-      ]);
-
-      return newSettings as DeletionScoreSettings;
-    },
-    []
-  );
-
   const loadSettings = useCallback(async () => {
     try {
       const loadedSettings = await getDeletionScoreSettings();
-      const migratedSettings = migrateSettings(loadedSettings);
       const validatedSettings = {
         ...getDefaultSettings(),
-        ...migratedSettings,
+        ...loadedSettings,
       };
       setSettings(validatedSettings);
     } catch (error) {
@@ -515,7 +427,7 @@ export function DeletionScoreSettings() {
     } finally {
       setLoading(false);
     }
-  }, [migrateSettings]);
+  }, []);
 
   useEffect(() => {
     loadSettings();

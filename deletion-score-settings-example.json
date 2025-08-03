@@ -1,35 +1,97 @@
 {
-    "version": "1.0",
-    "exportedAt": "2024-01-15T10:30:00.000Z",
+    "version": "2.0",
+    "exportedAt": "2025-01-16T10:30:00.000Z",
     "settings": {
         "enabled": true,
         "daysUnwatchedEnabled": true,
         "daysUnwatchedMaxPoints": 30,
-        "daysUnwatched30Days": 0,
-        "daysUnwatched90Days": 8,
-        "daysUnwatched180Days": 15,
-        "daysUnwatched365Days": 22,
-        "daysUnwatchedOver365": 30,
+        "daysUnwatchedBreakpoints": [
+            {
+                "value": 30,
+                "percent": 0
+            },
+            {
+                "value": 90,
+                "percent": 27
+            },
+            {
+                "value": 180,
+                "percent": 50
+            },
+            {
+                "value": 365,
+                "percent": 73
+            },
+            {
+                "value": 366,
+                "percent": 100
+            }
+        ],
         "neverWatchedEnabled": true,
         "neverWatchedPoints": 20,
         "sizeOnDiskEnabled": true,
         "sizeOnDiskMaxPoints": 25,
-        "sizeOnDisk1GB": 0,
-        "sizeOnDisk5GB": 8,
-        "sizeOnDisk10GB": 12,
-        "sizeOnDisk20GB": 16,
-        "sizeOnDisk50GB": 20,
-        "sizeOnDiskOver50GB": 25,
+        "sizeOnDiskBreakpoints": [
+            {
+                "value": 1,
+                "percent": 0
+            },
+            {
+                "value": 5,
+                "percent": 32
+            },
+            {
+                "value": 10,
+                "percent": 48
+            },
+            {
+                "value": 20,
+                "percent": 64
+            },
+            {
+                "value": 50,
+                "percent": 80
+            },
+            {
+                "value": 51,
+                "percent": 100
+            }
+        ],
         "ageSinceAddedEnabled": true,
         "ageSinceAddedMaxPoints": 15,
-        "ageSinceAdded180Days": 5,
-        "ageSinceAdded365Days": 10,
-        "ageSinceAddedOver730": 15,
+        "ageSinceAddedBreakpoints": [
+            {
+                "value": 180,
+                "percent": 33
+            },
+            {
+                "value": 365,
+                "percent": 67
+            },
+            {
+                "value": 730,
+                "percent": 100
+            }
+        ],
         "folderSpaceEnabled": true,
         "folderSpaceMaxPoints": 10,
-        "folderSpace10Percent": 10,
-        "folderSpace20Percent": 8,
-        "folderSpace30Percent": 6,
-        "folderSpace50Percent": 3
+        "folderSpaceBreakpoints": [
+            {
+                "value": 10,
+                "percent": 100
+            },
+            {
+                "value": 20,
+                "percent": 80
+            },
+            {
+                "value": 30,
+                "percent": 60
+            },
+            {
+                "value": 50,
+                "percent": 30
+            }
+        ]
     }
 }

@@ -1,4 +1,4 @@
-import { DeletionScoreSettings } from './actions/settings';
+import { DeletionScoreSettings } from './actions/settings/types';
 
 export interface MediaItemForScoring {
   id: string;

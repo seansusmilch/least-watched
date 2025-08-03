@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { getAppSetting, setAppSetting } from './app-settings';
-import type { DeletionScoreSettings } from './types';
+import type { DeletionScoreSettings, Breakpoint } from './types';
 
 const DEFAULT_DELETION_SCORE_SETTINGS: DeletionScoreSettings = {
   enabled: true,
@@ -63,28 +63,162 @@ const DEFAULT_DELETION_SCORE_SETTINGS: DeletionScoreSettings = {
   ],
 };
 
+// Helper function to get a setting value with fallback
+async function getSettingValue(
+  key: string,
+  defaultValue: string
+): Promise<string> {
+  try {
+    const setting = await getAppSetting(key);
+    return setting?.value || defaultValue;
+  } catch (error) {
+    console.warn(`Failed to get setting ${key}:`, error);
+    return defaultValue;
+  }
+}
+
+// Helper function to get a boolean setting
+async function getBooleanSetting(
+  key: string,
+  defaultValue: boolean
+): Promise<boolean> {
+  const value = await getSettingValue(key, defaultValue.toString());
+  return value === 'true';
+}
+
+// Helper function to get a number setting
+async function getNumberSetting(
+  key: string,
+  defaultValue: number
+): Promise<number> {
+  const value = await getSettingValue(key, defaultValue.toString());
+  const parsed = parseInt(value, 10);
+  return isNaN(parsed) ? defaultValue : parsed;
+}
+
+// Helper function to get breakpoints from JSON
+async function getBreakpointsSetting(
+  key: string,
+  defaultValue: Breakpoint[]
+): Promise<Breakpoint[]> {
+  try {
+    const value = await getSettingValue(key, JSON.stringify(defaultValue));
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : defaultValue;
+  } catch (error) {
+    console.warn(`Failed to parse breakpoints for ${key}:`, error);
+    return defaultValue;
+  }
+}
+
+// Helper function to set a setting value
+async function setSettingValue(
+  key: string,
+  value: string,
+  description?: string
+): Promise<void> {
+  await setAppSetting({
+    key,
+    value,
+    description,
+  });
+}
+
+// Helper function to set a boolean setting
+async function setBooleanSetting(
+  key: string,
+  value: boolean,
+  description?: string
+): Promise<void> {
+  await setSettingValue(key, value.toString(), description);
+}
+
+// Helper function to set a number setting
+async function setNumberSetting(
+  key: string,
+  value: number,
+  description?: string
+): Promise<void> {
+  await setSettingValue(key, value.toString(), description);
+}
+
+// Helper function to set breakpoints as JSON
+async function setBreakpointsSetting(
+  key: string,
+  breakpoints: Breakpoint[],
+  description?: string
+): Promise<void> {
+  await setSettingValue(key, JSON.stringify(breakpoints), description);
+}
+
 // Deletion Score Settings
 export async function getDeletionScoreSettings(): Promise<DeletionScoreSettings> {
   try {
-    const setting = await getAppSetting('deletionScoreSettings');
-
-    if (setting?.value) {
-      const loadedSettings = JSON.parse(setting.value);
-
-      // Ensure all required properties exist by merging with defaults
-      const validatedSettings = {
-        ...DEFAULT_DELETION_SCORE_SETTINGS,
-        ...loadedSettings,
-      };
-
-      return validatedSettings;
-    }
-
-    // Return defaults that match current hardcoded values
-    return DEFAULT_DELETION_SCORE_SETTINGS;
+    // Load from flattened keys
+    return {
+      enabled: await getBooleanSetting(
+        'deletion_score.enabled',
+        DEFAULT_DELETION_SCORE_SETTINGS.enabled
+      ),
+      daysUnwatchedEnabled: await getBooleanSetting(
+        'deletion_score.days_unwatched.enabled',
+        DEFAULT_DELETION_SCORE_SETTINGS.daysUnwatchedEnabled
+      ),
+      daysUnwatchedMaxPoints: await getNumberSetting(
+        'deletion_score.days_unwatched.max_points',
+        DEFAULT_DELETION_SCORE_SETTINGS.daysUnwatchedMaxPoints
+      ),
+      daysUnwatchedBreakpoints: await getBreakpointsSetting(
+        'deletion_score.days_unwatched.breakpoints',
+        DEFAULT_DELETION_SCORE_SETTINGS.daysUnwatchedBreakpoints
+      ),
+      neverWatchedEnabled: await getBooleanSetting(
+        'deletion_score.never_watched.enabled',
+        DEFAULT_DELETION_SCORE_SETTINGS.neverWatchedEnabled
+      ),
+      neverWatchedPoints: await getNumberSetting(
+        'deletion_score.never_watched.points',
+        DEFAULT_DELETION_SCORE_SETTINGS.neverWatchedPoints
+      ),
+      sizeOnDiskEnabled: await getBooleanSetting(
+        'deletion_score.size_on_disk.enabled',
+        DEFAULT_DELETION_SCORE_SETTINGS.sizeOnDiskEnabled
+      ),
+      sizeOnDiskMaxPoints: await getNumberSetting(
+        'deletion_score.size_on_disk.max_points',
+        DEFAULT_DELETION_SCORE_SETTINGS.sizeOnDiskMaxPoints
+      ),
+      sizeOnDiskBreakpoints: await getBreakpointsSetting(
+        'deletion_score.size_on_disk.breakpoints',
+        DEFAULT_DELETION_SCORE_SETTINGS.sizeOnDiskBreakpoints
+      ),
+      ageSinceAddedEnabled: await getBooleanSetting(
+        'deletion_score.age_since_added.enabled',
+        DEFAULT_DELETION_SCORE_SETTINGS.ageSinceAddedEnabled
+      ),
+      ageSinceAddedMaxPoints: await getNumberSetting(
+        'deletion_score.age_since_added.max_points',
+        DEFAULT_DELETION_SCORE_SETTINGS.ageSinceAddedMaxPoints
+      ),
+      ageSinceAddedBreakpoints: await getBreakpointsSetting(
+        'deletion_score.age_since_added.breakpoints',
+        DEFAULT_DELETION_SCORE_SETTINGS.ageSinceAddedBreakpoints
+      ),
+      folderSpaceEnabled: await getBooleanSetting(
+        'deletion_score.folder_space.enabled',
+        DEFAULT_DELETION_SCORE_SETTINGS.folderSpaceEnabled
+      ),
+      folderSpaceMaxPoints: await getNumberSetting(
+        'deletion_score.folder_space.max_points',
+        DEFAULT_DELETION_SCORE_SETTINGS.folderSpaceMaxPoints
+      ),
+      folderSpaceBreakpoints: await getBreakpointsSetting(
+        'deletion_score.folder_space.breakpoints',
+        DEFAULT_DELETION_SCORE_SETTINGS.folderSpaceBreakpoints
+      ),
+    };
   } catch (error) {
     console.error('Failed to get deletion score settings:', error);
-    // Return defaults on error instead of recursive call
     return DEFAULT_DELETION_SCORE_SETTINGS;
   }
 }
@@ -121,12 +255,87 @@ export async function setDeletionScoreSettings(
       }
     }
 
-    await setAppSetting({
-      key: 'deletionScoreSettings',
-      value: JSON.stringify(settings),
-      description:
-        'Deletion score calculation settings for media prioritization',
-    });
+    // Store settings in flattened format
+    await setBooleanSetting(
+      'deletion_score.enabled',
+      settings.enabled,
+      'Enable deletion scoring'
+    );
+
+    await setBooleanSetting(
+      'deletion_score.days_unwatched.enabled',
+      settings.daysUnwatchedEnabled,
+      'Enable days unwatched factor'
+    );
+    await setNumberSetting(
+      'deletion_score.days_unwatched.max_points',
+      settings.daysUnwatchedMaxPoints,
+      'Days unwatched max points'
+    );
+    await setBreakpointsSetting(
+      'deletion_score.days_unwatched.breakpoints',
+      settings.daysUnwatchedBreakpoints,
+      'Days unwatched breakpoints'
+    );
+
+    await setBooleanSetting(
+      'deletion_score.never_watched.enabled',
+      settings.neverWatchedEnabled,
+      'Enable never watched bonus'
+    );
+    await setNumberSetting(
+      'deletion_score.never_watched.points',
+      settings.neverWatchedPoints,
+      'Never watched bonus points'
+    );
+
+    await setBooleanSetting(
+      'deletion_score.size_on_disk.enabled',
+      settings.sizeOnDiskEnabled,
+      'Enable size on disk factor'
+    );
+    await setNumberSetting(
+      'deletion_score.size_on_disk.max_points',
+      settings.sizeOnDiskMaxPoints,
+      'Size on disk max points'
+    );
+    await setBreakpointsSetting(
+      'deletion_score.size_on_disk.breakpoints',
+      settings.sizeOnDiskBreakpoints,
+      'Size on disk breakpoints'
+    );
+
+    await setBooleanSetting(
+      'deletion_score.age_since_added.enabled',
+      settings.ageSinceAddedEnabled,
+      'Enable age since added factor'
+    );
+    await setNumberSetting(
+      'deletion_score.age_since_added.max_points',
+      settings.ageSinceAddedMaxPoints,
+      'Age since added max points'
+    );
+    await setBreakpointsSetting(
+      'deletion_score.age_since_added.breakpoints',
+      settings.ageSinceAddedBreakpoints,
+      'Age since added breakpoints'
+    );
+
+    await setBooleanSetting(
+      'deletion_score.folder_space.enabled',
+      settings.folderSpaceEnabled,
+      'Enable folder space factor'
+    );
+    await setNumberSetting(
+      'deletion_score.folder_space.max_points',
+      settings.folderSpaceMaxPoints,
+      'Folder space max points'
+    );
+    await setBreakpointsSetting(
+      'deletion_score.folder_space.breakpoints',
+      settings.folderSpaceBreakpoints,
+      'Folder space breakpoints'
+    );
 
     // Trigger recalculation in the background if deletion scoring is enabled
     if (settings.enabled) {
@@ -153,5 +362,27 @@ export async function setDeletionScoreSettings(
       success: false,
       message: 'Failed to update deletion score settings',
     };
+  }
+}
+
+// Utility function to list all deletion score settings (for debugging)
+export async function listDeletionScoreSettings(): Promise<
+  { key: string; value: string; description?: string }[]
+> {
+  try {
+    const { appSettingsService } = await import('../../database');
+    const allSettings = await appSettingsService.getAll();
+
+    return allSettings
+      .filter((setting) => setting.key.startsWith('deletion_score.'))
+      .map((setting) => ({
+        key: setting.key,
+        value: setting.value,
+        description: setting.description || undefined,
+      }))
+      .sort((a, b) => a.key.localeCompare(b.key));
+  } catch (error) {
+    console.error('Failed to list deletion score settings:', error);
+    return [];
   }
 }
