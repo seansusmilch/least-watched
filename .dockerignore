@@ -8,3 +8,4 @@ scripts/
 deletion-score-settings-example.json
 seed-config*.json
 tsconfig.tsbuildinfo
+GEMINI.md

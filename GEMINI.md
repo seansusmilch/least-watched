@@ -1,0 +1,49 @@
+# Gemini Project Analysis: least-watched
+
+This document provides a summary of the `least-watched` project to be used by the Gemini assistant.
+
+## Project Overview
+
+**Purpose:** A Next.js application for managing and tracking least-watched media from Sonarr, Radarr, and Emby. It helps users identify content to delete based on a configurable deletion score.
+
+**Key Features:**
+
+*   Connects to multiple Sonarr, Radarr, and Emby instances.
+*   Monitors disk space.
+*   Calculates a "deletion score" for media.
+*   Filters and sorts media.
+*   Exports/imports deletion score settings.
+*   Database seeding for development.
+
+## Technical Details
+
+**Tech Stack:**
+
+*   **Framework:** Next.js (with Turbopack)
+*   **Language:** TypeScript
+*   **UI:** React, Tailwind CSS, Radix UI, shadcn/ui
+*   **State Management:** Zustand, @tanstack/react-query
+*   **Database:** SQLite with Prisma ORM
+*   **Package Manager:** bun
+
+**Project Structure:**
+
+*   `src/app`: Next.js App Router pages.
+*   `src/components`: React components, organized by feature.
+*   `src/lib`: Core logic, including server actions, services for external APIs, and database utilities.
+*   `prisma`: Database schema and migrations.
+*   `scripts`: Standalone scripts for database management.
+
+## Development
+
+**Important Commands:**
+
+*   `bun dev`: Starts the development server.
+*   `bun build`: Builds the application for production.
+*   `bun start`: Starts the production server.
+*   `bun lint`: Lints the code.
+*   `bun run db:generate`: Generates the Prisma client.
+*   `bun run db:push`: Pushes schema changes to the database.
+*   `bun run db:migrate`: Deploys database migrations.
+*   `bun run db:reset`: Resets the database.
+*   `bun run db:seed`: Seeds the database with test data.
