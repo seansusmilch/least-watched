@@ -195,9 +195,10 @@ export class DeletionScoreCalculator {
     let totalScore = 0;
 
     // 1. Days unwatched factor
-    const daysSinceReference = item.lastWatched
+    const referenceDate = item.lastWatched || item.dateAdded;
+    const daysSinceReference = referenceDate
       ? Math.floor(
-          (Date.now() - item.lastWatched.getTime()) / (1000 * 60 * 60 * 24)
+          (Date.now() - referenceDate.getTime()) / (1000 * 60 * 60 * 24)
         )
       : 0;
 

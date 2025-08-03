@@ -136,7 +136,7 @@ export function DeletionScoreBreakdown({
     switch (categoryKey) {
       case 'daysUnwatched': {
         const daysData = data as ScoreBreakdownData['daysUnwatched'];
-        return `This item has been unwatched for ${daysData.daysSince} days. Items that haven't been watched recently get higher deletion scores. The longer since last watched (or added if never watched), the higher the score.`;
+        return `This item has been unwatched for ${daysData.daysSince} days. The score increases the longer an item remains unwatched. This duration is calculated from the last watched date, or the added date for items that have never been watched.`;
       }
 
       case 'neverWatched': {
@@ -257,9 +257,8 @@ export function DeletionScoreBreakdown({
                     <div className='text-sm text-muted-foreground'>
                       {key === 'daysUnwatched' && (
                         <div>
-                          {breakdown.daysUnwatched.daysSince} days since{' '}
-                          {item.lastWatched ? 'last watched' : 'added'} (
-                          {breakdown.daysUnwatched.category})
+                          {breakdown.daysUnwatched.daysSince} days since last watched
+                          ({breakdown.daysUnwatched.category})
                           {item.lastWatched && (
                             <div className='mt-1'>
                               <Eye className='h-3 w-3 inline mr-1' />
