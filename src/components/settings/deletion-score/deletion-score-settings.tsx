@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -9,400 +9,20 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { Slider } from '@/components/ui/slider';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
-import {
-  Loader2,
-  Save,
-  Trash2,
-  Info,
-  RotateCcw,
-  Download,
-  Upload,
-  Plus,
-} from 'lucide-react';
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
+import { Trash2, Info, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   getDeletionScoreSettings,
   setDeletionScoreSettings,
 } from '@/lib/actions/settings';
-import { toast } from 'sonner';
-import { FileInput } from '@/components/ui/file-input';
-import { Input } from '@/components/ui/input';
-
-import {
-  Breakpoint,
-  type DeletionScoreSettings,
-} from '@/lib/actions/settings/types';
-
-interface ScoringFactor {
-  key: string;
-  title: string;
-  description: string;
-  enabledKey: keyof DeletionScoreSettings;
-  maxPointsKey: keyof DeletionScoreSettings;
-  maxPoints: number;
-  color: string;
-  breakdownsKey?: keyof DeletionScoreSettings;
-  breakdownUnit?: string;
-}
-
-// Scoring factor configurations
-const SCORING_FACTORS: ScoringFactor[] = [
-  {
-    key: 'daysUnwatched',
-    title: 'Days Unwatched',
-    description:
-      "Media that hasn't been watched recently gets higher scores. The longer since last watched (or added if never watched), the higher the deletion score.",
-    enabledKey: 'daysUnwatchedEnabled',
-    maxPointsKey: 'daysUnwatchedMaxPoints',
-    maxPoints: 30,
-    color: 'bg-blue-500',
-    breakdownsKey: 'daysUnwatchedBreakpoints',
-    breakdownUnit: 'days',
-  },
-  {
-    key: 'neverWatched',
-    title: 'Never Watched Bonus',
-    description:
-      'Media that has never been watched receives additional points, making it more likely to be suggested for deletion.',
-    enabledKey: 'neverWatchedEnabled',
-    maxPointsKey: 'neverWatchedPoints',
-    maxPoints: 20,
-    color: 'bg-orange-500',
-  },
-  {
-    key: 'sizeOnDisk',
-    title: 'Size on Disk',
-    description:
-      'Larger media files receive higher scores. Deleting high-scoring items will free up more storage space.',
-    enabledKey: 'sizeOnDiskEnabled',
-    maxPointsKey: 'sizeOnDiskMaxPoints',
-    maxPoints: 35,
-    color: 'bg-green-500',
-    breakdownsKey: 'sizeOnDiskBreakpoints',
-    breakdownUnit: 'GB',
-  },
-  {
-    key: 'ageSinceAdded',
-    title: 'Age Since Added',
-    description:
-      'Media that was added to your library long ago receives higher scores. Recently added media is protected with lower scores.',
-    enabledKey: 'ageSinceAddedEnabled',
-    maxPointsKey: 'ageSinceAddedMaxPoints',
-    maxPoints: 15,
-    color: 'bg-purple-500',
-    breakdownsKey: 'ageSinceAddedBreakpoints',
-    breakdownUnit: 'days',
-  },
-  {
-    key: 'folderSpace',
-    title: 'Folder Space',
-    description:
-      'Media stored in folders with limited remaining space receives higher scores, helping to free up space in critical locations.',
-    enabledKey: 'folderSpaceEnabled',
-    maxPointsKey: 'folderSpaceMaxPoints',
-    maxPoints: 10,
-    color: 'bg-red-500',
-    breakdownsKey: 'folderSpaceBreakpoints',
-    breakdownUnit: '%',
-  },
-];
-
-const getDefaultSettings = (): DeletionScoreSettings => ({
-  enabled: true,
-  daysUnwatchedEnabled: true,
-  daysUnwatchedMaxPoints: 30,
-  daysUnwatchedBreakpoints: [
-    { value: 30, percent: 0 },
-    { value: 90, percent: 17 },
-    { value: 180, percent: 50 },
-    { value: 365, percent: 73 },
-    { value: 366, percent: 100 },
-  ],
-  neverWatchedEnabled: true,
-  neverWatchedPoints: 20,
-  sizeOnDiskEnabled: true,
-  sizeOnDiskMaxPoints: 35,
-  sizeOnDiskBreakpoints: [
-    { value: 1, percent: 0 },
-    { value: 5, percent: 0 },
-    { value: 10, percent: 29 },
-    { value: 20, percent: 43 },
-    { value: 50, percent: 71 },
-    { value: 51, percent: 100 },
-  ],
-  ageSinceAddedEnabled: true,
-  ageSinceAddedMaxPoints: 15,
-  ageSinceAddedBreakpoints: [
-    { value: 180, percent: 33 },
-    { value: 365, percent: 67 },
-    { value: 730, percent: 100 },
-  ],
-  folderSpaceEnabled: false,
-  folderSpaceMaxPoints: 10,
-  folderSpaceBreakpoints: [
-    { value: 10, percent: 100 },
-    { value: 20, percent: 80 },
-    { value: 30, percent: 60 },
-    { value: 50, percent: 30 },
-  ],
-});
-
-// Helper function to convert percentage to actual points
-const getActualPoints = (
-  percentage: number | undefined | null,
-  maxPoints: number
-) => {
-  if (
-    percentage === undefined ||
-    percentage === null ||
-    typeof percentage !== 'number' ||
-    typeof maxPoints !== 'number' ||
-    isNaN(percentage) ||
-    isNaN(maxPoints)
-  ) {
-    return 0;
-  }
-  return Math.round((percentage / 100) * maxPoints);
-};
-
-function BreakpointEditor({
-  breakpoints,
-  onChange,
-  maxPoints,
-  unit,
-}: {
-  breakpoints: Breakpoint[];
-  onChange: (newBreakpoints: Breakpoint[]) => void;
-  maxPoints: number;
-  unit: string;
-}) {
-  const handleBreakpointChange = (
-    index: number,
-    field: keyof Breakpoint,
-    value: number | string
-  ) => {
-    const newBreakpoints = [...breakpoints];
-    newBreakpoints[index] = { ...newBreakpoints[index], [field]: value };
-    onChange(newBreakpoints);
-  };
-
-  const handleBlur = () => {
-    const newBreakpoints = [...breakpoints].sort((a, b) => a.value - b.value);
-
-    const values = newBreakpoints.map((bp) => bp.value);
-    const hasDuplicates = new Set(values).size !== values.length;
-    if (hasDuplicates) {
-      toast.error('Breakpoint values must be unique.');
-      return;
-    }
-
-    const currentValues = breakpoints.map((bp) => bp.value);
-    const newValues = newBreakpoints.map((bp) => bp.value);
-    if (JSON.stringify(currentValues) !== JSON.stringify(newValues)) {
-      onChange(newBreakpoints);
-    }
-  };
-
-  const addBreakpoint = () => {
-    const lastValue =
-      breakpoints.length > 0 ? breakpoints[breakpoints.length - 1].value : 0;
-    onChange([...breakpoints, { value: lastValue + 1, percent: 100 }]);
-  };
-
-  const removeBreakpoint = (index: number) => {
-    const newBreakpoints = breakpoints.filter((_, i) => i !== index);
-    onChange(newBreakpoints);
-  };
-
-  return (
-    <div className='space-y-3'>
-      {breakpoints.map((bp, index) => {
-        return (
-          <div
-            key={index}
-            className='flex items-center space-x-2 p-2 bg-muted/50 rounded-lg'
-          >
-            <div className='flex-1'>
-              <div className='flex items-center space-x-2'>
-                <Input
-                  type='number'
-                  value={bp.value}
-                  onBlur={handleBlur}
-                  onChange={(e) =>
-                    handleBreakpointChange(
-                      index,
-                      'value',
-                      parseInt(e.target.value, 10) || 0
-                    )
-                  }
-                  className='w-24'
-                />
-                <span className='text-sm text-muted-foreground'>{unit}</span>
-                <Slider
-                  value={[bp.percent]}
-                  onValueChange={([newValue]) =>
-                    handleBreakpointChange(index, 'percent', newValue)
-                  }
-                  max={100}
-                  step={1}
-                  className='flex-1'
-                />
-                <div className='w-16 text-sm font-medium text-center'>
-                  {getActualPoints(bp.percent, maxPoints)} pts
-                </div>
-                <Button
-                  variant='ghost'
-                  size='icon'
-                  onClick={() => removeBreakpoint(index)}
-                >
-                  <Trash2 className='h-4 w-4' />
-                </Button>
-              </div>
-              <div className='text-xs text-muted-foreground mt-1 pl-1'>
-                {(() => {
-                  // All breakpoints apply to values greater than the breakpoint value
-                  return `Applies to values > ${bp.value} ${unit}`;
-                })()}
-              </div>
-            </div>
-          </div>
-        );
-      })}
-      <Button variant='outline' onClick={addBreakpoint}>
-        <Plus className='h-4 w-4 mr-2' />
-        Add Breakpoint
-      </Button>
-    </div>
-  );
-}
-
-// Reusable component for scoring factors
-function ScoringFactorSection({
-  factor,
-  settings,
-  setSettings,
-}: {
-  factor: ScoringFactor;
-  settings: DeletionScoreSettings;
-  setSettings: (settings: DeletionScoreSettings) => void;
-}) {
-  const isEnabled = settings[factor.enabledKey] as boolean;
-  const maxPoints = settings[factor.maxPointsKey] as number;
-
-  return (
-    <div className='space-y-4'>
-      <div className='flex items-center justify-between'>
-        <div>
-          <h3 className='text-lg font-semibold'>{factor.title}</h3>
-          <p className='text-sm text-muted-foreground'>{factor.description}</p>
-        </div>
-        <Switch
-          checked={isEnabled}
-          onCheckedChange={(checked) =>
-            setSettings({ ...settings, [factor.enabledKey]: checked })
-          }
-        />
-      </div>
-
-      {isEnabled && (
-        <div className='space-y-4 pl-4'>
-          <div className='space-y-3'>
-            <div className='flex items-center justify-between'>
-              <Label className='text-base font-medium'>Weight</Label>
-              <div className='text-sm text-muted-foreground'>
-                {maxPoints} pts ({((maxPoints / 100) * 100).toFixed(0)}% of
-                total score)
-              </div>
-            </div>
-            <Slider
-              value={[maxPoints]}
-              onValueChange={([value]) =>
-                setSettings({ ...settings, [factor.maxPointsKey]: value })
-              }
-              max={100}
-              step={1}
-              className='w-full'
-            />
-          </div>
-
-          {factor.breakdownsKey && (
-            <Accordion
-              type='single'
-              collapsible
-              className='w-full'
-              data-testid={`${factor.key}-breakdown-accordion`}
-            >
-              <AccordionItem value='breakdown' className='border-none'>
-                <AccordionTrigger
-                  className='py-2 hover:no-underline text-sm font-medium text-muted-foreground justify-end'
-                  data-testid={`${factor.key}-breakdown-trigger`}
-                >
-                  Fine-grained scoring breakdown
-                </AccordionTrigger>
-                <AccordionContent
-                  className='space-y-3 pt-2'
-                  data-testid={`${factor.key}-breakdown-content`}
-                >
-                  <div className='text-xs text-muted-foreground mb-2 space-y-1'>
-                    <p>
-                      Each breakpoint defines a score tier. An item&apos;s value
-                      (e.g., days unwatched) is checked against the breakpoints
-                      in descending order.
-                    </p>
-                    <p>
-                      The <strong>first</strong> breakpoint where the
-                      item&apos;s value is <strong>greater than</strong> the
-                      breakpoint value determines the score. Values that
-                      don&apos;t exceed any breakpoint get 0 points.
-                    </p>
-                    <p className='text-xs text-blue-600 font-medium'>
-                      💡 Tip: Values that don&apos;t exceed any breakpoint will
-                      get 0 points for this factor.
-                    </p>
-                  </div>
-                  <BreakpointEditor
-                    breakpoints={
-                      (settings[factor.breakdownsKey] as
-                        | Breakpoint[]
-                        | undefined) || []
-                    }
-                    onChange={(newBreakpoints) =>
-                      setSettings({
-                        ...settings,
-                        [factor.breakdownsKey as string]: newBreakpoints,
-                      })
-                    }
-                    maxPoints={maxPoints}
-                    unit={factor.breakdownUnit || ''}
-                  />
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
+import type { DeletionScoreSettings } from '@/lib/actions/settings/types';
+import { SCORING_FACTORS, getDefaultSettings } from './types';
+import { ScoringFactorSection } from './scoring-factor-section';
+import { ScoreDistribution } from './score-distribution';
+import { ActionButtons } from './action-buttons';
+import { SaveConfirmationDialog } from './save-confirmation-dialog';
 
 export function DeletionScoreSettings() {
   const [settings, setSettings] = useState<DeletionScoreSettings | null>(null);
@@ -411,7 +31,6 @@ export function DeletionScoreSettings() {
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [showSaveConfirmDialog, setShowSaveConfirmDialog] = useState(false);
   const [showImportDialog, setShowImportDialog] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadSettings = useCallback(async () => {
     try {
@@ -465,7 +84,10 @@ export function DeletionScoreSettings() {
 
     for (const factor of SCORING_FACTORS) {
       if (factor.breakdownsKey) {
-        const breakpoints = settings[factor.breakdownsKey] as Breakpoint[];
+        const breakpoints = settings[factor.breakdownsKey] as Array<{
+          value: number;
+          percent: number;
+        }>;
         if (breakpoints && breakpoints.length > 0) {
           const values = breakpoints.map((bp) => bp.value);
           if (new Set(values).size !== values.length) {
@@ -559,6 +181,10 @@ export function DeletionScoreSettings() {
     }
   };
 
+  const handleImportSettings = (importedSettings: DeletionScoreSettings) => {
+    setSettings(importedSettings);
+  };
+
   if (loading || !settings) {
     return (
       <div className='flex items-center justify-center p-8'>
@@ -638,262 +264,35 @@ export function DeletionScoreSettings() {
 
         {/* Visual Score Summary */}
         {settings.enabled && (
-          <div className='p-4 bg-muted/30 rounded-lg border'>
-            <div className='flex items-center justify-between mb-3'>
-              <h4 className='font-semibold'>Score Distribution</h4>
-              <div
-                className={`text-sm font-medium ${
-                  validation.isValid ? 'text-green-600' : 'text-destructive'
-                }`}
-              >
-                {calculateTotalMaxPoints()}/100 pts
-              </div>
-            </div>
-
-            <div className='space-y-2'>
-              {SCORING_FACTORS.map((factor) => {
-                const isEnabled = settings[factor.enabledKey] as boolean;
-                const maxPoints = settings[factor.maxPointsKey] as number;
-
-                if (!isEnabled) return null;
-
-                return (
-                  <div key={factor.key} className='flex items-center space-x-3'>
-                    <div className='w-24 text-sm text-muted-foreground'>
-                      {factor.title}
-                    </div>
-                    <div className='flex-1 bg-muted rounded-full h-2'>
-                      <div
-                        className={`${factor.color} h-2 rounded-full transition-all duration-200`}
-                        style={{ width: `${(maxPoints / 100) * 100}%` }}
-                      />
-                    </div>
-                    <div className='w-12 text-sm font-medium text-center'>
-                      {maxPoints} pts
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {!validation.isValid && (
-              <div className='mt-3 text-destructive font-medium whitespace-pre-line text-sm'>
-                {validation.message}
-              </div>
-            )}
-            {validation.isValid && (
-              <div className='mt-3 text-green-600 font-medium text-sm'>
-                ✓ Settings are valid and ready to save
-              </div>
-            )}
-          </div>
+          <ScoreDistribution
+            settings={settings}
+            validation={validation}
+            calculateTotalMaxPoints={calculateTotalMaxPoints}
+          />
         )}
 
         {/* Action Buttons */}
-        <div className='flex justify-between pt-4'>
-          <div className='flex space-x-2'>
-            <Button
-              variant='outline'
-              onClick={handleExportSettings}
-              disabled={saving}
-              data-testid='export-settings'
-            >
-              <Download className='h-4 w-4 mr-2' />
-              Export Settings
-            </Button>
-
-            <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
-              <DialogTrigger asChild>
-                <Button
-                  variant='outline'
-                  disabled={saving}
-                  data-testid='import-settings'
-                >
-                  <Upload className='h-4 w-4 mr-2' />
-                  Import Settings
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Import Deletion Score Settings</DialogTitle>
-                  <DialogDescription>
-                    Select a JSON file containing deletion score settings to
-                    import. This will replace your current settings.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className='py-4'>
-                  <FileInput
-                    ref={fileInputRef}
-                    accept='.json'
-                    onFileSelect={async (file) => {
-                      if (file) {
-                        try {
-                          const text = await file.text();
-                          const importData = JSON.parse(text);
-
-                          if (
-                            !importData.settings ||
-                            typeof importData.settings !== 'object'
-                          ) {
-                            throw new Error(
-                              'Invalid file format: missing settings object'
-                            );
-                          }
-
-                          const importedSettings =
-                            importData.settings as DeletionScoreSettings;
-
-                          // Basic validation of required fields
-                          const requiredFields = SCORING_FACTORS.flatMap(
-                            (factor) => {
-                              const keys = [
-                                factor.enabledKey,
-                                factor.maxPointsKey,
-                              ];
-                              if (factor.breakdownsKey) {
-                                keys.push(factor.breakdownsKey);
-                              }
-                              return keys;
-                            }
-                          );
-
-                          for (const field of requiredFields) {
-                            if (!(field in importedSettings)) {
-                              throw new Error(
-                                `Invalid file format: missing required field '${field}'`
-                              );
-                            }
-                          }
-
-                          for (const factor of SCORING_FACTORS) {
-                            if (factor.breakdownsKey) {
-                              const breakpoints =
-                                importedSettings[factor.breakdownsKey];
-                              if (!Array.isArray(breakpoints)) {
-                                throw new Error(
-                                  `Invalid file format: '${factor.breakdownsKey}' must be an array.`
-                                );
-                              }
-                              for (const bp of breakpoints) {
-                                if (
-                                  typeof bp.value !== 'number' ||
-                                  typeof bp.percent !== 'number'
-                                ) {
-                                  throw new Error(
-                                    `Invalid breakpoint in '${factor.breakdownsKey}'. Each breakpoint must have a 'value' and 'percent' as numbers.`
-                                  );
-                                }
-                              }
-                            }
-                          }
-
-                          setSettings(importedSettings);
-                          setShowImportDialog(false);
-                          toast.success('Settings imported successfully!');
-                        } catch (error) {
-                          console.error('Failed to import settings:', error);
-                          toast.error(
-                            `Failed to import settings: ${
-                              error instanceof Error
-                                ? error.message
-                                : String(error)
-                            }`
-                          );
-                        }
-                      }
-                    }}
-                    buttonText='Choose JSON file'
-                    placeholder='Drag and drop a JSON file here, or click to browse'
-                    maxSize={1024 * 1024}
-                    data-testid='import-file-input'
-                  />
-                </div>
-                <DialogFooter>
-                  <DialogClose asChild>
-                    <Button variant='outline'>Cancel</Button>
-                  </DialogClose>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-
-            <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
-              <DialogTrigger asChild>
-                <Button
-                  variant='outline'
-                  disabled={saving}
-                  data-testid='reset-to-defaults'
-                >
-                  <RotateCcw className='h-4 w-4 mr-2' />
-                  Reset to Defaults
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Reset to Default Settings</DialogTitle>
-                  <DialogDescription>
-                    Are you sure you want to reset all settings to their default
-                    values? This action cannot be undone.
-                  </DialogDescription>
-                </DialogHeader>
-                <DialogFooter>
-                  <DialogClose asChild>
-                    <Button variant='outline'>Cancel</Button>
-                  </DialogClose>
-                  <Button onClick={handleResetToDefaults}>
-                    Reset to Defaults
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
-
-          <Button
-            onClick={handleSaveClick}
-            disabled={saving || !validation.isValid}
-            data-testid='save-score-settings'
-          >
-            {saving ? (
-              <>
-                <Loader2 className='h-4 w-4 mr-2 animate-spin' />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className='h-4 w-4 mr-2' />
-                Save Settings
-              </>
-            )}
-          </Button>
-        </div>
+        <ActionButtons
+          settings={settings}
+          saving={saving}
+          validation={validation}
+          onSaveClick={handleSaveClick}
+          onExportSettings={handleExportSettings}
+          onResetToDefaults={handleResetToDefaults}
+          onImportSettings={handleImportSettings}
+          showResetDialog={showResetDialog}
+          setShowResetDialog={setShowResetDialog}
+          showImportDialog={showImportDialog}
+          setShowImportDialog={setShowImportDialog}
+        />
 
         {/* Save Confirmation Dialog */}
-        <Dialog
+        <SaveConfirmationDialog
           open={showSaveConfirmDialog}
           onOpenChange={setShowSaveConfirmDialog}
-        >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Confirm Settings Save</DialogTitle>
-              <DialogDescription>
-                Saving these deletion score settings will trigger a
-                recalculation of all deletion scores in your media library. This
-                process may take several minutes for large libraries and will
-                run in the background.
-                <br />
-                <br />
-                Are you sure you want to continue?
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button variant='outline'>Cancel</Button>
-              </DialogClose>
-              <Button onClick={handleSave} disabled={!validation.isValid}>
-                Save & Recalculate
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+          onSave={handleSave}
+          validation={validation}
+        />
       </CardContent>
     </Card>
   );
