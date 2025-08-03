@@ -2,7 +2,7 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Monitor, Globe, Database, CheckCircle, X } from 'lucide-react';
+import { Tv, Clapperboard, Play, CheckCircle, X } from 'lucide-react';
 import type { ServiceSettings } from '@/lib/utils/prefixed-settings';
 
 import { SonarrSettings } from './sonarr/sonarr-settings';
@@ -44,21 +44,21 @@ export function MediaServices({
       >
         <TabsList className='grid w-full grid-cols-3'>
           <TabsTrigger value='sonarr' className='flex items-center gap-2'>
-            <Monitor className='h-4 w-4' />
+            <Tv className='h-4 w-4' />
             Sonarr
             <Badge variant='secondary' className='ml-1'>
               {sonarrSettings.filter((s) => s.enabled).length}
             </Badge>
           </TabsTrigger>
           <TabsTrigger value='radarr' className='flex items-center gap-2'>
-            <Globe className='h-4 w-4' />
+            <Clapperboard className='h-4 w-4' />
             Radarr
             <Badge variant='secondary' className='ml-1'>
               {radarrSettings.filter((s) => s.enabled).length}
             </Badge>
           </TabsTrigger>
           <TabsTrigger value='emby' className='flex items-center gap-2'>
-            <Database className='h-4 w-4' />
+            <Play className='h-4 w-4' />
             Emby
             <Badge variant='secondary' className='ml-1'>
               {embyStatus ? (
