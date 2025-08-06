@@ -47,3 +47,4 @@ This document provides a summary of the `least-watched` project to be used by th
 *   `bun run db:migrate`: Deploys database migrations.
 *   `bun run db:reset`: Resets the database.
 *   `bun run db:seed`: Seeds the database with test data.
+*   `bun run type-check`: Check types
