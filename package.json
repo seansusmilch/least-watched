@@ -8,14 +8,17 @@
     "db:migrate": "bunx prisma migrate deploy",
     "db:reset": "bunx prisma migrate reset",
     "db:seed": "bun run scripts/seed-database.ts",
-    "predev": "bun run db:generate && bun run db:push",
+    "predev": "bun run db:generate && bun run db:push && bun run generate:all",
     "dev": "next dev --turbopack",
     "prebuild": "bun run db:generate",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
-    "openapi-ts": "openapi-ts"
+    "openapi-ts": "openapi-ts",
+    "generate:rad": "openapi-ts -f ./openapi/openapi-ts.radarr.json",
+    "generate:son": "openapi-ts -f ./openapi/openapi-ts.sonarr.json",
+    "generate:all": "bun run generate:rad && bun run generate:son"
   },
   "dependencies": {
     "@prisma/client": "^6.12.0",
