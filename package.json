@@ -14,7 +14,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "openapi-ts": "openapi-ts"
   },
   "dependencies": {
     "@prisma/client": "^6.12.0",
