@@ -46,6 +46,7 @@ next-env.d.ts
 *.db
 *.sqlite
 *.sqlite3
+*.db-journal
 
 # bun
 .bun
@@ -122,4 +123,3 @@ seed-config.json
 # Generated API clients
 src/generated/sonarr
 src/generated/radarr
-src/generated/emby
