@@ -1,5 +1,8 @@
 import { type EmbyPlaybackInfo, type EmbyMetadata } from './types';
-import { type EmbySettings } from '../utils/single-emby-settings';
+import { type EmbySettings } from '@/lib/utils/single-emby-settings';
+import Emby from 'emby-sdk-stainless';
+
+const DEFAULT_TIMEOUT = 10000; // 10 seconds
 
 export class EmbyProcessor {
   static async getItemMetadata(
@@ -14,37 +17,36 @@ export class EmbyProcessor {
     console.log(`     🔍 Fetching metadata for "${title}" from Emby`);
 
     try {
-      // Fetch item metadata using the proper endpoint
-      const itemUrl = `${embyInstance.url}/emby/Items`;
-      const query = new URLSearchParams({
-        Fields: 'DateCreated',
-        Recursive: 'true',
-        SearchTerm: title,
-        Limit: '50',
-      });
-      const itemResponse = await fetch(`${itemUrl}?${query}`, {
-        method: 'GET',
-        headers: {
-          'X-Emby-Token': embyInstance.apiKey,
+      const embyClient = new Emby({
+        baseURL: embyInstance.url,
+        apiKey: embyInstance.apiKey || '',
+        fetch: (input: RequestInfo | URL, init?: RequestInit) => {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(
+            () => controller.abort(),
+            DEFAULT_TIMEOUT
+          );
+          return fetch(input, { ...init, signal: controller.signal }).finally(
+            () => clearTimeout(timeoutId)
+          );
         },
       });
 
-      if (!itemResponse.ok) {
-        console.log(
-          `     ❌ Failed to fetch item metadata from Emby: ${itemResponse.status}`
-        );
-        return null;
-      }
+      const itemsData: Emby.QueryResultBaseItem = await embyClient.items.list({
+        UserId: embyInstance.userId || '',
+        Fields: 'DateCreated',
+        Recursive: true,
+        SearchTerm: title,
+        Limit: 50,
+      });
 
-      const itemsData = await itemResponse.json();
-
-      if (!itemsData) {
+      if (!itemsData || !itemsData.Items) {
         console.log(`     ❌ No items found for "${title}" in Emby`);
         return null;
       }
 
-      const itemData = itemsData.Items?.find(
-        (item: { Name: string }) => item.Name === title
+      const itemData: Emby.BaseItem | undefined = itemsData.Items.find(
+        (item: Emby.BaseItem) => item.Name === title
       );
 
       if (!itemData) {
@@ -61,27 +63,13 @@ export class EmbyProcessor {
       console.log(
         `     ⏱️ Runtime: ${
           itemData.RunTimeTicks
-            ? Math.round(itemData.RunTimeTicks / 10000000 / 60) + ' minutes'
+            ? Math.round(Number(itemData.RunTimeTicks) / 10000000 / 60) +
+              ' minutes'
             : 'Unknown'
         }`
       );
 
-      return {
-        id: itemData.Id,
-        name: itemData.Name,
-        originalTitle: itemData.OriginalTitle,
-        type: itemData.Type,
-        year: itemData.ProductionYear,
-        genres: itemData.Genres || [],
-        rating: itemData.CommunityRating,
-        officialRating: itemData.OfficialRating,
-        overview: itemData.Overview,
-        dateCreated: itemData.DateCreated,
-        premiereDate: itemData.PremiereDate,
-        path: itemData.Path,
-        fileName: itemData.FileName,
-        providerIds: itemData.ProviderIds || {},
-      };
+      return itemData;
     } catch (error) {
       console.error(`     ❌ Error fetching metadata from Emby:`, error);
       return null;
@@ -142,7 +130,7 @@ export class EmbyProcessor {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Emby-Token': embyInstance.apiKey,
+          'X-Emby-Token': embyInstance.apiKey || '',
         },
         body: JSON.stringify(payload),
       });
@@ -216,7 +204,7 @@ export class EmbyProcessor {
 
     return {
       ...playbackResponse,
-      embyId: itemMetadata.id,
+      embyId: itemMetadata.Id,
       metadata: itemMetadata,
     };
   }

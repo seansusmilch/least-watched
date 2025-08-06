@@ -11,8 +11,8 @@ export interface MediaProcessingProgress {
 export interface ProcessedMediaItem {
   title: string;
   type: 'movie' | 'tv';
-  tmdbId?: number;
-  imdbId?: string;
+  tmdbId?: number | null;
+  imdbId?: string | null;
   year?: number;
   mediaPath: string;
   parentFolder: string;
@@ -55,48 +55,11 @@ export interface ProcessedMediaItem {
   overview?: string;
 }
 
-export interface SonarrSeries {
-  id: number;
-  title: string;
-  year: number;
-  added: string;
-  path: string;
-  tvdbId?: number;
-  tmdbId?: number;
-  imdbId?: string;
-  monitored?: boolean;
-  seasons?: Array<{
-    statistics?: {
-      episodeFileCount: number;
-    };
-  }>;
-  statistics: {
-    seasonCount: number;
-    episodeFileCount: number;
-    episodeCount: number;
-    totalEpisodeCount: number;
-    sizeOnDisk: number;
-  };
-}
+import { MovieResource } from '../../generated/radarr/types.gen';
+import { SeriesResource } from '../../generated/sonarr/types.gen';
 
-export interface RadarrMovie {
-  id: number;
-  title: string;
-  year: number;
-  added: string;
-  path: string;
-  sizeOnDisk: number;
-  tmdbId?: number;
-  imdbId?: string;
-  monitored?: boolean;
-  movieFile?: {
-    quality?: {
-      quality?: {
-        name: string;
-      };
-    };
-  };
-}
+export type SonarrSeries = SeriesResource;
+export type RadarrMovie = MovieResource;
 
 export interface SonarrInstance {
   id: string;
@@ -128,19 +91,6 @@ export interface EmbyPlaybackInfo {
   metadata?: EmbyMetadata;
 }
 
-export interface EmbyMetadata {
-  id: string;
-  name?: string;
-  originalTitle?: string;
-  type?: string;
-  year?: number;
-  genres: string[];
-  rating?: number;
-  officialRating?: string;
-  overview?: string;
-  dateCreated?: string;
-  premiereDate?: string;
-  path?: string;
-  fileName?: string;
-  providerIds: Record<string, string>;
-}
+import Emby from 'emby-sdk-stainless';
+
+export type EmbyMetadata = Emby.BaseItem;

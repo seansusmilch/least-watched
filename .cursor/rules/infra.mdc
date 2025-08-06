@@ -1,7 +1,6 @@
 ---
 alwaysApply: true
 ---
-# Gemini Project Analysis: least-watched
 
 This document provides a summary of the `least-watched` project to be used by the Gemini assistant.
 
@@ -31,6 +30,7 @@ This document provides a summary of the `least-watched` project to be used by th
 
 **Project Structure:**
 
+*   `@/` import alias that maps to `./src` (PREFER TO USE THIS RATHER THAN ../)
 *   `src/app`: Next.js App Router pages.
 *   `src/components`: React components, organized by feature.
 *   `src/lib`: Core logic, including server actions, services for external APIs, and database utilities.

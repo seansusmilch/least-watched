@@ -21,6 +21,7 @@ import {
 } from '@/lib/actions/settings/types';
 
 interface ActionButtonsProps {
+  settings: DeletionScoreSettings;
   saving: boolean;
   validation: { isValid: boolean; message: string };
   onSaveClick: () => void;

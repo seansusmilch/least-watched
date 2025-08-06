@@ -3,11 +3,15 @@ import {
   type RadarrInstance,
   type RadarrMovie,
   type ProcessedMediaItem,
-} from './types';
-import { type EnhancedProcessingSettings } from '../actions/settings';
-import { getQualityScore } from './constants';
-import { EmbyProcessor } from './emby-processor';
-import { type EmbySettings } from '../utils/single-emby-settings';
+} from '@/lib/media-processor/types';
+import { type EnhancedProcessingSettings } from '@/lib/actions/settings';
+import { getQualityScore } from '@/lib/media-processor/constants';
+import { EmbyProcessor } from '@/lib/media-processor/emby-processor';
+import { type EmbySettings } from '@/lib/utils/single-emby-settings';
+import { client as radarrClientRaw } from '@/generated/radarr/client.gen';
+import { getApiV3MovieById } from '@/generated/radarr/sdk.gen';
+
+const DEFAULT_TIMEOUT = 10000; // 10 seconds
 
 export class RadarrProcessor {
   static async processSingleItem(
@@ -17,30 +21,30 @@ export class RadarrProcessor {
     enhancedSettings: EnhancedProcessingSettings
   ): Promise<ProcessedMediaItem> {
     console.log(`🎬 Processing movie:`);
-    console.log(`   Title: ${movie.title}`);
-    console.log(`   ID: ${movie.id}`);
-    console.log(`   Year: ${movie.year}`);
-    console.log(`   Path: ${movie.path}`);
-    console.log(`   Size on Disk: ${movie.sizeOnDisk} bytes`);
-    console.log(`   Added: ${movie.added}`);
-    console.log(`   TMDB ID: ${movie.tmdbId}`);
-    console.log(`   IMDB ID: ${movie.imdbId}`);
+    console.log(`   Title: ${movie.title || 'Unknown'}`);
+    console.log(`   ID: ${movie.id || 'Unknown'}`);
+    console.log(`   Year: ${movie.year || 'Unknown'}`);
+    console.log(`   Path: ${movie.path || 'Unknown'}`);
+    console.log(`   Size on Disk: ${movie.sizeOnDisk || 0} bytes`);
+    console.log(`   Added: ${movie.added || 'Unknown'}`);
+    console.log(`   TMDB ID: ${movie.tmdbId || 'Unknown'}`);
+    console.log(`   IMDB ID: ${movie.imdbId || 'Unknown'}`);
 
     const processedItem: ProcessedMediaItem = {
-      title: movie.title,
+      title: movie.title || 'Unknown',
       type: 'movie',
-      tmdbId: movie.tmdbId,
-      imdbId: movie.imdbId,
+      tmdbId: movie.tmdbId ?? undefined,
+      imdbId: movie.imdbId ?? undefined,
       year: movie.year,
-      mediaPath: movie.path,
-      parentFolder: path.dirname(movie.path),
-      sizeOnDisk: movie.sizeOnDisk,
-      dateAdded: new Date(movie.added),
+      mediaPath: movie.path || '',
+      parentFolder: movie.path ? path.dirname(movie.path) : '',
+      sizeOnDisk: movie.sizeOnDisk || 0,
+      dateAdded: movie.added ? new Date(movie.added) : new Date(),
       source: radarrInstance.name,
       radarrId: movie.id,
 
       // Enhanced movie fields
-      quality: movie.movieFile?.quality?.quality?.name,
+      quality: movie.movieFile?.quality?.quality?.name ?? undefined,
       monitored: movie.monitored,
     };
 
@@ -52,23 +56,36 @@ export class RadarrProcessor {
     // Get enhanced details if enabled
     if (enhancedSettings?.enableDetailedMetadata) {
       try {
-        const detailResponse = await fetch(
-          `${radarrInstance.url}/api/v3/movie/${movie.id}`,
-          {
-            headers: { 'X-Api-Key': radarrInstance.apiKey },
-          }
-        );
+        radarrClientRaw.setConfig({
+          baseUrl: radarrInstance.url,
+          headers: { 'X-Api-Key': radarrInstance.apiKey },
+          fetch: (input: RequestInfo | URL, init?: RequestInit) => {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(
+              () => controller.abort(),
+              DEFAULT_TIMEOUT
+            );
+            return fetch(input, { ...init, signal: controller.signal }).finally(
+              () => clearTimeout(timeoutId)
+            );
+          },
+        });
 
-        if (detailResponse.ok) {
-          const details = await detailResponse.json();
-          processedItem.runtime = details.runtime;
-          processedItem.genres = details.genres;
-          processedItem.overview = details.overview;
+        const detailsResult = await getApiV3MovieById({
+          client: radarrClientRaw,
+          path: { id: movie.id || 0 }, // Ensure ID is not undefined
+        });
+
+        if (detailsResult.data) {
+          const details = detailsResult.data;
+          processedItem.runtime = details.runtime ?? undefined;
+          processedItem.genres = details.genres ?? [];
+          processedItem.overview = details.overview ?? undefined;
 
           // Extract ratings
           if (details.ratings) {
-            processedItem.imdbRating = details.ratings.imdb?.value;
-            processedItem.tmdbRating = details.ratings.tmdb?.value;
+            processedItem.imdbRating = details.ratings.imdb?.value ?? undefined;
+            processedItem.tmdbRating = details.ratings.tmdb?.value ?? undefined;
           }
 
           console.log(`   ✅ Enhanced metadata retrieved for: ${movie.title}`);
@@ -81,7 +98,7 @@ export class RadarrProcessor {
     }
 
     // Calculate size efficiency
-    if (processedItem.runtime) {
+    if (processedItem.runtime && processedItem.sizeOnDisk) {
       const sizeInGB = processedItem.sizeOnDisk / (1024 * 1024 * 1024);
       processedItem.sizePerHour = (sizeInGB / processedItem.runtime) * 60;
     }
@@ -90,7 +107,7 @@ export class RadarrProcessor {
     if (enhancedSettings?.enablePlaybackProgress) {
       console.log(`   🎬 Querying Emby for playback info...`);
       const embyData = await EmbyProcessor.getEmbyMediaData({
-        title: movie.title,
+        title: movie.title || '',
         embyInstance,
       });
       if (embyData) {
@@ -99,11 +116,11 @@ export class RadarrProcessor {
         processedItem.watchCount = embyData.watchCount || 0;
 
         const preferDateAdded = embyInstance?.preferEmbyDateAdded;
-        if (preferDateAdded && embyData.metadata?.dateCreated) {
+        if (preferDateAdded && embyData.metadata?.DateCreated) {
           console.log(
-            `   🎬 Emby date added: ${embyData.metadata.dateCreated}`
+            `   🎬 Emby date added: ${embyData.metadata.DateCreated}`
           );
-          processedItem.dateAdded = new Date(embyData.metadata.dateCreated);
+          processedItem.dateAdded = new Date(embyData.metadata.DateCreated);
         }
       } else {
         console.log(`   ❌ No Emby data found for: ${movie.title}`);

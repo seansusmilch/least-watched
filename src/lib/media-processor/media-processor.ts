@@ -2,12 +2,11 @@ import {
   sonarrSettingsService,
   radarrSettingsService,
   embySettingsService,
-} from '../database';
-import { type EmbySettings } from '../utils/single-emby-settings';
-import { type EnhancedProcessingSettings } from '../actions/settings';
-import { type DeletionScoreSettings } from '../actions/settings/types';
-import { folderSpaceService } from '../services/folder-space-service';
-import { type FolderSpaceData } from '../types/media-processing';
+} from '@/lib/database';
+import { type EmbySettings } from '@/lib/utils/single-emby-settings';
+import { type EnhancedProcessingSettings } from '@/lib/actions/settings';
+import { type DeletionScoreSettings } from '@/lib/actions/settings/types';
+import { folderSpaceService } from '@/lib/services/folder-space-service';
 import { ProgressStore } from './progress-store';
 import { TESTING_LIMIT } from './constants';
 import { SonarrProcessor } from './sonarr-processor';
@@ -19,10 +18,15 @@ import {
   type SonarrInstance,
   type RadarrInstance,
 } from './types';
+import { type FolderSpaceData } from '@/lib/types/media-processing';
 import {
   getDeletionScoreSettings,
   getEnhancedProcessingSettings,
 } from '@/lib/actions/settings';
+import { SonarrApiClient, RadarrApiClient } from '@/lib/services/arr-client';
+
+const sonarrApiClient = new SonarrApiClient();
+const radarrApiClient = new RadarrApiClient();
 
 export class MediaProcessor {
   private onProgress?: (progress: MediaProcessingProgress) => void;
@@ -99,13 +103,8 @@ export class MediaProcessor {
     // Count Sonarr items
     for (const sonarrInstance of sonarrInstances) {
       try {
-        const response = await fetch(`${sonarrInstance.url}/api/v3/series`, {
-          headers: { 'X-Api-Key': sonarrInstance.apiKey },
-        });
-        if (response.ok) {
-          const series = await response.json();
-          totalItems += Math.min(series.length, TESTING_LIMIT);
-        }
+        const series = await sonarrApiClient.getSeries(sonarrInstance);
+        totalItems += Math.min(series.length, TESTING_LIMIT);
       } catch (error) {
         console.error(
           `Error counting Sonarr items for ${sonarrInstance.name}:`,
@@ -117,13 +116,8 @@ export class MediaProcessor {
     // Count Radarr items
     for (const radarrInstance of radarrInstances) {
       try {
-        const response = await fetch(`${radarrInstance.url}/api/v3/movie`, {
-          headers: { 'X-Api-Key': radarrInstance.apiKey },
-        });
-        if (response.ok) {
-          const movies = await response.json();
-          totalItems += Math.min(movies.length, TESTING_LIMIT);
-        }
+        const movies = await radarrApiClient.getMovies(radarrInstance);
+        totalItems += Math.min(movies.length, TESTING_LIMIT);
       } catch (error) {
         console.error(
           `Error counting Radarr items for ${radarrInstance.name}:`,
@@ -206,15 +200,7 @@ export class MediaProcessor {
     const processedItems: ProcessedMediaItem[] = [];
 
     // Get raw series data from Sonarr
-    const response = await fetch(`${sonarrInstance.url}/api/v3/series`, {
-      headers: { 'X-Api-Key': sonarrInstance.apiKey },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch series from ${sonarrInstance.name}`);
-    }
-
-    const series = await response.json();
+    const series = await sonarrApiClient.getSeries(sonarrInstance);
     const limitedSeries = series.slice(0, TESTING_LIMIT);
 
     // Process each series individually
@@ -265,15 +251,7 @@ export class MediaProcessor {
     const processedItems: ProcessedMediaItem[] = [];
 
     // Get raw movie data from Radarr
-    const response = await fetch(`${radarrInstance.url}/api/v3/movie`, {
-      headers: { 'X-Api-Key': radarrInstance.apiKey },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch movies from ${radarrInstance.name}`);
-    }
-
-    const movies = await response.json();
+    const movies = await radarrApiClient.getMovies(radarrInstance);
     const limitedMovies = movies.slice(0, TESTING_LIMIT);
 
     // Process each movie individually

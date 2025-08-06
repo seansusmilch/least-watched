@@ -6,7 +6,11 @@ import {
 } from './types';
 import { type EnhancedProcessingSettings } from '../actions/settings';
 import { EmbyProcessor } from './emby-processor';
-import { type EmbySettings } from '../utils/single-emby-settings';
+import { type EmbySettings } from '@/lib/utils/single-emby-settings';
+import { client as sonarrClientRaw } from '@/generated/sonarr/client.gen';
+import { getApiV3SeriesById } from '@/generated/sonarr/sdk.gen';
+
+const DEFAULT_TIMEOUT = 10000; // 10 seconds
 
 export class SonarrProcessor {
   static async processSingleItem(
@@ -16,40 +20,40 @@ export class SonarrProcessor {
     enhancedSettings: EnhancedProcessingSettings
   ): Promise<ProcessedMediaItem> {
     console.log(`📺 Processing series:`);
-    console.log(`   Title: ${series.title}`);
-    console.log(`   ID: ${series.id}`);
-    console.log(`   Year: ${series.year}`);
-    console.log(`   Path: ${series.path}`);
-    console.log(`   Size on Disk: ${series.statistics.sizeOnDisk} bytes`);
-    console.log(`   Added: ${series.added}`);
-    console.log(`   TMDB ID: ${series.tmdbId}`);
-    console.log(`   IMDB ID: ${series.imdbId}`);
+    console.log(`   Title: ${series.title || 'Unknown'}`);
+    console.log(`   ID: ${series.id || 'Unknown'}`);
+    console.log(`   Year: ${series.year || 'Unknown'}`);
+    console.log(`   Path: ${series.path || 'Unknown'}`);
+    console.log(`   Size on Disk: ${series.statistics?.sizeOnDisk || 0} bytes`);
+    console.log(`   Added: ${series.added || 'Unknown'}`);
+    console.log(`   TMDB ID: ${series.tmdbId || 'Unknown'}`);
+    console.log(`   IMDB ID: ${series.imdbId || 'Unknown'}`);
 
     // Calculate completion percentage
-    const episodesOnDisk = series.statistics.episodeFileCount;
-    const totalEpisodes = series.statistics.totalEpisodeCount;
+    const episodesOnDisk = series.statistics?.episodeFileCount || 0;
+    const totalEpisodes = series.statistics?.totalEpisodeCount || 0;
     const completionPercentage =
       totalEpisodes > 0
         ? Math.round((episodesOnDisk / totalEpisodes) * 100)
         : 0;
 
     const processedItem: ProcessedMediaItem = {
-      title: series.title,
+      title: series.title || 'Unknown',
       type: 'tv',
-      tmdbId: series.tmdbId,
-      imdbId: series.imdbId,
+      tmdbId: series.tmdbId ?? undefined,
+      imdbId: series.imdbId ?? undefined,
       year: series.year,
-      mediaPath: series.path,
-      parentFolder: path.dirname(series.path),
-      sizeOnDisk: series.statistics.sizeOnDisk,
-      dateAdded: new Date(series.added),
+      mediaPath: series.path || '',
+      parentFolder: series.path ? path.dirname(series.path) : '',
+      sizeOnDisk: series.statistics?.sizeOnDisk || 0,
+      dateAdded: series.added ? new Date(series.added) : new Date(),
       source: sonarrInstance.name,
       sonarrId: series.id,
 
       // Enhanced TV show fields
       episodesOnDisk,
       totalEpisodes,
-      seasonCount: series.statistics.seasonCount,
+      seasonCount: series.statistics?.seasonCount || 0,
       completionPercentage,
       monitored: series.monitored !== undefined ? series.monitored : undefined,
     };
@@ -57,23 +61,36 @@ export class SonarrProcessor {
     // Get enhanced details if enabled
     if (enhancedSettings?.enableDetailedMetadata) {
       try {
-        const detailResponse = await fetch(
-          `${sonarrInstance.url}/api/v3/series/${series.id}`,
-          {
-            headers: { 'X-Api-Key': sonarrInstance.apiKey },
-          }
-        );
+        sonarrClientRaw.setConfig({
+          baseUrl: sonarrInstance.url,
+          headers: { 'X-Api-Key': sonarrInstance.apiKey },
+          fetch: (input: RequestInfo | URL, init?: RequestInit) => {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(
+              () => controller.abort(),
+              DEFAULT_TIMEOUT
+            );
+            return fetch(input, { ...init, signal: controller.signal }).finally(
+              () => clearTimeout(timeoutId)
+            );
+          },
+        });
 
-        if (detailResponse.ok) {
-          const details = await detailResponse.json();
-          processedItem.runtime = details.runtime;
-          processedItem.genres = details.genres;
-          processedItem.overview = details.overview;
+        const detailsResult = await getApiV3SeriesById({
+          client: sonarrClientRaw,
+          path: { id: series.id || 0 }, // Ensure ID is not undefined
+        });
+
+        if (detailsResult.data) {
+          const details = detailsResult.data;
+          processedItem.runtime = details.runtime || undefined;
+          processedItem.genres = details.genres || undefined;
+          processedItem.overview = details.overview || undefined;
 
           // Extract ratings
           if (details.ratings) {
-            processedItem.imdbRating = details.ratings.imdb?.value;
-            processedItem.tmdbRating = details.ratings.tmdb?.value;
+            processedItem.imdbRating = details.ratings?.value || undefined;
+            processedItem.tmdbRating = details.ratings?.value || undefined;
           }
 
           console.log(`   ✅ Enhanced metadata retrieved for: ${series.title}`);
@@ -97,7 +114,7 @@ export class SonarrProcessor {
     if (enhancedSettings?.enablePlaybackProgress) {
       console.log(`   🎬 Querying Emby for playback info...`);
       const embyData = await EmbyProcessor.getEmbyMediaData({
-        title: series.title,
+        title: series.title || '',
         embyInstance,
       });
       if (embyData) {
@@ -106,11 +123,11 @@ export class SonarrProcessor {
         processedItem.watchCount = embyData.watchCount || 0;
 
         const preferDateAdded = embyInstance?.preferEmbyDateAdded;
-        if (preferDateAdded && embyData.metadata?.dateCreated) {
+        if (preferDateAdded && embyData.metadata?.DateCreated) {
           console.log(
-            `   🎬 Emby date added: ${embyData.metadata.dateCreated}`
+            `   🎬 Emby date added: ${embyData.metadata.DateCreated}`
           );
-          processedItem.dateAdded = new Date(embyData.metadata.dateCreated);
+          processedItem.dateAdded = new Date(embyData.metadata.DateCreated);
         }
       } else {
         console.log(`   ❌ No Emby data found for: ${series.title}`);
