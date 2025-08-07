@@ -335,9 +335,9 @@ export class EmbyService {
   }
 
   /**
-   * Enhanced: Try provider-id mapping first, then title fallback
+   * Try provider-id mapping first, then fallback to title-based lookup
    */
-  static async getEmbyMediaDataEnhanced({
+  static async getEmbyMediaDataByIdsFallback({
     title,
     type,
     tvdbId,

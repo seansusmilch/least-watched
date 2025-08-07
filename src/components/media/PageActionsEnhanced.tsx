@@ -14,19 +14,19 @@ import {
 import { useProgress } from '@/hooks/use-progress';
 import { LatestUpdateTimestamp } from './LatestUpdateTimestamp';
 
-interface PageActionsEnhancedProps {
+interface PageActionsProps {
   selectedItems?: string[];
   onRefreshComplete?: () => void;
   onExportComplete?: (count: number) => void;
   disabled?: boolean;
 }
 
-export function PageActionsEnhanced({
+export function PageActions({
   selectedItems = [],
   onRefreshComplete,
   onExportComplete,
   disabled = false,
-}: PageActionsEnhancedProps) {
+}: PageActionsProps) {
   const { state: progressState } = useProgress();
   const queryClient = useQueryClient();
 

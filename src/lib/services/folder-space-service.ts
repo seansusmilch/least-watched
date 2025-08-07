@@ -4,7 +4,7 @@ import type { DiskSpaceInfo, RootFolderInfo } from './shared/arr-types';
 import type { ServiceSettings } from '@/lib/utils/prefixed-settings';
 import {
   type FolderSpaceData,
-  type FolderWithSpaceEnhanced,
+  type FolderWithSpaceDetailed,
 } from '@/lib/types/media-processing';
 import { sonarrSettingsService, radarrSettingsService } from '@/lib/database';
 
@@ -12,7 +12,7 @@ export class FolderSpaceService {
   /**
    * Get all folders with enhanced space information (NO CACHE)
    */
-  async getAllFoldersWithSpace(): Promise<FolderWithSpaceEnhanced[]> {
+  async getAllFoldersWithSpace(): Promise<FolderWithSpaceDetailed[]> {
     console.log(
       '🔄 Fetching all folders with enhanced space information (no cache)'
     );
@@ -23,7 +23,7 @@ export class FolderSpaceService {
         radarrSettingsService.getEnabled(),
       ]);
 
-      const allFoldersWithSpace: FolderWithSpaceEnhanced[] = [];
+      const allFoldersWithSpace: FolderWithSpaceDetailed[] = [];
 
       // Helper functions
       const getDriveRoot = (path: string | null | undefined): string => {
@@ -42,7 +42,7 @@ export class FolderSpaceService {
       // Process Sonarr instances with individual error handling
       const sonarrPromises = sonarrInstances.map(async (instance) => {
         try {
-          return await this.processSonarrInstanceForEnhanced(
+          return await this.processSonarrInstanceWithDetails(
             instance,
             getDriveRoot,
             isSystemDrive
@@ -59,7 +59,7 @@ export class FolderSpaceService {
       // Process Radarr instances with individual error handling
       const radarrPromises = radarrInstances.map(async (instance) => {
         try {
-          return await this.processRadarrInstanceForEnhanced(
+          return await this.processRadarrInstanceWithDetails(
             instance,
             getDriveRoot,
             isSystemDrive
@@ -124,11 +124,11 @@ export class FolderSpaceService {
     }
   }
 
-  private async processSonarrInstanceForEnhanced(
+  private async processSonarrInstanceWithDetails(
     instance: ServiceSettings,
     getDriveRoot: (path: string | null | undefined) => string,
     isSystemDrive: (path: string | null | undefined) => boolean
-  ): Promise<FolderWithSpaceEnhanced[]> {
+  ): Promise<FolderWithSpaceDetailed[]> {
     const selectedFolders = instance.selectedFolders || [];
 
     const [rootFolders, diskSpaceData] = await Promise.all([
@@ -136,7 +136,7 @@ export class FolderSpaceService {
       sonarrApiClient.getDiskSpace(instance),
     ]);
 
-    const folderMap = new Map<string, FolderWithSpaceEnhanced>();
+    const folderMap = new Map<string, FolderWithSpaceDetailed>();
 
     // Process root folders
     for (const folder of rootFolders) {
@@ -145,7 +145,7 @@ export class FolderSpaceService {
       const usedSpace = totalSpace - freeSpace;
       const isSelected = selectedFolders.includes(folder.path ?? '');
 
-      const enhancedFolder: FolderWithSpaceEnhanced = {
+      const enhancedFolder: FolderWithSpaceDetailed = {
         path: folder.path ?? '',
         instanceName: instance.name,
         instanceType: 'sonarr',
@@ -190,7 +190,7 @@ export class FolderSpaceService {
         const usedSpace =
           (diskInfo.totalSpace ?? 0) - (diskInfo.freeSpace ?? 0);
 
-        const enhancedFolder: FolderWithSpaceEnhanced = {
+        const enhancedFolder: FolderWithSpaceDetailed = {
           path: diskInfo.path ?? '',
           instanceName: instance.name,
           instanceType: 'sonarr',
@@ -218,11 +218,11 @@ export class FolderSpaceService {
     return Array.from(folderMap.values());
   }
 
-  private async processRadarrInstanceForEnhanced(
+  private async processRadarrInstanceWithDetails(
     instance: ServiceSettings,
     getDriveRoot: (path: string | null | undefined) => string,
     isSystemDrive: (path: string | null | undefined) => boolean
-  ): Promise<FolderWithSpaceEnhanced[]> {
+  ): Promise<FolderWithSpaceDetailed[]> {
     const selectedFolders = instance.selectedFolders || [];
 
     const [rootFolders, diskSpaceData] = await Promise.all([
@@ -230,7 +230,7 @@ export class FolderSpaceService {
       radarrApiClient.getDiskSpace(instance),
     ]);
 
-    const folderMap = new Map<string, FolderWithSpaceEnhanced>();
+    const folderMap = new Map<string, FolderWithSpaceDetailed>();
 
     // Process root folders
     for (const folder of rootFolders) {
@@ -239,7 +239,7 @@ export class FolderSpaceService {
       const usedSpace = totalSpace - freeSpace;
       const isSelected = selectedFolders.includes(folder.path ?? '');
 
-      const enhancedFolder: FolderWithSpaceEnhanced = {
+      const enhancedFolder: FolderWithSpaceDetailed = {
         path: folder.path ?? '',
         instanceName: instance.name,
         instanceType: 'radarr',
@@ -288,7 +288,7 @@ export class FolderSpaceService {
         const usedSpace =
           (diskInfo.totalSpace ?? 0) - (diskInfo.freeSpace ?? 0);
 
-        const enhancedFolder: FolderWithSpaceEnhanced = {
+        const enhancedFolder: FolderWithSpaceDetailed = {
           path: diskInfo.path ?? '',
           instanceName: instance.name,
           instanceType: 'radarr',
@@ -477,7 +477,7 @@ export class FolderSpaceService {
 
     if (matchingDiskSpace) {
       folderData.diskSpaceData = {
-        hasEnhancedData: true,
+        hasDetails: true,
         isSystemDrive: this.isSystemDrive(matchingDiskSpace.path),
       };
 

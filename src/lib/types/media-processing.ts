@@ -23,7 +23,7 @@ export interface FolderSpaceData {
       path: string;
       size: number;
     }>;
-    hasEnhancedData: boolean;
+    hasDetails: boolean;
   };
 }
 
@@ -63,7 +63,7 @@ export interface FolderWithSpace {
 }
 
 // Enhanced interface for all folders from disk space API
-export interface FolderWithSpaceEnhanced extends FolderWithSpace {
+export interface FolderWithSpaceDetailed extends FolderWithSpace {
   isSelected: boolean; // Whether this folder is in selectedFolders
   isRootFolder: boolean; // Whether this is a root folder from getRootFolders
   isDiskSpaceFolder: boolean; // Whether this is from getDiskSpace

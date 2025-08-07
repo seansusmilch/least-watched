@@ -14,7 +14,7 @@ interface FolderCardProps {
 }
 
 export function FolderCard({ folder, onClick }: FolderCardProps) {
-  const hasDiskSpaceData = folder.diskSpaceData?.hasEnhancedData;
+  const hasDiskSpaceData = folder.diskSpaceData?.hasDetails;
   const freeSpacePercent = folder.totalSpaceGB
     ? (folder.freeSpaceGB / folder.totalSpaceGB) * 100
     : 0;

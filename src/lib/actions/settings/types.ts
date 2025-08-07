@@ -85,7 +85,7 @@ export interface FolderInfo {
   freeSpace: number;
   totalSpace: number;
   diskSpaceData?: {
-    hasEnhancedData: boolean;
+    hasDetails: boolean;
     isSystemDrive: boolean;
   };
 }

@@ -4,19 +4,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { FolderOpen, Settings, Tv, Film, Folder } from 'lucide-react';
-import type { FolderWithSpaceEnhanced } from '@/lib/types/media-processing';
+import type { FolderWithSpaceDetailed } from '@/lib/types/media-processing';
 import { formatBytes } from '@/lib/utils/formatters';
 
 interface FolderSpaceWidgetProps {
-  initialData?: FolderWithSpaceEnhanced[];
+  initialData?: FolderWithSpaceDetailed[];
 }
 
 export function FolderSpaceWidget({
   initialData = [],
 }: FolderSpaceWidgetProps) {
   // Group folders by drive root for better organization
-  const groupFoldersByDrive = (folders: FolderWithSpaceEnhanced[]) => {
-    const groups: { [key: string]: FolderWithSpaceEnhanced[] } = {};
+  const groupFoldersByDrive = (folders: FolderWithSpaceDetailed[]) => {
+    const groups: { [key: string]: FolderWithSpaceDetailed[] } = {};
 
     folders.forEach((folder) => {
       const driveRoot = folder.driveRoot || 'Unknown';

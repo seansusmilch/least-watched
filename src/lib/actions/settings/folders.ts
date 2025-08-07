@@ -26,7 +26,7 @@ function createFolderInfo(
       freeSpace: ds.freeSpace || 0,
       totalSpace: ds.totalSpace || 0,
       diskSpaceData: {
-        hasEnhancedData: true,
+        hasDetails: true,
         isSystemDrive: ds.path === 'C:\\' || ds.path === '/',
       },
     });
