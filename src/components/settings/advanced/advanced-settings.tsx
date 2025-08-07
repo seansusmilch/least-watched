@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
@@ -66,14 +66,16 @@ export function AdvancedSettings() {
   });
 
   // Update form values when query data is available
-  if (
-    datePreferenceQuery.data &&
-    form.getValues('datePreference') !== datePreferenceQuery.data
-  ) {
-    form.reset({
-      datePreference: datePreferenceQuery.data,
-    });
-  }
+  useEffect(() => {
+    if (
+      datePreferenceQuery.data &&
+      form.getValues('datePreference') !== datePreferenceQuery.data
+    ) {
+      form.reset({
+        datePreference: datePreferenceQuery.data,
+      });
+    }
+  }, [datePreferenceQuery.data]);
 
   const onSubmit = async (data: AdvancedSettingsFormData) => {
     const currentValue = datePreferenceQuery.data || 'arr';
