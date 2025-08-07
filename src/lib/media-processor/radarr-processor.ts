@@ -8,7 +8,7 @@ import { type EnhancedProcessingSettings } from '@/lib/actions/settings';
 import { getQualityScore } from '@/lib/media-processor/constants';
 import { EmbyService } from '@/lib/services/emby-service';
 import { type EmbySettings } from '@/lib/utils/single-emby-settings';
-import { radarrApiClient } from '@/lib/services/arr-client';
+import { radarrApiClient } from '@/lib/services/radarr-service';
 
 export class RadarrProcessor {
   static async processSingleItem(

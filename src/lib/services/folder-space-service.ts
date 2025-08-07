@@ -1,9 +1,6 @@
-import {
-  sonarrApiClient,
-  radarrApiClient,
-  type DiskSpaceInfo,
-  type RootFolderInfo,
-} from './arr-client';
+import { sonarrApiClient } from './sonarr-service';
+import { radarrApiClient } from './radarr-service';
+import type { DiskSpaceInfo, RootFolderInfo } from './shared/arr-types';
 import type { ServiceSettings } from '../utils/prefixed-settings';
 import {
   type FolderSpaceData,

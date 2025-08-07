@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { radarrSettingsService } from '../../database';
-import { radarrApiClient } from '@/lib/services/arr-client';
+import { radarrApiClient } from '@/lib/services/radarr-service';
 import {
   RadarrSettingsCreateSchema,
   RadarrSettingsUpdateSchema,

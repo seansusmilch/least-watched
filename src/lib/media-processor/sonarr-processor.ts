@@ -7,7 +7,7 @@ import {
 import { type EnhancedProcessingSettings } from '@/lib/actions/settings';
 import { EmbyService } from '@/lib/services/emby-service';
 import { type EmbySettings } from '@/lib/utils/single-emby-settings';
-import { sonarrApiClient } from '@/lib/services/arr-client';
+import { sonarrApiClient } from '@/lib/services/sonarr-service';
 
 export class SonarrProcessor {
   static async processSingleItem(

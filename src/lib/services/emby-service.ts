@@ -233,7 +233,10 @@ export class EmbyService {
    * Private method to parse playback response data
    */
   private static parsePlaybackResponse(
-    data: any,
+    data: {
+      results: Array<Array<string | number>>;
+      colums?: string[]; // Note: "colums" appears to be a typo but keeping as is
+    },
     title: string
   ): EmbyPlaybackInfo | null {
     if (data.results && data.results.length > 0) {
@@ -249,11 +252,11 @@ export class EmbyService {
         watchCount: data.colums?.indexOf('WatchCount') ?? 5,
       };
 
-      const lastWatchedStr = result[columnIndex.dateCreated];
-      const itemId = result[columnIndex.itemId];
-      const itemName = result[columnIndex.itemName];
-      const playDuration = result[columnIndex.playDuration];
-      const watchCount = parseInt(result[columnIndex.watchCount]) || 1;
+      const lastWatchedStr = String(result[columnIndex.dateCreated]);
+      const itemId = String(result[columnIndex.itemId]);
+      const itemName = String(result[columnIndex.itemName]);
+      const playDuration = String(result[columnIndex.playDuration]);
+      const watchCount = parseInt(String(result[columnIndex.watchCount])) || 1;
 
       console.log(`     ✅ Found playback activity for: ${itemName}`);
       console.log(`     📅 Last watched: ${lastWatchedStr}`);

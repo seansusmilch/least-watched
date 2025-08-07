@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { sonarrSettingsService } from '../../database';
-import { sonarrApiClient } from '@/lib/services/arr-client';
+import { sonarrApiClient } from '@/lib/services/sonarr-service';
 import {
   SonarrSettingsCreateSchema,
   SonarrSettingsUpdateSchema,

@@ -2,8 +2,12 @@
 
 import { sonarrSettingsService, radarrSettingsService } from '@/lib/database';
 import type { FolderInfo } from './types';
-import { sonarrApiClient, radarrApiClient } from '@/lib/services/arr-client';
-import type { DiskSpaceInfo, RootFolderInfo } from '@/lib/services/arr-client';
+import { sonarrApiClient } from '@/lib/services/sonarr-service';
+import { radarrApiClient } from '@/lib/services/radarr-service';
+import type {
+  DiskSpaceInfo,
+  RootFolderInfo,
+} from '@/lib/services/shared/arr-types';
 
 // Helper function to create FolderInfo from disk space and root folder data
 function createFolderInfo(
