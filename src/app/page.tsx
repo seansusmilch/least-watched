@@ -6,7 +6,7 @@ import {
   MediaProcessingProgressSkeleton,
   MediaProcessingProgress,
   MediaSummaryCardsServer,
-  PageActionsEnhanced,
+  PageActions,
   MediaPageServer,
 } from '@/components/media';
 import {
@@ -30,7 +30,7 @@ export default function LeastWatchedPage() {
             </p>
           </div>
           {/* Dynamic Page Actions - Now client-side */}
-          <PageActionsEnhanced />
+          <PageActions />
         </div>
 
         {/* Dynamic Processing Progress - Now client-side */}
