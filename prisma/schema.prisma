@@ -34,7 +34,8 @@ model MediaItem {
   mediaPath            String?
   parentFolder         String?
   sizeOnDisk           BigInt?
-  dateAdded            DateTime?
+  dateAddedEmby        DateTime?
+  dateAddedArr         DateTime?
   source               String?
   quality              String?
   qualityScore         Int?
