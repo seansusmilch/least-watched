@@ -5,11 +5,15 @@ import {
   getApiV3Rootfolder as getSonarrRootfolder,
   getApiV3Diskspace as getSonarrDiskspace,
   getApiV3Series as getSonarrSeries,
+  getApiV3SeriesById as getSonarrSeriesById,
+  getApiV3SystemStatus as getSonarrSystemStatus,
 } from '@/generated/sonarr/sdk.gen';
 import {
   getApiV3Rootfolder as getRadarrRootfolder,
   getApiV3Diskspace as getRadarrDiskspace,
   getApiV3Movie as getRadarrMovie,
+  getApiV3MovieById as getRadarrMovieById,
+  getApiV3SystemStatus as getRadarrSystemStatus,
 } from '@/generated/radarr/sdk.gen';
 import type {
   RootFolderResource as SonarrRootFolderResource,
@@ -110,6 +114,30 @@ export class SonarrApiClient {
       `Sonarr ${instance.name} series`
     );
   }
+
+  async getSeriesById(
+    instance: ServiceSettings,
+    id: number
+  ): Promise<SonarrSeriesResource | null> {
+    this.configureClient(instance);
+    return safeApiCall(
+      () => getSonarrSeriesById({ client: sonarrClientRaw, path: { id } }),
+      null,
+      `Sonarr ${instance.name} series by ID ${id}`
+    );
+  }
+
+  async testConnection(instance: ServiceSettings): Promise<boolean> {
+    this.configureClient(instance);
+    try {
+      const result = await getSonarrSystemStatus({ client: sonarrClientRaw });
+      // If we get any result without error, the connection is working
+      return result !== null && result !== undefined;
+    } catch (error) {
+      console.error(`Sonarr ${instance.name} connection test failed:`, error);
+      return false;
+    }
+  }
 }
 
 export class RadarrApiClient {
@@ -156,6 +184,30 @@ export class RadarrApiClient {
       [],
       `Radarr ${instance.name} movies`
     );
+  }
+
+  async getMovieById(
+    instance: ServiceSettings,
+    id: number
+  ): Promise<RadarrMovieResource | null> {
+    this.configureClient(instance);
+    return safeApiCall(
+      () => getRadarrMovieById({ client: radarrClientRaw, path: { id } }),
+      null,
+      `Radarr ${instance.name} movie by ID ${id}`
+    );
+  }
+
+  async testConnection(instance: ServiceSettings): Promise<boolean> {
+    this.configureClient(instance);
+    try {
+      const result = await getRadarrSystemStatus({ client: radarrClientRaw });
+      // If we get any result without error, the connection is working
+      return result !== null && result !== undefined;
+    } catch (error) {
+      console.error(`Radarr ${instance.name} connection test failed:`, error);
+      return false;
+    }
   }
 }
 

@@ -15,8 +15,6 @@ import { ZodError } from 'zod';
 import { EmbySettingsInput } from './types';
 import { type EmbySettings } from '../../utils/single-emby-settings';
 
-
-
 // Emby Settings Actions (Single Instance)
 export async function getEmbySettings(): Promise<EmbySettings | null> {
   try {
@@ -42,9 +40,6 @@ export async function createEmbySetting(
       enabled: validatedData.enabled,
       preferEmbyDateAdded: validatedData.preferEmbyDateAdded,
     });
-
-    // Refresh API configuration
-    await apiService.refreshConfig();
 
     revalidatePath('/settings');
 
@@ -78,9 +73,6 @@ export async function updateEmbySetting(
       preferEmbyDateAdded: validatedData.preferEmbyDateAdded,
     });
 
-    // Refresh API configuration
-    await apiService.refreshConfig();
-
     revalidatePath('/settings');
 
     return createFormState(
@@ -101,9 +93,6 @@ export async function deleteEmbySetting(): Promise<FormState> {
   try {
     await embySettingsService.delete();
 
-    // Refresh API configuration
-    await apiService.refreshConfig();
-
     revalidatePath('/settings');
 
     return createFormState(true, 'Emby setting deleted successfully');
@@ -118,9 +107,6 @@ export async function testEmbyConnection() {
     if (!setting) {
       return { success: false, error: 'Setting not found' };
     }
-
-    // Refresh API configuration to include this setting
-    await apiService.refreshConfig();
 
     // Test connection to the single Emby instance
     const isConnected = await apiService.testEmbyConnection();

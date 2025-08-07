@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { sonarrSettingsService } from '../../database';
-import { apiService } from '../../api';
+import { sonarrApiClient } from '@/lib/services/arr-client';
 import {
   SonarrSettingsCreateSchema,
   SonarrSettingsUpdateSchema,
@@ -38,9 +38,6 @@ export async function createSonarrSetting(
       enabled: validatedData.enabled,
     });
 
-    // Refresh API configuration
-    await apiService.refreshConfig();
-
     revalidatePath('/settings');
 
     return createFormState(
@@ -75,9 +72,6 @@ export async function updateSonarrSetting(
       selectedFolders: validatedData.selectedFolders,
     });
 
-    // Refresh API configuration
-    await apiService.refreshConfig();
-
     revalidatePath('/settings');
 
     return createFormState(
@@ -100,9 +94,6 @@ export async function deleteSonarrSetting(id: string): Promise<FormState> {
 
     await sonarrSettingsService.delete(validatedId);
 
-    // Refresh API configuration
-    await apiService.refreshConfig();
-
     revalidatePath('/settings');
 
     return createFormState(true, 'Sonarr setting deleted successfully');
@@ -117,33 +108,19 @@ export async function deleteSonarrSetting(id: string): Promise<FormState> {
 export async function testSonarrConnection(id: string) {
   try {
     const validatedId = IdSchema.parse(id);
-
     const setting = await sonarrSettingsService.getById(validatedId);
+
     if (!setting) {
       return { success: false, error: 'Setting not found' };
     }
 
-    // Refresh API configuration to include this setting
-    await apiService.refreshConfig();
-
-    // Find the index of this setting in the enabled settings
-    const enabledSettings = await sonarrSettingsService.getEnabled();
-    const configIndex = enabledSettings.findIndex((s) => s.id === validatedId);
-
-    if (configIndex === -1) {
-      return { success: false, error: 'Setting not enabled' };
-    }
-
-    const isConnected = await apiService.testSonarrConnection(configIndex);
-    return { success: isConnected };
+    const success = await sonarrApiClient.testConnection(setting);
+    return { success };
   } catch (error) {
     console.error('Failed to test Sonarr connection:', error);
     return {
       success: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : 'Failed to test Sonarr connection',
+      error: error instanceof Error ? error.message : 'Connection test failed',
     };
   }
 }

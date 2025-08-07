@@ -23,10 +23,7 @@ import {
   getDeletionScoreSettings,
   getEnhancedProcessingSettings,
 } from '@/lib/actions/settings';
-import { SonarrApiClient, RadarrApiClient } from '@/lib/services/arr-client';
-
-const sonarrApiClient = new SonarrApiClient();
-const radarrApiClient = new RadarrApiClient();
+import { sonarrApiClient, radarrApiClient } from '@/lib/services/arr-client';
 
 export class MediaProcessor {
   private onProgress?: (progress: MediaProcessingProgress) => void;

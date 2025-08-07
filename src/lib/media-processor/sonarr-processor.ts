@@ -4,13 +4,10 @@ import {
   type SonarrSeries,
   type ProcessedMediaItem,
 } from './types';
-import { type EnhancedProcessingSettings } from '../actions/settings';
+import { type EnhancedProcessingSettings } from '@/lib/actions/settings';
 import { EmbyProcessor } from './emby-processor';
 import { type EmbySettings } from '@/lib/utils/single-emby-settings';
-import { client as sonarrClientRaw } from '@/generated/sonarr/client.gen';
-import { getApiV3SeriesById } from '@/generated/sonarr/sdk.gen';
-
-const DEFAULT_TIMEOUT = 10000; // 10 seconds
+import { sonarrApiClient } from '@/lib/services/arr-client';
 
 export class SonarrProcessor {
   static async processSingleItem(
@@ -61,28 +58,12 @@ export class SonarrProcessor {
     // Get enhanced details if enabled
     if (enhancedSettings?.enableDetailedMetadata) {
       try {
-        sonarrClientRaw.setConfig({
-          baseUrl: sonarrInstance.url,
-          headers: { 'X-Api-Key': sonarrInstance.apiKey },
-          fetch: (input: RequestInfo | URL, init?: RequestInit) => {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(
-              () => controller.abort(),
-              DEFAULT_TIMEOUT
-            );
-            return fetch(input, { ...init, signal: controller.signal }).finally(
-              () => clearTimeout(timeoutId)
-            );
-          },
-        });
+        const details = await sonarrApiClient.getSeriesById(
+          sonarrInstance,
+          series.id || 0
+        );
 
-        const detailsResult = await getApiV3SeriesById({
-          client: sonarrClientRaw,
-          path: { id: series.id || 0 }, // Ensure ID is not undefined
-        });
-
-        if (detailsResult.data) {
-          const details = detailsResult.data;
+        if (details) {
           processedItem.runtime = details.runtime || undefined;
           processedItem.genres = details.genres || undefined;
           processedItem.overview = details.overview || undefined;

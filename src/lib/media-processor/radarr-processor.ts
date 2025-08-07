@@ -8,10 +8,7 @@ import { type EnhancedProcessingSettings } from '@/lib/actions/settings';
 import { getQualityScore } from '@/lib/media-processor/constants';
 import { EmbyProcessor } from '@/lib/media-processor/emby-processor';
 import { type EmbySettings } from '@/lib/utils/single-emby-settings';
-import { client as radarrClientRaw } from '@/generated/radarr/client.gen';
-import { getApiV3MovieById } from '@/generated/radarr/sdk.gen';
-
-const DEFAULT_TIMEOUT = 10000; // 10 seconds
+import { radarrApiClient } from '@/lib/services/arr-client';
 
 export class RadarrProcessor {
   static async processSingleItem(
@@ -56,28 +53,12 @@ export class RadarrProcessor {
     // Get enhanced details if enabled
     if (enhancedSettings?.enableDetailedMetadata) {
       try {
-        radarrClientRaw.setConfig({
-          baseUrl: radarrInstance.url,
-          headers: { 'X-Api-Key': radarrInstance.apiKey },
-          fetch: (input: RequestInfo | URL, init?: RequestInit) => {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(
-              () => controller.abort(),
-              DEFAULT_TIMEOUT
-            );
-            return fetch(input, { ...init, signal: controller.signal }).finally(
-              () => clearTimeout(timeoutId)
-            );
-          },
-        });
+        const details = await radarrApiClient.getMovieById(
+          radarrInstance,
+          movie.id || 0
+        );
 
-        const detailsResult = await getApiV3MovieById({
-          client: radarrClientRaw,
-          path: { id: movie.id || 0 }, // Ensure ID is not undefined
-        });
-
-        if (detailsResult.data) {
-          const details = detailsResult.data;
+        if (details) {
           processedItem.runtime = details.runtime ?? undefined;
           processedItem.genres = details.genres ?? [];
           processedItem.overview = details.overview ?? undefined;
