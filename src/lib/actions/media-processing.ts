@@ -1,23 +1,27 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 'use server';
 
-import { MediaProcessor } from '../media-processor/';
+import { MediaProcessor } from '@/lib/media-processor/';
 import { revalidatePath } from 'next/cache';
 import {
   type MediaProcessingResult,
   type SelectedFoldersFromDatabase,
-} from '../types/media-processing';
+} from '@/lib/types/media-processing';
 
 import {
   createFormState,
   handleServerError,
   type FormState,
-} from '../validation/schemas';
-import { prisma } from '../database';
+} from '@/lib/validation/schemas';
+import {
+  prisma,
+  sonarrSettingsService,
+  radarrSettingsService,
+} from '@/lib/database';
 import { getProgress } from './progress';
-import { ProgressStore } from '../media-processor/progress-store';
-import { MediaItem, getEffectiveDateAdded } from '../types/media';
-import { calculateUnwatchedDays } from '../utils/formatters';
+import { ProgressStore } from '@/lib/media-processor/progress-store';
+import { MediaItem, getEffectiveDateAdded } from '@/lib/types/media';
+import { calculateUnwatchedDays } from '@/lib/utils/formatters';
 import { getDatePreference } from './settings/app-settings';
 
 // ============================================================================
@@ -149,10 +153,6 @@ export async function refreshFolderSpaceData(
 
 export async function getSelectedFoldersFromDatabase(): Promise<SelectedFoldersFromDatabase> {
   try {
-    const { sonarrSettingsService, radarrSettingsService } = await import(
-      '../database'
-    );
-
     const [sonarrInstances, radarrInstances] = await Promise.all([
       sonarrSettingsService.getEnabled(),
       radarrSettingsService.getEnabled(),

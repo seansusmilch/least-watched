@@ -3,6 +3,8 @@
 import { revalidatePath } from 'next/cache';
 import { getAppSetting, setAppSetting } from './app-settings';
 import type { DeletionScoreSettings, Breakpoint } from './types';
+import { appSettingsService } from '@/lib/database';
+import { deletionScoreService } from '@/lib/services/deletion-score-service';
 
 const DEFAULT_DELETION_SCORE_SETTINGS: DeletionScoreSettings = {
   enabled: true,
@@ -339,11 +341,6 @@ export async function setDeletionScoreSettings(
 
     // Trigger recalculation in the background if deletion scoring is enabled
     if (settings.enabled) {
-      // Import and trigger recalculation without waiting for completion
-      const { deletionScoreService } = await import(
-        '../../services/deletion-score-service'
-      );
-
       // Fire and forget - don't wait for completion
       deletionScoreService.recalculateAllDeletionScores().catch((error) => {
         console.error('Background deletion score recalculation failed:', error);
@@ -370,7 +367,6 @@ export async function listDeletionScoreSettings(): Promise<
   { key: string; value: string; description?: string }[]
 > {
   try {
-    const { appSettingsService } = await import('../../database');
     const allSettings = await appSettingsService.getAll();
 
     return allSettings

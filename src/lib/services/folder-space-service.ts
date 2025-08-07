@@ -1,11 +1,12 @@
 import { sonarrApiClient } from './sonarr-service';
 import { radarrApiClient } from './radarr-service';
 import type { DiskSpaceInfo, RootFolderInfo } from './shared/arr-types';
-import type { ServiceSettings } from '../utils/prefixed-settings';
+import type { ServiceSettings } from '@/lib/utils/prefixed-settings';
 import {
   type FolderSpaceData,
   type FolderWithSpaceEnhanced,
-} from '../types/media-processing';
+} from '@/lib/types/media-processing';
+import { sonarrSettingsService, radarrSettingsService } from '@/lib/database';
 
 export class FolderSpaceService {
   /**
@@ -17,9 +18,6 @@ export class FolderSpaceService {
     );
 
     try {
-      const { sonarrSettingsService, radarrSettingsService } = await import(
-        '../database'
-      );
       const [sonarrInstances, radarrInstances] = await Promise.all([
         sonarrSettingsService.getEnabled(),
         radarrSettingsService.getEnabled(),
@@ -323,10 +321,6 @@ export class FolderSpaceService {
     console.log('🔍 Fetching folder space data from Sonarr/Radarr APIs...');
 
     try {
-      const { sonarrSettingsService, radarrSettingsService } = await import(
-        '../database'
-      );
-
       const [sonarrInstances, radarrInstances] = await Promise.all([
         sonarrSettingsService.getEnabled(),
         radarrSettingsService.getEnabled(),
