@@ -4,7 +4,6 @@ import {
   type RadarrMovie,
   type ProcessedMediaItem,
 } from '@/lib/media-processor/types';
-import { type EnhancedProcessingSettings } from '@/lib/actions/settings';
 import { getQualityScore } from '@/lib/media-processor/constants';
 import { EmbyService } from '@/lib/services/emby-service';
 import { type EmbySettings } from '@/lib/utils/single-emby-settings';
@@ -14,8 +13,7 @@ export class RadarrProcessor {
   static async processSingleItem(
     movie: RadarrMovie,
     radarrInstance: RadarrInstance,
-    embyInstance: EmbySettings | null,
-    enhancedSettings: EnhancedProcessingSettings
+    embyInstance: EmbySettings | null
   ): Promise<ProcessedMediaItem> {
     console.log(`🎬 Processing movie:`);
     console.log(`   Title: ${movie.title || 'Unknown'}`);
@@ -45,13 +43,11 @@ export class RadarrProcessor {
       monitored: movie.monitored,
     };
 
-    // Set quality score
-    if (enhancedSettings?.enableQualityAnalysis) {
+    {
       processedItem.qualityScore = getQualityScore(processedItem.quality);
     }
 
-    // Get enhanced details if enabled
-    if (enhancedSettings?.enableDetailedMetadata) {
+    {
       try {
         const details = await radarrApiClient.getMovieById(
           radarrInstance,
@@ -85,7 +81,7 @@ export class RadarrProcessor {
     }
 
     // Try to get playback information from Emby (ID-first)
-    if (enhancedSettings?.enablePlaybackProgress) {
+    {
       console.log(`   🎬 Querying Emby for playback info (ID-first)...`);
       const embyData = await EmbyService.getEmbyMediaDataEnhanced({
         title: movie.title || '',

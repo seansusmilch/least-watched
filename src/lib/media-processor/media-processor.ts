@@ -1,6 +1,5 @@
 import { sonarrSettingsService, radarrSettingsService } from '@/lib/database';
 import { type DatePreference } from '@/lib/types/media';
-import { type EnhancedProcessingSettings } from '@/lib/actions/settings';
 import { type DeletionScoreSettings } from '@/lib/actions/settings/types';
 import { folderSpaceService } from '@/lib/services/folder-space-service';
 import { ProgressStore } from './progress-store';
@@ -26,7 +25,6 @@ import path from 'path';
 
 export class MediaProcessor {
   private onProgress?: (progress: MediaProcessingProgress) => void;
-  private enhancedSettings: EnhancedProcessingSettings | null = null;
   private progressId: string;
 
   constructor(
@@ -35,18 +33,6 @@ export class MediaProcessor {
   ) {
     this.onProgress = onProgress;
     this.progressId = progressId || 'default';
-  }
-
-  private async ensureEnhancedSettings(): Promise<void> {
-    if (!this.enhancedSettings) {
-      // For now, use default settings since getEnhancedProcessingSettings doesn't exist
-      this.enhancedSettings = {
-        enableDeletionScoring: true,
-        enableDetailedMetadata: true,
-        enableQualityAnalysis: true,
-        enablePlaybackProgress: true,
-      };
-    }
   }
 
   private async updateProgress(
@@ -81,8 +67,6 @@ export class MediaProcessor {
       100,
       'Starting media processing...'
     );
-
-    await this.ensureEnhancedSettings();
 
     const [sonarrInstances, radarrInstances, datePreference, embyInstance] =
       await Promise.all([
@@ -252,7 +236,7 @@ export class MediaProcessor {
         }
 
         // Optional: playback enrichment using custom query by title from Emby
-        if (this.enhancedSettings?.enablePlaybackProgress) {
+        {
           const embyTitle = item.Name || item.OriginalTitle || processed.title;
           const playback = await EmbyService.getPlaybackInfo(
             embyTitle,
@@ -320,8 +304,7 @@ export class MediaProcessor {
         const processedItem = await SonarrProcessor.processSingleItem(
           seriesData,
           sonarrInstance,
-          embyInstance,
-          this.enhancedSettings!
+          embyInstance
         );
 
         // Store the item immediately
@@ -373,8 +356,7 @@ export class MediaProcessor {
         const processedItem = await RadarrProcessor.processSingleItem(
           movieData,
           radarrInstance,
-          embyInstance,
-          this.enhancedSettings!
+          embyInstance
         );
 
         // Store the item immediately

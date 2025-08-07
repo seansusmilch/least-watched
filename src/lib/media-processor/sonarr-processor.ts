@@ -4,7 +4,6 @@ import {
   type SonarrSeries,
   type ProcessedMediaItem,
 } from './types';
-import { type EnhancedProcessingSettings } from '@/lib/actions/settings';
 import { EmbyService } from '@/lib/services/emby-service';
 import { type EmbySettings } from '@/lib/utils/single-emby-settings';
 import { sonarrApiClient } from '@/lib/services/sonarr-service';
@@ -13,8 +12,7 @@ export class SonarrProcessor {
   static async processSingleItem(
     series: SonarrSeries,
     sonarrInstance: SonarrInstance,
-    embyInstance: EmbySettings | null,
-    enhancedSettings: EnhancedProcessingSettings
+    embyInstance: EmbySettings | null
   ): Promise<ProcessedMediaItem> {
     console.log(`📺 Processing series:`);
     console.log(`   Title: ${series.title || 'Unknown'}`);
@@ -58,7 +56,7 @@ export class SonarrProcessor {
     };
 
     // Get enhanced details if enabled
-    if (enhancedSettings?.enableDetailedMetadata) {
+    {
       try {
         const details = await sonarrApiClient.getSeriesById(
           sonarrInstance,
@@ -94,7 +92,7 @@ export class SonarrProcessor {
     }
 
     // Try to get playback information from Emby (ID-first)
-    if (enhancedSettings?.enablePlaybackProgress) {
+    {
       console.log(`   🎬 Querying Emby for playback info (ID-first)...`);
       const embyData = await EmbyService.getEmbyMediaDataEnhanced({
         title: series.title || '',

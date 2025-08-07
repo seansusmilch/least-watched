@@ -94,14 +94,6 @@ export const BatchSettingsSchema = z.object({
     .max(60000, 'Delay cannot exceed 60 seconds'),
 });
 
-// Enhanced Processing Settings Schema
-export const EnhancedProcessingSettingsSchema = z.object({
-  enableDeletionScoring: z.boolean(),
-  enableDetailedMetadata: z.boolean(),
-  enableQualityAnalysis: z.boolean(),
-  enablePlaybackProgress: z.boolean(),
-});
-
 // Deletion Score Settings Schema
 const BreakpointSchema = z.object({
   value: z.number().min(0),

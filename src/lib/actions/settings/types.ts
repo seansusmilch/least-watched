@@ -46,13 +46,6 @@ export interface BatchSettings {
   delayBetweenBatches: number; // milliseconds
 }
 
-export interface EnhancedProcessingSettings {
-  enableDeletionScoring: boolean;
-  enableDetailedMetadata: boolean;
-  enableQualityAnalysis: boolean;
-  enablePlaybackProgress: boolean;
-}
-
 export interface Breakpoint {
   value: number;
   percent: number;
