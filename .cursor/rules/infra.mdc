@@ -44,10 +44,9 @@ This document provides a summary of the `least-watched` project to be used by th
 *   `bun dev`: Starts the development server.
 *   `bun build`: Builds the application for production.
 *   `bun start`: Starts the production server.
-*   `bun lint`: Lints the code.
+*   `bun lint`: Type check and lints the code. (USE THIS FREQUENTLY TO CHECK YOUR WORK)
 *   `bun run db:generate`: Generates the Prisma client.
 *   `bun run db:push`: Pushes schema changes to the database.
 *   `bun run db:migrate`: Deploys database migrations.
 *   `bun run db:reset`: Resets the database.
 *   `bun run db:seed`: Seeds the database with test data.
-*   `bun run type-check`: Check types (USE THIS FREQUENTLY TO CHECK YOUR WORK)
