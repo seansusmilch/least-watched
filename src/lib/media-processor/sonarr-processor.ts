@@ -43,7 +43,7 @@ export class SonarrProcessor {
       mediaPath: series.path || '',
       parentFolder: series.path ? path.dirname(series.path) : '',
       sizeOnDisk: series.statistics?.sizeOnDisk || 0,
-      dateAdded: series.added ? new Date(series.added) : new Date(),
+      dateAddedArr: series.added ? new Date(series.added) : new Date(),
       source: sonarrInstance.name,
       sonarrId: series.id,
 
@@ -103,12 +103,11 @@ export class SonarrProcessor {
         processedItem.lastWatched = embyData.lastWatched;
         processedItem.watchCount = embyData.watchCount || 0;
 
-        const preferDateAdded = embyInstance?.preferEmbyDateAdded;
-        if (preferDateAdded && embyData.metadata?.DateCreated) {
+        if (embyData.metadata?.DateCreated) {
           console.log(
             `   🎬 Emby date added: ${embyData.metadata.DateCreated}`
           );
-          processedItem.dateAdded = new Date(embyData.metadata.DateCreated);
+          processedItem.dateAddedEmby = new Date(embyData.metadata.DateCreated);
         }
       } else {
         console.log(`   ❌ No Emby data found for: ${series.title}`);

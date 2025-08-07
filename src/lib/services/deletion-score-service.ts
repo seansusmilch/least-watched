@@ -1,6 +1,7 @@
 import { PrismaClient } from '../../generated/prisma';
 import { deletionScoreCalculator } from '../deletion-score-calculator';
 import { getDeletionScoreSettings } from '../actions/settings';
+import { getEmbySettings } from '../actions/settings/emby';
 import { folderSpaceService } from './folder-space-service';
 import { type FolderSpaceData } from '../types/media-processing';
 
@@ -60,10 +61,12 @@ export class DeletionScoreService {
       console.log('🔄 Starting deletion score recalculation...');
 
       // Get current settings and folder space data
-      const [deletionScoreSettings, folderSpaceData] = await Promise.all([
-        getDeletionScoreSettings(),
-        folderSpaceService.getFolderSpaceData(),
-      ]);
+      const [deletionScoreSettings, folderSpaceData, embySettings] =
+        await Promise.all([
+          getDeletionScoreSettings(),
+          folderSpaceService.getFolderSpaceData(),
+          getEmbySettings(),
+        ]);
 
       if (!deletionScoreSettings.enabled) {
         console.log('❌ Deletion scoring is disabled, skipping recalculation');
@@ -99,7 +102,8 @@ export class DeletionScoreService {
           select: {
             id: true,
             sizeOnDisk: true,
-            dateAdded: true,
+            dateAddedEmby: true,
+            dateAddedArr: true,
             lastWatched: true,
             parentFolder: true,
             deletionScore: true,
@@ -121,7 +125,9 @@ export class DeletionScoreService {
             {
               id: item.id,
               sizeOnDisk: item.sizeOnDisk,
-              dateAdded: item.dateAdded,
+              dateAddedEmby: item.dateAddedEmby,
+              dateAddedArr: item.dateAddedArr,
+              preferEmbyDateAdded: embySettings?.preferEmbyDateAdded || false,
               lastWatched: item.lastWatched,
               folderRemainingSpacePercent,
             },

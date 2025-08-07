@@ -1,17 +1,11 @@
 import { getUniqueFilterOptions } from '@/lib/utils/mediaFilters';
-import { MediaItem } from '@/lib/types/media';
-import { calculateUnwatchedDays } from '@/lib/utils/formatters';
+
 import { MediaPageContent } from './MediaPageContent';
-import { getMediaItems } from '@/lib/actions/media-processing';
+import { getProcessedMediaItems } from '@/lib/actions/media-processing';
 
 export async function MediaPageServer() {
-  // Fetch data
-  const items = await getMediaItems();
-
-  const processedItems: MediaItem[] = items.map((item) => ({
-    ...item,
-    unwatchedDays: calculateUnwatchedDays(item.lastWatched, item.dateAdded),
-  }));
+  // Fetch processed data
+  const processedItems = await getProcessedMediaItems();
 
   // Extract unique filter options from the data
   const filterOptions = getUniqueFilterOptions(processedItems);

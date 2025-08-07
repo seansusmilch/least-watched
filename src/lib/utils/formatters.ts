@@ -47,7 +47,7 @@ export const formatBytes = (bytes: number): string => {
 
 export const calculateUnwatchedDays = (
   lastWatched?: Date | string | null,
-  dateAdded?: Date | string | null
+  effectiveDateAdded?: Date | string | null
 ): number => {
   // Handle both Date objects and ISO date strings from cached data
   const parseDate = (date?: Date | string | null): DateTime | null => {
@@ -60,7 +60,7 @@ export const calculateUnwatchedDays = (
   };
 
   const referenceLuxonDate =
-    parseDate(lastWatched) || parseDate(dateAdded) || DateTime.now();
+    parseDate(lastWatched) || parseDate(effectiveDateAdded) || DateTime.now();
   const now = DateTime.now();
 
   const diffDays = Math.abs(now.diff(referenceLuxonDate, 'days').days);

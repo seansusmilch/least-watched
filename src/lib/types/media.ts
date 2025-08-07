@@ -5,7 +5,8 @@ export const MediaItemSchema = z.object({
   title: z.string(),
   type: z.string(), // 'movie' | 'tv' but stored as string in database
   year: z.number().optional().nullable(),
-  dateAdded: z.union([z.date(), z.string()]).optional().nullable(), // Can be Date object or ISO string from cache
+  dateAddedEmby: z.union([z.date(), z.string()]).optional().nullable(), // Can be Date object or ISO string from cache
+  dateAddedArr: z.union([z.date(), z.string()]).optional().nullable(), // Can be Date object or ISO string from cache
   lastWatched: z.union([z.date(), z.string()]).optional().nullable(), // Can be Date object or ISO string from cache
   sizeOnDisk: z.union([z.bigint()]).optional().nullable(), // in bytes, can be number or bigint
   source: z.string().optional().nullable(),
@@ -48,9 +49,34 @@ export const MediaItemSchema = z.object({
 
   // Deletion scoring
   deletionScore: z.number().optional().nullable(),
+
+  // Computed metadata
+  effectiveDateAdded: z.union([z.date(), z.string()]).optional().nullable(),
 });
 
 export type MediaItem = z.infer<typeof MediaItemSchema>;
+
+/**
+ * Helper function to get the effective dateAdded based on the preferEmbyDateAdded setting
+ */
+export function getEffectiveDateAdded(
+  item: MediaItem,
+  preferEmbyDateAdded: boolean = false
+): Date | null {
+  if (preferEmbyDateAdded && item.dateAddedEmby) {
+    return typeof item.dateAddedEmby === 'string'
+      ? new Date(item.dateAddedEmby)
+      : item.dateAddedEmby;
+  }
+
+  if (item.dateAddedArr) {
+    return typeof item.dateAddedArr === 'string'
+      ? new Date(item.dateAddedArr)
+      : item.dateAddedArr;
+  }
+
+  return null;
+}
 
 export interface SortCriteria {
   field: keyof MediaItem;

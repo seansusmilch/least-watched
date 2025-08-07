@@ -3,27 +3,32 @@
 import { useQuery } from '@tanstack/react-query';
 import { MediaTableBase } from './MediaTableBase';
 import { MediaTableSkeleton } from './MediaTableSkeleton';
-import { MediaItem } from '@/lib/types/media';
+
 import { useMediaTable } from '@/hooks/useMediaTable';
-import { getMediaItems } from '@/lib/actions/media-processing';
-import { calculateUnwatchedDays } from '@/lib/utils/formatters';
+import { getProcessedMediaItems } from '@/lib/actions/media-processing';
+import { getEmbySettings } from '@/lib/actions/settings/emby';
 
 export function MediaTable() {
   // Data fetching with TanStack Query
-  const { data: items = [], isLoading } = useQuery({
-    queryKey: ['media-items'],
-    queryFn: async () => {
-      const rawItems = await getMediaItems();
-      const processedItems: MediaItem[] = rawItems.map((item) => ({
-        ...item,
-        unwatchedDays: calculateUnwatchedDays(item.lastWatched, item.dateAdded),
-      }));
-      return processedItems;
-    },
-  });
+  const { data: queryResult = { items: [], embySettings: null }, isLoading } =
+    useQuery({
+      queryKey: ['media-items'],
+      queryFn: async () => {
+        const [processedItems, embySettings] = await Promise.all([
+          getProcessedMediaItems(),
+          getEmbySettings(),
+        ]);
+        return { items: processedItems, embySettings };
+      },
+    });
+
+  const { items, embySettings } = queryResult;
 
   // Initialize TanStack Table
-  const { table } = useMediaTable(items);
+  const { table } = useMediaTable(
+    items,
+    embySettings?.preferEmbyDateAdded || false
+  );
 
   if (isLoading) {
     return <MediaTableSkeleton />;

@@ -16,7 +16,10 @@ import {
   saveColumnVisibility,
 } from '@/lib/utils/columnConfig';
 
-export function useMediaTable(data: MediaItem[] = []) {
+export function useMediaTable(
+  data: MediaItem[] = [],
+  preferEmbyDateAdded: boolean = false
+) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
@@ -31,7 +34,10 @@ export function useMediaTable(data: MediaItem[] = []) {
   }, [columnVisibility]);
 
   // Memoize columns to prevent unnecessary re-renders
-  const columns = useMemo(() => createMediaTableColumns(), []);
+  const columns = useMemo(
+    () => createMediaTableColumns(preferEmbyDateAdded),
+    [preferEmbyDateAdded]
+  );
 
   const table = useReactTable({
     data,

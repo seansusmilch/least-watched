@@ -36,7 +36,7 @@ export class RadarrProcessor {
       mediaPath: movie.path || '',
       parentFolder: movie.path ? path.dirname(movie.path) : '',
       sizeOnDisk: movie.sizeOnDisk || 0,
-      dateAdded: movie.added ? new Date(movie.added) : new Date(),
+      dateAddedArr: movie.added ? new Date(movie.added) : new Date(),
       source: radarrInstance.name,
       radarrId: movie.id,
 
@@ -96,12 +96,11 @@ export class RadarrProcessor {
         processedItem.lastWatched = embyData.lastWatched;
         processedItem.watchCount = embyData.watchCount || 0;
 
-        const preferDateAdded = embyInstance?.preferEmbyDateAdded;
-        if (preferDateAdded && embyData.metadata?.DateCreated) {
+        if (embyData.metadata?.DateCreated) {
           console.log(
             `   🎬 Emby date added: ${embyData.metadata.DateCreated}`
           );
-          processedItem.dateAdded = new Date(embyData.metadata.DateCreated);
+          processedItem.dateAddedEmby = new Date(embyData.metadata.DateCreated);
         }
       } else {
         console.log(`   ❌ No Emby data found for: ${movie.title}`);

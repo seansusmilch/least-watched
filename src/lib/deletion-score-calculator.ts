@@ -3,7 +3,9 @@ import { DeletionScoreSettings } from './actions/settings/types';
 export interface MediaItemForScoring {
   id: string;
   sizeOnDisk?: bigint | null;
-  dateAdded?: Date | null;
+  dateAddedEmby?: Date | null;
+  dateAddedArr?: Date | null;
+  preferEmbyDateAdded?: boolean;
   lastWatched?: Date | null;
   folderRemainingSpacePercent?: number | null;
 }
@@ -47,6 +49,16 @@ export interface ScoreBreakdownData {
 }
 
 export class DeletionScoreCalculator {
+  /**
+   * Determines which dateAdded value to use based on the preferEmbyDateAdded setting
+   */
+  private getEffectiveDateAdded(item: MediaItemForScoring): Date | null {
+    if (item.preferEmbyDateAdded && item.dateAddedEmby) {
+      return item.dateAddedEmby;
+    }
+    return item.dateAddedArr || null;
+  }
+
   /**
    * Calculate deletion score for a single media item
    */
@@ -343,7 +355,8 @@ export class DeletionScoreCalculator {
     let totalScore = 0;
 
     // 1. Days unwatched factor
-    const referenceDate = item.lastWatched || item.dateAdded;
+    const effectiveDateAdded = this.getEffectiveDateAdded(item);
+    const referenceDate = item.lastWatched || effectiveDateAdded;
     const daysSinceReference = referenceDate
       ? Math.floor(
           (Date.now() - referenceDate.getTime()) / (1000 * 60 * 60 * 24)
@@ -393,15 +406,15 @@ export class DeletionScoreCalculator {
     }
 
     // 4. Age since added factor
-    const daysSinceAdded = item.dateAdded
+    const daysSinceAdded = effectiveDateAdded
       ? Math.floor(
-          (Date.now() - item.dateAdded.getTime()) / (1000 * 60 * 60 * 24)
+          (Date.now() - effectiveDateAdded.getTime()) / (1000 * 60 * 60 * 24)
         )
       : 0;
     let ageSinceAddedPoints = 0;
     let ageSinceAddedCategory = '';
 
-    if (settings.ageSinceAddedEnabled && item.dateAdded) {
+    if (settings.ageSinceAddedEnabled && effectiveDateAdded) {
       const { points, category } = this.getPointsForValue(
         daysSinceAdded,
         settings.ageSinceAddedBreakpoints,

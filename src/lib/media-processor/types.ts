@@ -17,7 +17,8 @@ export interface ProcessedMediaItem {
   mediaPath: string;
   parentFolder: string;
   sizeOnDisk: number;
-  dateAdded: Date;
+  dateAddedEmby?: Date;
+  dateAddedArr?: Date;
   source: string;
   sonarrId?: number;
   radarrId?: number;

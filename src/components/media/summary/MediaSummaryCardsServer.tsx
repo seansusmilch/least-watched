@@ -1,15 +1,9 @@
 import { MediaSummaryCards } from './MediaSummaryCards';
-import { calculateUnwatchedDays } from '@/lib/utils/formatters';
-import { MediaItem } from '@/lib/types/media';
-import { getMediaItems } from '@/lib/actions/media-processing';
+import { getProcessedMediaItems } from '@/lib/actions/media-processing';
 
 export async function MediaSummaryCardsServer() {
-  const items = await getMediaItems();
-
-  const processedItems: MediaItem[] = items.map((item) => ({
-    ...item,
-    unwatchedDays: calculateUnwatchedDays(item.lastWatched, item.dateAdded),
-  }));
+  // Fetch processed data
+  const processedItems = await getProcessedMediaItems();
 
   return (
     <MediaSummaryCards

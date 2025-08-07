@@ -4,6 +4,7 @@ import { type DeletionScoreSettings } from '../actions/settings/types';
 import { type FolderSpaceData } from '../types/media-processing';
 import { deletionScoreCalculator } from '../deletion-score-calculator';
 import { calculateFolderRemainingSpacePercent } from './constants';
+import { type EmbySettings } from '@/lib/utils/single-emby-settings';
 
 const prisma = new PrismaClient();
 
@@ -11,7 +12,8 @@ export class MediaStorage {
   static async storeProcessedItem(
     item: ProcessedMediaItem,
     deletionScoreSettings: DeletionScoreSettings,
-    folderSpaceData: FolderSpaceData[]
+    folderSpaceData: FolderSpaceData[],
+    embyInstance: EmbySettings | null = null
   ): Promise<void> {
     try {
       console.log(`📦 Storing item: ${item.title}`);
@@ -32,7 +34,9 @@ export class MediaStorage {
             {
               id: 'temp', // No existing item for new items
               sizeOnDisk: sizeOnDisk,
-              dateAdded: item.dateAdded,
+              dateAddedEmby: item.dateAddedEmby,
+              dateAddedArr: item.dateAddedArr,
+              preferEmbyDateAdded: embyInstance?.preferEmbyDateAdded || false,
               lastWatched: item.lastWatched,
               folderRemainingSpacePercent,
             },
@@ -49,7 +53,8 @@ export class MediaStorage {
         mediaPath: item.mediaPath,
         parentFolder: item.parentFolder,
         sizeOnDisk: sizeOnDisk,
-        dateAdded: item.dateAdded,
+        dateAddedEmby: item.dateAddedEmby,
+        dateAddedArr: item.dateAddedArr,
         source: item.source,
         embyId: item.embyId,
         lastWatched: item.lastWatched,

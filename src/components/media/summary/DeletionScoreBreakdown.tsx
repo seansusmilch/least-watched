@@ -20,9 +20,11 @@ import {
   Info,
   TrendingUp,
 } from 'lucide-react';
-import { MediaItem } from '@/lib/types/media';
+import { MediaItem, getEffectiveDateAdded } from '@/lib/types/media';
 import { formatDate, formatFileSize } from '@/lib/utils/formatters';
 import { getDeletionScoreSettings } from '@/lib/actions/settings';
+import { getEmbySettings } from '@/lib/actions/settings/emby';
+import { type EmbySettings } from '@/lib/utils/single-emby-settings';
 import {
   deletionScoreCalculator,
   type ScoreBreakdownData,
@@ -42,20 +44,32 @@ export function DeletionScoreBreakdown({
 }: DeletionScoreBreakdownProps) {
   const [breakdown, setBreakdown] = useState<ScoreBreakdownData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [embySettings, setEmbySettings] = useState<EmbySettings | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     new Set()
   );
 
+  // Helper to get effective date for display
+  const getEffectiveDate = () =>
+    getEffectiveDateAdded(item, embySettings?.preferEmbyDateAdded || false);
+
   const loadSettingsAndCalculateBreakdown = useCallback(async () => {
     try {
       setLoading(true);
-      const deletionSettings = await getDeletionScoreSettings();
+      const [deletionSettings, fetchedEmbySettings] = await Promise.all([
+        getDeletionScoreSettings(),
+        getEmbySettings(),
+      ]);
+
+      setEmbySettings(fetchedEmbySettings);
 
       // Convert MediaItem to MediaItemForScoring format
       const itemForScoring: MediaItemForScoring = {
         id: item.id,
         sizeOnDisk: item.sizeOnDisk ? BigInt(item.sizeOnDisk) : null,
-        dateAdded: item.dateAdded ? new Date(item.dateAdded) : null,
+        dateAddedEmby: item.dateAddedEmby ? new Date(item.dateAddedEmby) : null,
+        dateAddedArr: item.dateAddedArr ? new Date(item.dateAddedArr) : null,
+        preferEmbyDateAdded: fetchedEmbySettings?.preferEmbyDateAdded || false,
         lastWatched: item.lastWatched ? new Date(item.lastWatched) : null,
         folderRemainingSpacePercent: item.folderRemainingSpacePercent ?? null,
       };
@@ -153,7 +167,8 @@ export function DeletionScoreBreakdown({
 
       case 'ageSinceAdded': {
         const ageData = data as ScoreBreakdownData['ageSinceAdded'];
-        return item.dateAdded
+        const effectiveDate = getEffectiveDate();
+        return effectiveDate
           ? `This item was added ${ageData.daysSince} days ago. Older items that have been in your library longer get higher deletion scores.`
           : 'No date added information available for this item.';
       }
@@ -257,8 +272,8 @@ export function DeletionScoreBreakdown({
                     <div className='text-sm text-muted-foreground'>
                       {key === 'daysUnwatched' && (
                         <div>
-                          {breakdown.daysUnwatched.daysSince} days since last watched
-                          ({breakdown.daysUnwatched.category})
+                          {breakdown.daysUnwatched.daysSince} days since last
+                          watched ({breakdown.daysUnwatched.category})
                           {item.lastWatched && (
                             <div className='mt-1'>
                               <Eye className='h-3 w-3 inline mr-1' />
@@ -283,12 +298,12 @@ export function DeletionScoreBreakdown({
                         </div>
                       )}
 
-                      {key === 'ageSinceAdded' && item.dateAdded && (
+                      {key === 'ageSinceAdded' && getEffectiveDate() && (
                         <div>
                           {breakdown.ageSinceAdded.daysSince} days since added (
                           {breakdown.ageSinceAdded.category})
                           <div className='mt-1'>
-                            Added: {formatDate(item.dateAdded)}
+                            Added: {formatDate(getEffectiveDate()!)}
                           </div>
                         </div>
                       )}

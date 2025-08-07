@@ -16,6 +16,9 @@ import {
 import { prisma } from '../database';
 import { getProgress } from './progress';
 import { ProgressStore } from '../media-processor/progress-store';
+import { MediaItem, getEffectiveDateAdded } from '../types/media';
+import { calculateUnwatchedDays } from '../utils/formatters';
+import { getEmbySettings } from './settings/emby';
 
 // ============================================================================
 // Media Processing Functions
@@ -76,6 +79,44 @@ export async function getMediaItems() {
     return mediaItems;
   } catch (error) {
     console.error('Failed to get media items:', error);
+    return [];
+  }
+}
+
+export async function getProcessedMediaItems() {
+  try {
+    const [rawItems, embySettings] = await Promise.all([
+      getMediaItems(),
+      getEmbySettings(),
+    ]);
+
+    const processedItems = rawItems.map((item) => {
+      // Create a temporary object with required properties for getEffectiveDateAdded
+      const tempItem = {
+        ...item,
+        unwatchedDays: 0, // Temporary value
+      } as MediaItem;
+
+      const effectiveDateAdded = getEffectiveDateAdded(
+        tempItem,
+        embySettings?.preferEmbyDateAdded || false
+      );
+
+      const unwatchedDays = calculateUnwatchedDays(
+        item.lastWatched,
+        effectiveDateAdded
+      );
+
+      return {
+        ...item,
+        effectiveDateAdded,
+        unwatchedDays,
+      } as MediaItem;
+    });
+
+    return processedItems;
+  } catch (error) {
+    console.error('Failed to get processed media items:', error);
     return [];
   }
 }

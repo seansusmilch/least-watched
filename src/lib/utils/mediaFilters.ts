@@ -1,9 +1,15 @@
-import { MediaItem, SortCriteria, FilterOptions } from '@/lib/types/media';
+import {
+  MediaItem,
+  SortCriteria,
+  FilterOptions,
+  getEffectiveDateAdded,
+} from '@/lib/types/media';
 import { isMediaPathInFolder } from '@/lib/utils';
 
 export const filterMediaItems = (
   items: MediaItem[],
-  filters: FilterOptions
+  filters: FilterOptions,
+  preferEmbyDateAdded: boolean = false
 ): MediaItem[] => {
   return items.filter((item) => {
     // Basic search filter
@@ -80,8 +86,9 @@ export const filterMediaItems = (
       filters.monitored === undefined || item.monitored === filters.monitored;
 
     // Management filters
+    const effectiveDateAdded = getEffectiveDateAdded(item, preferEmbyDateAdded);
     const matchesDateAdded = applyDateRangeFilter(
-      item.dateAdded,
+      effectiveDateAdded,
       filters.dateAddedRange
     );
     const matchesFolder = applyFolderFilter(item, filters.folders);
@@ -278,9 +285,10 @@ export const sortMediaItems = (
 export const filterAndSortMediaItems = (
   items: MediaItem[],
   filters: FilterOptions,
-  sortCriteria: SortCriteria
+  sortCriteria: SortCriteria,
+  preferEmbyDateAdded: boolean = false
 ): MediaItem[] => {
-  const filtered = filterMediaItems(items, filters);
+  const filtered = filterMediaItems(items, filters, preferEmbyDateAdded);
   return sortMediaItems(filtered, sortCriteria);
 };
 

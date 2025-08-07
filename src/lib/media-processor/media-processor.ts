@@ -226,7 +226,8 @@ export class MediaProcessor {
         await MediaStorage.storeProcessedItem(
           processedItem,
           deletionScoreSettings,
-          folderSpaceData
+          folderSpaceData,
+          embyInstance
         );
 
         processedItems.push(processedItem);
@@ -277,7 +278,8 @@ export class MediaProcessor {
         await MediaStorage.storeProcessedItem(
           processedItem,
           deletionScoreSettings,
-          folderSpaceData
+          folderSpaceData,
+          embyInstance
         );
 
         processedItems.push(processedItem);
