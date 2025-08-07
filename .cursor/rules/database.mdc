@@ -1,24 +1,8 @@
 ---
-alwaysApply: true
+description: whenever data from the database is needed, or the database schema needs changing, or prisma is mentioned
+alwaysApply: false
 ---
 ## Database Management Rules
 - use prisma for ORM
-- make a backup of the database before performing a database reset
-- before doing a reset, evaluate if a reset is truly necessary
-- if a reset is necessary, ask the user for confirmation before continuing
 - use migrations for all database schema changes
-- use prisma migrations whenever the db structure changes
-- validate schema changes in development before applying to production
-- implement proper error handling for database operations
-- use transactions for operations that modify multiple records
-- implement proper indexing for frequently queried fields
-- use environment variables for database connection strings
-- implement connection pooling for database connections
 - log database operations for debugging and monitoring
-- implement proper data validation before database operations
-- use prepared statements to prevent SQL injection
-- implement proper backup strategies for production databases
-- test database operations with realistic data volumes
-- make a backup of the database before performing a database reset
-- before doing a reset, evaluate if a reset is truly necessary
-- if a reset is necessary, ask the user for confirmation before continuing

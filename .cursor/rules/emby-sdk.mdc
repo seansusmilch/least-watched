@@ -1,9 +1,7 @@
 ---
-description: "whenever the emby api is needed or mentioned"
-globs:
+description: whenever youre working with the emby api
 alwaysApply: false
 ---
-
 To interface with the Emby API, we must use the `emby-sdk-stainless` package.
 
 Docs can be found here: https://raw.githubusercontent.com/sqzw-x/emby-typescript/refs/heads/next/api.md

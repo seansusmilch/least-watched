@@ -1,0 +1,17 @@
+---
+globs: *.tsx
+alwaysApply: false
+---
+## State Management Rules with TanStack Query
+
+- Use `@tanstack/react-query` for all asynchronous data fetching and mutations.
+- Prefer `useQuery` for fetching and caching server data.
+- Use `useMutation` for performing server-side updates
+- Always define proper TypeScript types for query and mutation data.
+- Co-locate queries and mutations near the components that use them.
+- Use query keys that are descriptive and unique to avoid cache collisions.
+- Handle loading, error, and success states explicitly in the UI.
+- Invalidate or refetch queries after successful mutations to keep data in sync.
+- Prefer server actions for server-side logic in Next.js, and use TanStack Query for client-side data synchronization.
+- Avoid storing large or sensitive data in the client cache.
+- Use suspense and error boundaries for robust loading and error handling.
