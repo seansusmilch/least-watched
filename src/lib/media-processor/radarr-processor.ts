@@ -83,7 +83,7 @@ export class RadarrProcessor {
     // Try to get playback information from Emby (ID-first)
     {
       console.log(`   🎬 Querying Emby for playback info (ID-first)...`);
-      const embyData = await EmbyService.getEmbyMediaDataEnhanced({
+      const embyData = await EmbyService.getEmbyMediaDataByIdsFallback({
         title: movie.title || '',
         type: 'movie',
         tmdbId: movie.tmdbId ?? undefined,

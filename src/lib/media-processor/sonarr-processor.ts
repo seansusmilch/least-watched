@@ -94,7 +94,7 @@ export class SonarrProcessor {
     // Try to get playback information from Emby (ID-first)
     {
       console.log(`   🎬 Querying Emby for playback info (ID-first)...`);
-      const embyData = await EmbyService.getEmbyMediaDataEnhanced({
+      const embyData = await EmbyService.getEmbyMediaDataByIdsFallback({
         title: series.title || '',
         type: 'tv',
         tvdbId: series.tvdbId ?? undefined,
