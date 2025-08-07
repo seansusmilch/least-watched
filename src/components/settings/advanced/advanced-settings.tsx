@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
@@ -65,14 +65,15 @@ export function AdvancedSettings() {
     },
   });
 
-  // Initialize form data when query data loads
-  useEffect(() => {
-    if (datePreferenceQuery.data) {
-      form.reset({
-        datePreference: datePreferenceQuery.data as DatePreference,
-      });
-    }
-  }, [datePreferenceQuery.data, form]);
+  // Update form values when query data is available
+  if (
+    datePreferenceQuery.data &&
+    form.getValues('datePreference') !== datePreferenceQuery.data
+  ) {
+    form.reset({
+      datePreference: datePreferenceQuery.data,
+    });
+  }
 
   const onSubmit = async (data: AdvancedSettingsFormData) => {
     const currentValue = datePreferenceQuery.data || 'arr';
@@ -132,6 +133,31 @@ export function AdvancedSettings() {
   const hasUnsavedChanges =
     form.formState.isDirty && !updateDatePreferenceMutation.isPending;
 
+  // Show loading state while query is loading
+  if (datePreferenceQuery.isLoading) {
+    return (
+      <div className='space-y-6'>
+        <Card>
+          <CardHeader>
+            <CardTitle className='flex items-center gap-2'>
+              <AlertTriangle className='h-5 w-5' />
+              Advanced Configuration
+            </CardTitle>
+            <CardDescription>
+              Advanced settings and configuration options
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className='flex items-center justify-center p-8'>
+              <Loader2 className='h-6 w-6 animate-spin' />
+              <span className='ml-2'>Loading settings...</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className='space-y-6'>
       <Card>
@@ -174,7 +200,9 @@ export function AdvancedSettings() {
                         <Select
                           disabled={datePreferenceQuery.isLoading}
                           onValueChange={field.onChange}
-                          value={field.value}
+                          value={
+                            field.value || datePreferenceQuery.data || 'arr'
+                          }
                         >
                           <SelectTrigger className='w-36'>
                             <SelectValue

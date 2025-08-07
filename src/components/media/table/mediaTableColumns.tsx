@@ -2,19 +2,13 @@ import { createColumnHelper } from '@tanstack/react-table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import {
-  MediaItem,
-  getEffectiveDateAdded,
-  type DatePreference,
-} from '@/lib/types/media';
+import { MediaItem } from '@/lib/types/media';
 import { formatDate, formatFileSize } from '@/lib/utils/formatters';
 import { Film, Tv, Eye, Clock } from 'lucide-react';
 
 const columnHelper = createColumnHelper<MediaItem>();
 
-export const createMediaTableColumns = (
-  datePreference: DatePreference = 'arr'
-) => [
+export const createMediaTableColumns = () => [
   // Selection column
   columnHelper.display({
     id: 'select',
@@ -190,13 +184,33 @@ export const createMediaTableColumns = (
   }),
 
   // Date Added column
-  columnHelper.accessor((row) => getEffectiveDateAdded(row, datePreference), {
+  columnHelper.accessor('effectiveDateAdded', {
     id: 'dateAdded',
     header: 'Date Added',
     cell: ({ getValue }) => formatDate(getValue()),
     enableSorting: true,
     enableColumnFilter: true,
     size: 140,
+  }),
+
+  // Emby Date Added column (hidden by default via column config)
+  columnHelper.accessor('dateAddedEmby', {
+    id: 'dateAddedEmby',
+    header: 'Emby Date Added',
+    cell: ({ getValue }) => formatDate(getValue()),
+    enableSorting: true,
+    enableColumnFilter: true,
+    size: 160,
+  }),
+
+  // ARR Date Added column (hidden by default via column config)
+  columnHelper.accessor('dateAddedArr', {
+    id: 'dateAddedArr',
+    header: 'Arr Date Added',
+    cell: ({ getValue }) => formatDate(getValue()),
+    enableSorting: true,
+    enableColumnFilter: true,
+    size: 160,
   }),
 
   // Last Watched column

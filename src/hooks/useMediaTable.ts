@@ -9,17 +9,14 @@ import {
   RowSelectionState,
 } from '@tanstack/react-table';
 import { useState, useMemo, useEffect } from 'react';
-import { MediaItem, type DatePreference } from '@/lib/types/media';
+import { MediaItem } from '@/lib/types/media';
 import { createMediaTableColumns } from '@/components/media/table/mediaTableColumns';
 import {
   loadColumnVisibility,
   saveColumnVisibility,
 } from '@/lib/utils/columnConfig';
 
-export function useMediaTable(
-  data: MediaItem[] = [],
-  datePreference: DatePreference = 'arr'
-) {
+export function useMediaTable(data: MediaItem[] = []) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
@@ -34,10 +31,7 @@ export function useMediaTable(
   }, [columnVisibility]);
 
   // Memoize columns to prevent unnecessary re-renders
-  const columns = useMemo(
-    () => createMediaTableColumns(datePreference),
-    [datePreference]
-  );
+  const columns = useMemo(() => createMediaTableColumns(), []);
 
   const table = useReactTable({
     data,
@@ -107,32 +101,49 @@ export function useMediaTable(
     return table.getSelectedRowModel().rows.map((row) => row.original);
   };
 
-  const getSelectedSize = () => {
-    return getSelectedItems().reduce(
-      (sum, item) => sum + (Number(item.sizeOnDisk) || 0),
-      0
-    );
+  const getSelectedItemIds = () => {
+    return table.getSelectedRowModel().rows.map((row) => row.original.id);
+  };
+
+  const getSelectedItemSize = () => {
+    return table
+      .getSelectedRowModel()
+      .rows.reduce(
+        (sum, row) => sum + (Number(row.original.sizeOnDisk) || 0),
+        0
+      );
+  };
+
+  const clearSelection = () => {
+    table.toggleAllRowsSelected(false);
+  };
+
+  const selectAll = () => {
+    table.toggleAllRowsSelected(true);
+  };
+
+  const selectItemsByIds = (ids: string[]) => {
+    table.toggleAllRowsSelected(false);
+    ids.forEach((id) => {
+      const row = table
+        .getRowModel()
+        .rows.find((row) => row.original.id === id);
+      if (row) {
+        row.toggleSelected(true);
+      }
+    });
   };
 
   return {
     table,
-    // State
-    sorting,
-    columnFilters,
-    columnVisibility,
-    rowSelection,
-    globalFilter,
-    // State setters
-    setSorting,
-    setColumnFilters,
-    setColumnVisibility,
-    setRowSelection,
-    setGlobalFilter,
-    // Helper functions
     resetFilters,
     resetSorting,
     resetColumnVisibility,
     getSelectedItems,
-    getSelectedSize,
+    getSelectedItemIds,
+    getSelectedItemSize,
+    clearSelection,
+    selectAll,
+    selectItemsByIds,
   };
 }
