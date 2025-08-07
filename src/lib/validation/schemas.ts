@@ -182,3 +182,10 @@ export const handleServerError = (
   console.error('Server action error:', error);
   return createFormState(false, message);
 };
+
+// Advanced Settings Schema
+export const AdvancedSettingsSchema = z.object({
+  datePreference: z.enum(['arr', 'emby', 'oldest']),
+});
+
+export type AdvancedSettingsFormData = z.infer<typeof AdvancedSettingsSchema>;

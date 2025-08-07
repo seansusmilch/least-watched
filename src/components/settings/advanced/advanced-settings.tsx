@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -16,14 +18,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormMessage,
+} from '@/components/ui/form';
 import { AlertTriangle, Database, Trash2, Save, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { clearMediaItems } from '@/lib/actions/media-processing';
-import {
-  getDatePreference,
-  updateDatePreference,
-} from '@/lib/actions/settings/app-settings';
 import {
   Dialog,
   DialogContent,
@@ -34,77 +37,64 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { useAdvancedSettings } from '@/hooks/useAdvancedSettings';
+import {
+  AdvancedSettingsSchema,
+  type AdvancedSettingsFormData,
+} from '@/lib/validation/schemas';
 import type { DatePreference } from '@/lib/types/media';
 
 export function AdvancedSettings() {
-  const [isClearing, setIsClearing] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [datePreference, setDatePreference] = useState<DatePreference>('arr');
-  const [originalDatePreference, setOriginalDatePreference] =
-    useState<DatePreference>('arr');
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
 
-  // Load the date preference setting on component mount
+  const {
+    datePreferenceQuery,
+    updateDatePreferenceMutation,
+    clearMediaItemsMutation,
+  } = useAdvancedSettings();
+
+  const form = useForm<AdvancedSettingsFormData>({
+    resolver: zodResolver(AdvancedSettingsSchema),
+    defaultValues: {
+      datePreference: 'arr',
+    },
+  });
+
+  // Initialize form data when query data loads
   useEffect(() => {
-    const loadDatePreference = async () => {
-      try {
-        const preference = await getDatePreference();
-        setDatePreference(preference);
-        setOriginalDatePreference(preference);
-      } catch (error) {
-        console.error('Error loading date preference:', error);
-        toast.error('Failed to load date preference setting');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    if (datePreferenceQuery.data) {
+      form.reset({
+        datePreference: datePreferenceQuery.data as DatePreference,
+      });
+    }
+  }, [datePreferenceQuery.data, form]);
 
-    loadDatePreference();
-  }, []);
+  const onSubmit = async (data: AdvancedSettingsFormData) => {
+    try {
+      await updateDatePreferenceMutation.mutateAsync(data.datePreference);
+      toast.success('Settings saved successfully');
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to save settings'
+      );
+    }
+  };
 
   const handleClearMediaItems = async () => {
-    setIsClearing(true);
     try {
-      const result = await clearMediaItems();
-      if (result.success) {
-      } else {
-        toast.error(result.error || 'Failed to clear media items');
-      }
-    } catch {
-      toast.error('An unexpected error occurred');
+      const result = await clearMediaItemsMutation.mutateAsync();
+      toast.success(result.message || 'Media items cleared successfully');
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to clear media items'
+      );
     } finally {
-      setIsClearing(false);
       setIsDialogOpen(false);
     }
   };
 
-  const handleDatePreferenceChange = (value: string) => {
-    const newPreference = value as DatePreference;
-    setDatePreference(newPreference);
-  };
-
-  const handleSaveAllSettings = async () => {
-    setIsSaving(true);
-    try {
-      const result = await updateDatePreference(datePreference);
-      if (result.success) {
-        setOriginalDatePreference(datePreference);
-        toast.success('Settings saved successfully');
-      } else {
-        toast.error(result.error || 'Failed to save settings');
-        // Revert the state if the update failed
-        setDatePreference(originalDatePreference);
-      }
-    } catch (error) {
-      console.error('Error saving settings:', error);
-      toast.error('Failed to save settings');
-      // Revert the state if the update failed
-      setDatePreference(originalDatePreference);
-    } finally {
-      setIsSaving(false);
-    }
-  };
+  const hasUnsavedChanges =
+    form.formState.isDirty && !updateDatePreferenceMutation.isPending;
 
   return (
     <div className='space-y-6'>
@@ -118,65 +108,80 @@ export function AdvancedSettings() {
             Advanced settings and configuration options
           </CardDescription>
         </CardHeader>
-        <CardContent className='space-y-6'>
-          <div className='flex items-center justify-between p-4 border rounded-lg'>
-            <div className='space-y-1'>
-              <div className='flex items-center gap-2'>
-                <h4 className='font-medium'>Date Added Preference</h4>
-                <Badge variant='secondary'>Configuration</Badge>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
+              <div className='flex items-center justify-between p-4 border rounded-lg'>
+                <div className='space-y-1'>
+                  <div className='flex items-center gap-2'>
+                    <h4 className='font-medium'>Date Added Preference</h4>
+                    <Badge variant='secondary'>Configuration</Badge>
+                  </div>
+                  <p className='text-sm text-muted-foreground'>
+                    Choose which date to use when calculating age-based deletion
+                    scores. &quot;Oldest&quot; will use the earliest date
+                    available between Arr and Emby dates.
+                  </p>
+                </div>
+                <FormField
+                  control={form.control}
+                  name='datePreference'
+                  render={({ field }) => (
+                    <FormItem className='w-36'>
+                      <FormControl>
+                        <Select
+                          disabled={datePreferenceQuery.isLoading}
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <SelectTrigger className='w-36'>
+                            <SelectValue
+                              placeholder={
+                                datePreferenceQuery.isLoading
+                                  ? 'Loading...'
+                                  : 'Select date preference'
+                              }
+                            />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value='arr'>Arr Date</SelectItem>
+                            <SelectItem value='emby'>Emby Date</SelectItem>
+                            <SelectItem value='oldest'>Oldest Date</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
-              <p className='text-sm text-muted-foreground'>
-                Choose which date to use when calculating age-based deletion
-                scores. &quot;Oldest&quot; will use the earliest date available
-                between Arr and Emby dates.
-              </p>
-            </div>
-            <div className='flex items-center gap-2'>
-              <Select
-                value={datePreference}
-                onValueChange={handleDatePreferenceChange}
-                disabled={isLoading}
-              >
-                <SelectTrigger className='w-48'>
-                  <SelectValue
-                    placeholder={
-                      isLoading ? 'Loading...' : 'Select date preference'
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value='arr'>Arr Date (Sonarr/Radarr)</SelectItem>
-                  <SelectItem value='emby'>Emby Date</SelectItem>
-                  <SelectItem value='oldest'>Oldest Date</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
 
-          {/* Save Button */}
-          <div className='flex justify-end pt-4'>
-            <Button
-              onClick={handleSaveAllSettings}
-              disabled={
-                isLoading ||
-                isSaving ||
-                datePreference === originalDatePreference
-              }
-              data-testid='save-advanced-settings'
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 className='h-4 w-4 mr-2 animate-spin' />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className='h-4 w-4 mr-2' />
-                  Save Settings
-                </>
-              )}
-            </Button>
-          </div>
+              {/* Form Actions */}
+              <div className='flex justify-end pt-4'>
+                <Button
+                  type='submit'
+                  disabled={
+                    datePreferenceQuery.isLoading ||
+                    updateDatePreferenceMutation.isPending ||
+                    !hasUnsavedChanges
+                  }
+                  data-testid='save-advanced-settings'
+                >
+                  {updateDatePreferenceMutation.isPending ? (
+                    <>
+                      <Loader2 className='h-4 w-4 mr-2 animate-spin' />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className='h-4 w-4 mr-2' />
+                      Save Settings
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </Form>
         </CardContent>
       </Card>
       <Card>
@@ -239,16 +244,18 @@ export function AdvancedSettings() {
                   <Button
                     variant='outline'
                     onClick={() => setIsDialogOpen(false)}
-                    disabled={isClearing}
+                    disabled={clearMediaItemsMutation.isPending}
                   >
                     Cancel
                   </Button>
                   <Button
                     variant='destructive'
                     onClick={handleClearMediaItems}
-                    disabled={isClearing}
+                    disabled={clearMediaItemsMutation.isPending}
                   >
-                    {isClearing ? 'Clearing...' : 'Clear All Media Items'}
+                    {clearMediaItemsMutation.isPending
+                      ? 'Clearing...'
+                      : 'Clear All Media Items'}
                   </Button>
                 </DialogFooter>
               </DialogContent>
