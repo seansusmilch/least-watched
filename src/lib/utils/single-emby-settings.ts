@@ -7,7 +7,6 @@ export interface EmbySettings {
   userId?: string;
   enabled: boolean;
   selectedFolders?: string[];
-  preferEmbyDateAdded?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -19,7 +18,6 @@ export interface CreateEmbySettingsInput {
   userId?: string;
   enabled?: boolean;
   selectedFolders?: string[];
-  preferEmbyDateAdded?: boolean;
 }
 
 export interface UpdateEmbySettingsInput {
@@ -29,30 +27,21 @@ export interface UpdateEmbySettingsInput {
   userId?: string;
   enabled?: boolean;
   selectedFolders?: string[];
-  preferEmbyDateAdded?: boolean;
 }
 
 export const singleEmbySettingsService = {
   // Get the single Emby instance
   async get(): Promise<EmbySettings | null> {
     try {
-      const [
-        name,
-        url,
-        apiKey,
-        enabled,
-        userId,
-        selectedFolders,
-        preferEmbyDateAdded,
-      ] = await Promise.all([
-        appSettingsService.getValue('emby-name'),
-        appSettingsService.getValue('emby-url'),
-        appSettingsService.getValue('emby-apiKey'),
-        appSettingsService.getValue('emby-enabled'),
-        appSettingsService.getValue('emby-userId'),
-        appSettingsService.getValue('emby-selectedFolders'),
-        appSettingsService.getValue('emby-preferEmbyDateAdded'),
-      ]);
+      const [name, url, apiKey, enabled, userId, selectedFolders] =
+        await Promise.all([
+          appSettingsService.getValue('emby-name'),
+          appSettingsService.getValue('emby-url'),
+          appSettingsService.getValue('emby-apiKey'),
+          appSettingsService.getValue('emby-enabled'),
+          appSettingsService.getValue('emby-userId'),
+          appSettingsService.getValue('emby-selectedFolders'),
+        ]);
 
       if (!name || !url || !apiKey) {
         return null;
@@ -74,7 +63,6 @@ export const singleEmbySettingsService = {
         userId: userId || undefined,
         enabled: enabled === 'true',
         selectedFolders: parsedSelectedFolders,
-        preferEmbyDateAdded: preferEmbyDateAdded === 'true',
       };
     } catch (error) {
       console.error('Failed to get Emby settings:', error);
@@ -137,14 +125,6 @@ export const singleEmbySettingsService = {
       });
     }
 
-    if (data.preferEmbyDateAdded !== undefined) {
-      settingsToCreate.push({
-        key: 'emby-preferEmbyDateAdded',
-        value: data.preferEmbyDateAdded.toString(),
-        description: 'Prefer Emby date added',
-      });
-    }
-
     // Create all settings
     await Promise.all(
       settingsToCreate.map((setting) =>
@@ -163,7 +143,6 @@ export const singleEmbySettingsService = {
       userId: data.userId,
       enabled: data.enabled ?? true,
       selectedFolders: data.selectedFolders,
-      preferEmbyDateAdded: data.preferEmbyDateAdded ?? false,
     };
   },
 
@@ -235,14 +214,6 @@ export const singleEmbySettingsService = {
       }
     }
 
-    if (data.preferEmbyDateAdded !== undefined) {
-      updates.push({
-        key: 'emby-preferEmbyDateAdded',
-        value: data.preferEmbyDateAdded.toString(),
-        description: 'Prefer Emby date added',
-      });
-    }
-
     // Apply all updates
     await Promise.all(
       updates.map((update) =>
@@ -272,7 +243,6 @@ export const singleEmbySettingsService = {
       'emby-enabled',
       'emby-userId',
       'emby-selectedFolders',
-      'emby-preferEmbyDateAdded',
     ];
 
     await Promise.all(

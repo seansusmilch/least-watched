@@ -1,183 +1,147 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { appSettingsService } from '@/lib/database';
-import type {
-  AppSettingsInput,
-  BatchSettings,
-  EnhancedProcessingSettings,
-} from '@/lib/actions/settings/types';
+import { z } from 'zod';
+import { prisma } from '@/lib/database';
+import type { DatePreference } from '@/lib/types/media';
 
-// App Settings Actions
-export async function getAppSettings() {
+const DatePreferenceSchema = z.enum(['arr', 'emby', 'oldest']);
+
+const AppSettingsSchema = z.object({
+  datePreference: DatePreferenceSchema,
+});
+
+type AppSettings = z.infer<typeof AppSettingsSchema>;
+
+const DEFAULT_SETTINGS: AppSettings = {
+  datePreference: 'arr',
+};
+
+/**
+ * Get the current app settings
+ */
+export async function getAppSettings(): Promise<AppSettings> {
   try {
-    return await appSettingsService.getAll();
+    const datePreference = await prisma.appSettings.findUnique({
+      where: { key: 'date-preference' },
+    });
+
+    return {
+      datePreference:
+        (datePreference?.value as DatePreference) ||
+        DEFAULT_SETTINGS.datePreference,
+    };
   } catch (error) {
-    console.error('Failed to get app settings:', error);
-    throw new Error('Failed to get app settings');
+    console.error('Error getting app settings:', error);
+    return DEFAULT_SETTINGS;
   }
 }
 
-export async function getAppSetting(key: string) {
+/**
+ * Update app settings
+ */
+export async function updateAppSettings(settings: Partial<AppSettings>) {
   try {
-    return await appSettingsService.getByKey(key);
-  } catch (error) {
-    console.error('Failed to get app setting:', error);
-    throw new Error('Failed to get app setting');
-  }
-}
+    const validatedSettings = AppSettingsSchema.partial().parse(settings);
 
-export async function setAppSetting(data: AppSettingsInput) {
-  try {
-    const setting = await appSettingsService.setValue(
-      data.key,
-      data.value,
-      data.description
-    );
-
-    revalidatePath('/settings');
-    return { success: true, data: setting };
-  } catch (error) {
-    console.error('Failed to set app setting:', error);
-    return { success: false, error: 'Failed to set app setting' };
-  }
-}
-
-export async function deleteAppSetting(key: string) {
-  try {
-    await appSettingsService.delete(key);
+    // Update date preference if provided
+    if (validatedSettings.datePreference) {
+      await prisma.appSettings.upsert({
+        where: { key: 'date-preference' },
+        update: { value: validatedSettings.datePreference },
+        create: {
+          key: 'date-preference',
+          value: validatedSettings.datePreference,
+          description: 'Date preference for media items (arr, emby, oldest)',
+        },
+      });
+    }
 
     revalidatePath('/settings');
     return { success: true };
   } catch (error) {
-    console.error('Failed to delete app setting:', error);
-    return { success: false, error: 'Failed to delete app setting' };
+    console.error('Error updating app settings:', error);
+    return { success: false, error: 'Failed to update app settings' };
   }
 }
 
-export async function getBatchSettings(): Promise<BatchSettings> {
+/**
+ * Get just the date preference setting
+ */
+export async function getDatePreference(): Promise<DatePreference> {
   try {
-    const batchSize =
-      (await appSettingsService.getValue('batch_size', '50')) || '50';
-    const delayBetweenBatches =
-      (await appSettingsService.getValue('batch_delay', '1000')) || '1000';
-
-    return {
-      batchSize: parseInt(batchSize, 10),
-      delayBetweenBatches: parseInt(delayBetweenBatches, 10),
-    };
-  } catch (error) {
-    console.error('Error getting batch settings:', error);
-    return {
-      batchSize: 50,
-      delayBetweenBatches: 1000,
-    };
-  }
-}
-
-export async function setBatchSettings(
-  settings: BatchSettings
-): Promise<{ success: boolean; message: string }> {
-  try {
-    await setAppSetting({
-      key: 'batchSize',
-      value: settings.batchSize.toString(),
-      description: 'Number of items to process in each batch',
+    const setting = await prisma.appSettings.findUnique({
+      where: { key: 'date-preference' },
     });
 
-    await setAppSetting({
-      key: 'delayBetweenBatches',
-      value: settings.delayBetweenBatches.toString(),
-      description: 'Delay between batches in milliseconds',
+    return (setting?.value as DatePreference) || 'arr';
+  } catch (error) {
+    console.error('Error getting date preference:', error);
+    return 'arr';
+  }
+}
+
+/**
+ * Update just the date preference setting
+ */
+export async function updateDatePreference(datePreference: DatePreference) {
+  try {
+    await prisma.appSettings.upsert({
+      where: { key: 'date-preference' },
+      update: { value: datePreference },
+      create: {
+        key: 'date-preference',
+        value: datePreference,
+        description: 'Date preference for media items (arr, emby, oldest)',
+      },
     });
 
     revalidatePath('/settings');
-    return { success: true, message: 'Batch settings updated successfully' };
+    return { success: true };
   } catch (error) {
-    console.error('Failed to set batch settings:', error);
-    return { success: false, message: 'Failed to update batch settings' };
+    console.error('Error updating date preference:', error);
+    return { success: false, error: 'Failed to update date preference' };
   }
 }
 
-// Enhanced Media Processing Settings
-export async function getEnhancedProcessingSettings(): Promise<EnhancedProcessingSettings> {
+/**
+ * Get a specific app setting by key
+ */
+export async function getAppSetting(key: string) {
   try {
-    const [
-      deletionScoring,
-      detailedMetadata,
-      qualityAnalysis,
-      playbackProgress,
-    ] = await Promise.all([
-      getAppSetting('enableDeletionScoring'),
-      getAppSetting('enableDetailedMetadata'),
-      getAppSetting('enableQualityAnalysis'),
-      getAppSetting('enablePlaybackProgress'),
-    ]);
-
-    return {
-      enableDeletionScoring: deletionScoring
-        ? deletionScoring.value === 'true'
-        : true,
-      enableDetailedMetadata: detailedMetadata
-        ? detailedMetadata.value === 'true'
-        : true,
-      enableQualityAnalysis: qualityAnalysis
-        ? qualityAnalysis.value === 'true'
-        : true,
-      enablePlaybackProgress: playbackProgress
-        ? playbackProgress.value === 'true'
-        : true,
-    };
+    const setting = await prisma.appSettings.findUnique({
+      where: { key },
+    });
+    return setting;
   } catch (error) {
-    console.error('Failed to get enhanced processing settings:', error);
-    // Return defaults
-    return {
-      enableDeletionScoring: true,
-      enableDetailedMetadata: true,
-      enableQualityAnalysis: true,
-      enablePlaybackProgress: true,
-    };
+    console.error('Error getting app setting:', error);
+    return null;
   }
 }
 
-export async function setEnhancedProcessingSettings(
-  settings: EnhancedProcessingSettings
-): Promise<{ success: boolean; message: string }> {
+/**
+ * Set a specific app setting
+ */
+export async function setAppSetting(data: {
+  key: string;
+  value: string;
+  description?: string;
+}) {
   try {
-    await Promise.all([
-      setAppSetting({
-        key: 'enableDeletionScoring',
-        value: settings.enableDeletionScoring.toString(),
-        description: 'Enable deletion priority scoring for media items',
-      }),
-      setAppSetting({
-        key: 'enableDetailedMetadata',
-        value: settings.enableDetailedMetadata.toString(),
-        description: 'Fetch detailed metadata (ratings, genres, overview)',
-      }),
-      setAppSetting({
-        key: 'enableQualityAnalysis',
-        value: settings.enableQualityAnalysis.toString(),
-        description:
-          'Analyze quality profiles and calculate efficiency metrics',
-      }),
-      setAppSetting({
-        key: 'enablePlaybackProgress',
-        value: settings.enablePlaybackProgress.toString(),
-        description: 'Fetch detailed playback progress from Emby',
-      }),
-    ]);
+    await prisma.appSettings.upsert({
+      where: { key: data.key },
+      update: { value: data.value, description: data.description },
+      create: {
+        key: data.key,
+        value: data.value,
+        description: data.description,
+      },
+    });
 
     revalidatePath('/settings');
-    return {
-      success: true,
-      message: 'Enhanced processing settings updated successfully',
-    };
+    return { success: true };
   } catch (error) {
-    console.error('Failed to set enhanced processing settings:', error);
-    return {
-      success: false,
-      message: 'Failed to update enhanced processing settings',
-    };
+    console.error('Error setting app setting:', error);
+    return { success: false, error: 'Failed to set app setting' };
   }
 }

@@ -18,7 +18,7 @@ import { getProgress } from './progress';
 import { ProgressStore } from '../media-processor/progress-store';
 import { MediaItem, getEffectiveDateAdded } from '../types/media';
 import { calculateUnwatchedDays } from '../utils/formatters';
-import { getEmbySettings } from './settings/emby';
+import { getDatePreference } from './settings/app-settings';
 
 // ============================================================================
 // Media Processing Functions
@@ -85,9 +85,9 @@ export async function getMediaItems() {
 
 export async function getProcessedMediaItems() {
   try {
-    const [rawItems, embySettings] = await Promise.all([
+    const [rawItems, datePreference] = await Promise.all([
       getMediaItems(),
-      getEmbySettings(),
+      getDatePreference(),
     ]);
 
     const processedItems = rawItems.map((item) => {
@@ -99,7 +99,7 @@ export async function getProcessedMediaItems() {
 
       const effectiveDateAdded = getEffectiveDateAdded(
         tempItem,
-        embySettings?.preferEmbyDateAdded || false
+        datePreference
       );
 
       const unwatchedDays = calculateUnwatchedDays(

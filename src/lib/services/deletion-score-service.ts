@@ -1,7 +1,7 @@
 import { PrismaClient } from '../../generated/prisma';
 import { deletionScoreCalculator } from '../deletion-score-calculator';
 import { getDeletionScoreSettings } from '../actions/settings';
-import { getEmbySettings } from '../actions/settings/emby';
+import { getDatePreference } from '../actions/settings/app-settings';
 import { folderSpaceService } from './folder-space-service';
 import { type FolderSpaceData } from '../types/media-processing';
 
@@ -61,11 +61,11 @@ export class DeletionScoreService {
       console.log('🔄 Starting deletion score recalculation...');
 
       // Get current settings and folder space data
-      const [deletionScoreSettings, folderSpaceData, embySettings] =
+      const [deletionScoreSettings, folderSpaceData, datePreference] =
         await Promise.all([
           getDeletionScoreSettings(),
           folderSpaceService.getFolderSpaceData(),
-          getEmbySettings(),
+          getDatePreference(),
         ]);
 
       if (!deletionScoreSettings.enabled) {
@@ -127,7 +127,7 @@ export class DeletionScoreService {
               sizeOnDisk: item.sizeOnDisk,
               dateAddedEmby: item.dateAddedEmby,
               dateAddedArr: item.dateAddedArr,
-              preferEmbyDateAdded: embySettings?.preferEmbyDateAdded || false,
+              datePreference: datePreference,
               lastWatched: item.lastWatched,
               folderRemainingSpacePercent,
             },

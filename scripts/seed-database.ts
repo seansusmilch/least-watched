@@ -33,7 +33,6 @@ interface SeedConfig {
         userId?: string;
         enabled: boolean;
         selectedFolders?: string[];
-        preferEmbyDateAdded?: boolean;
       }
     | Array<{
         name: string;
@@ -42,7 +41,6 @@ interface SeedConfig {
         userId?: string;
         enabled: boolean;
         selectedFolders?: string[];
-        preferEmbyDateAdded?: boolean;
       }>;
   appSettings: Array<{
     key: string;
@@ -364,7 +362,6 @@ async function seedDatabase() {
           userId: embySettingToCreate.userId,
           enabled: embySettingToCreate.enabled,
           selectedFolders: embySettingToCreate.selectedFolders,
-          preferEmbyDateAdded: embySettingToCreate.preferEmbyDateAdded,
         });
         embyCreated = true;
 

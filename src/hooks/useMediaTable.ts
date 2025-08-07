@@ -9,7 +9,7 @@ import {
   RowSelectionState,
 } from '@tanstack/react-table';
 import { useState, useMemo, useEffect } from 'react';
-import { MediaItem } from '@/lib/types/media';
+import { MediaItem, type DatePreference } from '@/lib/types/media';
 import { createMediaTableColumns } from '@/components/media/table/mediaTableColumns';
 import {
   loadColumnVisibility,
@@ -18,7 +18,7 @@ import {
 
 export function useMediaTable(
   data: MediaItem[] = [],
-  preferEmbyDateAdded: boolean = false
+  datePreference: DatePreference = 'arr'
 ) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -35,8 +35,8 @@ export function useMediaTable(
 
   // Memoize columns to prevent unnecessary re-renders
   const columns = useMemo(
-    () => createMediaTableColumns(preferEmbyDateAdded),
-    [preferEmbyDateAdded]
+    () => createMediaTableColumns(datePreference),
+    [datePreference]
   );
 
   const table = useReactTable({

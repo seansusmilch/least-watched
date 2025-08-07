@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -9,9 +9,21 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { AlertTriangle, Database, Trash2 } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
+import { AlertTriangle, Database, Trash2, Save, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { clearMediaItems } from '@/lib/actions/media-processing';
+import {
+  getDatePreference,
+  updateDatePreference,
+} from '@/lib/actions/settings/app-settings';
 import {
   Dialog,
   DialogContent,
@@ -22,10 +34,34 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import type { DatePreference } from '@/lib/types/media';
 
 export function AdvancedSettings() {
   const [isClearing, setIsClearing] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [datePreference, setDatePreference] = useState<DatePreference>('arr');
+  const [originalDatePreference, setOriginalDatePreference] =
+    useState<DatePreference>('arr');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Load the date preference setting on component mount
+  useEffect(() => {
+    const loadDatePreference = async () => {
+      try {
+        const preference = await getDatePreference();
+        setDatePreference(preference);
+        setOriginalDatePreference(preference);
+      } catch (error) {
+        console.error('Error loading date preference:', error);
+        toast.error('Failed to load date preference setting');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadDatePreference();
+  }, []);
 
   const handleClearMediaItems = async () => {
     setIsClearing(true);
@@ -43,8 +79,106 @@ export function AdvancedSettings() {
     }
   };
 
+  const handleDatePreferenceChange = (value: string) => {
+    const newPreference = value as DatePreference;
+    setDatePreference(newPreference);
+  };
+
+  const handleSaveAllSettings = async () => {
+    setIsSaving(true);
+    try {
+      const result = await updateDatePreference(datePreference);
+      if (result.success) {
+        setOriginalDatePreference(datePreference);
+        toast.success('Settings saved successfully');
+      } else {
+        toast.error(result.error || 'Failed to save settings');
+        // Revert the state if the update failed
+        setDatePreference(originalDatePreference);
+      }
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      toast.error('Failed to save settings');
+      // Revert the state if the update failed
+      setDatePreference(originalDatePreference);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div className='space-y-6'>
+      <Card>
+        <CardHeader>
+          <CardTitle className='flex items-center gap-2'>
+            <AlertTriangle className='h-5 w-5' />
+            Advanced Configuration
+          </CardTitle>
+          <CardDescription>
+            Advanced settings and configuration options
+          </CardDescription>
+        </CardHeader>
+        <CardContent className='space-y-6'>
+          <div className='flex items-center justify-between p-4 border rounded-lg'>
+            <div className='space-y-1'>
+              <div className='flex items-center gap-2'>
+                <h4 className='font-medium'>Date Added Preference</h4>
+                <Badge variant='secondary'>Configuration</Badge>
+              </div>
+              <p className='text-sm text-muted-foreground'>
+                Choose which date to use when calculating age-based deletion
+                scores. &quot;Oldest&quot; will use the earliest date available
+                between Arr and Emby dates.
+              </p>
+            </div>
+            <div className='flex items-center gap-2'>
+              <Select
+                value={datePreference}
+                onValueChange={handleDatePreferenceChange}
+                disabled={isLoading}
+              >
+                <SelectTrigger className='w-48'>
+                  <SelectValue
+                    placeholder={
+                      isLoading ? 'Loading...' : 'Select date preference'
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='arr'>Arr Date (Sonarr/Radarr)</SelectItem>
+                  <SelectItem value='emby'>Emby Date</SelectItem>
+                  <SelectItem value='oldest'>Oldest Date</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Save Button */}
+          <div className='flex justify-end pt-4'>
+            <Button
+              onClick={handleSaveAllSettings}
+              disabled={
+                isLoading ||
+                isSaving ||
+                datePreference === originalDatePreference
+              }
+              data-testid='save-advanced-settings'
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className='h-4 w-4 mr-2 animate-spin' />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className='h-4 w-4 mr-2' />
+                  Save Settings
+                </>
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
       <Card>
         <CardHeader>
           <CardTitle className='flex items-center gap-2'>
@@ -120,24 +254,6 @@ export function AdvancedSettings() {
               </DialogContent>
             </Dialog>
           </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className='flex items-center gap-2'>
-            <AlertTriangle className='h-5 w-5' />
-            Advanced Configuration
-          </CardTitle>
-          <CardDescription>
-            Advanced settings and configuration options
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className='text-muted-foreground'>
-            Additional advanced configuration options will be available here in
-            future updates.
-          </p>
         </CardContent>
       </Card>
     </div>

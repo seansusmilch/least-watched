@@ -20,11 +20,14 @@ import {
   Info,
   TrendingUp,
 } from 'lucide-react';
-import { MediaItem, getEffectiveDateAdded } from '@/lib/types/media';
+import {
+  MediaItem,
+  getEffectiveDateAdded,
+  type DatePreference,
+} from '@/lib/types/media';
 import { formatDate, formatFileSize } from '@/lib/utils/formatters';
 import { getDeletionScoreSettings } from '@/lib/actions/settings';
-import { getEmbySettings } from '@/lib/actions/settings/emby';
-import { type EmbySettings } from '@/lib/utils/single-emby-settings';
+import { getDatePreference } from '@/lib/actions/settings/app-settings';
 import {
   deletionScoreCalculator,
   type ScoreBreakdownData,
@@ -44,24 +47,23 @@ export function DeletionScoreBreakdown({
 }: DeletionScoreBreakdownProps) {
   const [breakdown, setBreakdown] = useState<ScoreBreakdownData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [embySettings, setEmbySettings] = useState<EmbySettings | null>(null);
+  const [datePreference, setDatePreference] = useState<DatePreference>('arr');
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     new Set()
   );
 
   // Helper to get effective date for display
-  const getEffectiveDate = () =>
-    getEffectiveDateAdded(item, embySettings?.preferEmbyDateAdded || false);
+  const getEffectiveDate = () => getEffectiveDateAdded(item, datePreference);
 
   const loadSettingsAndCalculateBreakdown = useCallback(async () => {
     try {
       setLoading(true);
-      const [deletionSettings, fetchedEmbySettings] = await Promise.all([
+      const [deletionSettings, fetchedDatePreference] = await Promise.all([
         getDeletionScoreSettings(),
-        getEmbySettings(),
+        getDatePreference(),
       ]);
 
-      setEmbySettings(fetchedEmbySettings);
+      setDatePreference(fetchedDatePreference);
 
       // Convert MediaItem to MediaItemForScoring format
       const itemForScoring: MediaItemForScoring = {
@@ -69,7 +71,7 @@ export function DeletionScoreBreakdown({
         sizeOnDisk: item.sizeOnDisk ? BigInt(item.sizeOnDisk) : null,
         dateAddedEmby: item.dateAddedEmby ? new Date(item.dateAddedEmby) : null,
         dateAddedArr: item.dateAddedArr ? new Date(item.dateAddedArr) : null,
-        preferEmbyDateAdded: fetchedEmbySettings?.preferEmbyDateAdded || false,
+        datePreference: fetchedDatePreference,
         lastWatched: item.lastWatched ? new Date(item.lastWatched) : null,
         folderRemainingSpacePercent: item.folderRemainingSpacePercent ?? null,
       };

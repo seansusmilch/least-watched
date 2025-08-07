@@ -25,7 +25,6 @@ function convertEmbyToServiceSettings(
     apiKey: embySettings.apiKey,
     enabled: embySettings.enabled,
     userId: embySettings.userId,
-    preferEmbyDateAdded: embySettings.preferEmbyDateAdded,
     selectedFolders: embySettings.selectedFolders,
     createdAt: embySettings.createdAt || new Date(),
     updatedAt: embySettings.updatedAt || new Date(),

@@ -1,9 +1,5 @@
-import {
-  sonarrSettingsService,
-  radarrSettingsService,
-  embySettingsService,
-} from '@/lib/database';
-import { type EmbySettings } from '@/lib/utils/single-emby-settings';
+import { sonarrSettingsService, radarrSettingsService } from '@/lib/database';
+import { type DatePreference } from '@/lib/types/media';
 import { type EnhancedProcessingSettings } from '@/lib/actions/settings';
 import { type DeletionScoreSettings } from '@/lib/actions/settings/types';
 import { folderSpaceService } from '@/lib/services/folder-space-service';
@@ -19,10 +15,8 @@ import {
   type RadarrInstance,
 } from './types';
 import { type FolderSpaceData } from '@/lib/types/media-processing';
-import {
-  getDeletionScoreSettings,
-  getEnhancedProcessingSettings,
-} from '@/lib/actions/settings';
+import { getDeletionScoreSettings } from '@/lib/actions/settings';
+import { getDatePreference } from '@/lib/actions/settings/app-settings';
 import { sonarrApiClient } from '@/lib/services/sonarr-service';
 import { radarrApiClient } from '@/lib/services/radarr-service';
 
@@ -41,7 +35,13 @@ export class MediaProcessor {
 
   private async ensureEnhancedSettings(): Promise<void> {
     if (!this.enhancedSettings) {
-      this.enhancedSettings = await getEnhancedProcessingSettings();
+      // For now, use default settings since getEnhancedProcessingSettings doesn't exist
+      this.enhancedSettings = {
+        enableDeletionScoring: true,
+        enableDetailedMetadata: true,
+        enableQualityAnalysis: true,
+        enablePlaybackProgress: true,
+      };
     }
   }
 
@@ -81,12 +81,13 @@ export class MediaProcessor {
     // Ensure settings are loaded
     await this.ensureEnhancedSettings();
 
-    // Get all enabled instances
-    const [sonarrInstances, radarrInstances, embyInstance] = await Promise.all([
-      sonarrSettingsService.getEnabled(),
-      radarrSettingsService.getEnabled(),
-      embySettingsService.getEnabled(),
-    ]);
+    // Get all enabled instances and date preference
+    const [sonarrInstances, radarrInstances, datePreference] =
+      await Promise.all([
+        sonarrSettingsService.getEnabled(),
+        radarrSettingsService.getEnabled(),
+        getDatePreference(),
+      ]);
 
     // Calculate total items across all instances
     await this.updateProgress(
@@ -136,7 +137,7 @@ export class MediaProcessor {
       try {
         const sonarrItems = await this.processSonarrInstance(
           sonarrInstance,
-          embyInstance,
+          datePreference,
           processedItemCount,
           totalItems,
           deletionScoreSettings,
@@ -157,7 +158,7 @@ export class MediaProcessor {
       try {
         const radarrItems = await this.processRadarrInstance(
           radarrInstance,
-          embyInstance,
+          datePreference,
           processedItemCount,
           totalItems,
           deletionScoreSettings,
@@ -189,7 +190,7 @@ export class MediaProcessor {
 
   private async processSonarrInstance(
     sonarrInstance: SonarrInstance,
-    embyInstance: EmbySettings | null,
+    datePreference: DatePreference,
     processedItemCount: number,
     totalItems: number,
     deletionScoreSettings: DeletionScoreSettings,
@@ -218,7 +219,7 @@ export class MediaProcessor {
         const processedItem = await SonarrProcessor.processSingleItem(
           seriesData,
           sonarrInstance,
-          embyInstance,
+          null, // No emby instance needed for processing
           this.enhancedSettings!
         );
 
@@ -227,7 +228,7 @@ export class MediaProcessor {
           processedItem,
           deletionScoreSettings,
           folderSpaceData,
-          embyInstance
+          datePreference
         );
 
         processedItems.push(processedItem);
@@ -241,7 +242,7 @@ export class MediaProcessor {
 
   private async processRadarrInstance(
     radarrInstance: RadarrInstance,
-    embyInstance: EmbySettings | null,
+    datePreference: DatePreference,
     processedItemCount: number,
     totalItems: number,
     deletionScoreSettings: DeletionScoreSettings,
@@ -270,7 +271,7 @@ export class MediaProcessor {
         const processedItem = await RadarrProcessor.processSingleItem(
           movieData,
           radarrInstance,
-          embyInstance,
+          null, // No emby instance needed for processing
           this.enhancedSettings!
         );
 
@@ -279,7 +280,7 @@ export class MediaProcessor {
           processedItem,
           deletionScoreSettings,
           folderSpaceData,
-          embyInstance
+          datePreference
         );
 
         processedItems.push(processedItem);

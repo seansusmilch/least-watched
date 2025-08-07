@@ -38,7 +38,6 @@ export async function createEmbySetting(
       apiKey: validatedData.apiKey,
       userId: validatedData.userId,
       enabled: validatedData.enabled,
-      preferEmbyDateAdded: validatedData.preferEmbyDateAdded,
     });
 
     revalidatePath('/settings');
@@ -70,7 +69,6 @@ export async function updateEmbySetting(
       userId: validatedData.userId,
       enabled: validatedData.enabled,
       selectedFolders: validatedData.selectedFolders,
-      preferEmbyDateAdded: validatedData.preferEmbyDateAdded,
     });
 
     revalidatePath('/settings');

@@ -2,14 +2,18 @@ import { createColumnHelper } from '@tanstack/react-table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { MediaItem, getEffectiveDateAdded } from '@/lib/types/media';
+import {
+  MediaItem,
+  getEffectiveDateAdded,
+  type DatePreference,
+} from '@/lib/types/media';
 import { formatDate, formatFileSize } from '@/lib/utils/formatters';
 import { Film, Tv, Eye, Clock } from 'lucide-react';
 
 const columnHelper = createColumnHelper<MediaItem>();
 
 export const createMediaTableColumns = (
-  preferEmbyDateAdded: boolean = false
+  datePreference: DatePreference = 'arr'
 ) => [
   // Selection column
   columnHelper.display({
@@ -186,17 +190,14 @@ export const createMediaTableColumns = (
   }),
 
   // Date Added column
-  columnHelper.accessor(
-    (row) => getEffectiveDateAdded(row, preferEmbyDateAdded),
-    {
-      id: 'dateAdded',
-      header: 'Date Added',
-      cell: ({ getValue }) => formatDate(getValue()),
-      enableSorting: true,
-      enableColumnFilter: true,
-      size: 140,
-    }
-  ),
+  columnHelper.accessor((row) => getEffectiveDateAdded(row, datePreference), {
+    id: 'dateAdded',
+    header: 'Date Added',
+    cell: ({ getValue }) => formatDate(getValue()),
+    enableSorting: true,
+    enableColumnFilter: true,
+    size: 140,
+  }),
 
   // Last Watched column
   columnHelper.accessor('lastWatched', {

@@ -3,13 +3,14 @@ import {
   SortCriteria,
   FilterOptions,
   getEffectiveDateAdded,
+  type DatePreference,
 } from '@/lib/types/media';
 import { isMediaPathInFolder } from '@/lib/utils';
 
 export const filterMediaItems = (
   items: MediaItem[],
   filters: FilterOptions,
-  preferEmbyDateAdded: boolean = false
+  datePreference: DatePreference = 'arr'
 ): MediaItem[] => {
   return items.filter((item) => {
     // Basic search filter
@@ -86,7 +87,7 @@ export const filterMediaItems = (
       filters.monitored === undefined || item.monitored === filters.monitored;
 
     // Management filters
-    const effectiveDateAdded = getEffectiveDateAdded(item, preferEmbyDateAdded);
+    const effectiveDateAdded = getEffectiveDateAdded(item, datePreference);
     const matchesDateAdded = applyDateRangeFilter(
       effectiveDateAdded,
       filters.dateAddedRange
@@ -286,9 +287,9 @@ export const filterAndSortMediaItems = (
   items: MediaItem[],
   filters: FilterOptions,
   sortCriteria: SortCriteria,
-  preferEmbyDateAdded: boolean = false
+  datePreference: DatePreference = 'arr'
 ): MediaItem[] => {
-  const filtered = filterMediaItems(items, filters, preferEmbyDateAdded);
+  const filtered = filterMediaItems(items, filters, datePreference);
   return sortMediaItems(filtered, sortCriteria);
 };
 

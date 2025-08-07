@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+// New type for date preference setting
+export type DatePreference = 'arr' | 'emby' | 'oldest';
+
 export const MediaItemSchema = z.object({
   id: z.string(),
   title: z.string(),
@@ -57,25 +60,37 @@ export const MediaItemSchema = z.object({
 export type MediaItem = z.infer<typeof MediaItemSchema>;
 
 /**
- * Helper function to get the effective dateAdded based on the preferEmbyDateAdded setting
+ * Helper function to get the effective dateAdded based on the date preference setting
  */
 export function getEffectiveDateAdded(
   item: MediaItem,
-  preferEmbyDateAdded: boolean = false
+  datePreference: DatePreference = 'arr'
 ): Date | null {
-  if (preferEmbyDateAdded && item.dateAddedEmby) {
-    return typeof item.dateAddedEmby === 'string'
+  const embyDate = item.dateAddedEmby
+    ? typeof item.dateAddedEmby === 'string'
       ? new Date(item.dateAddedEmby)
-      : item.dateAddedEmby;
-  }
+      : item.dateAddedEmby
+    : null;
 
-  if (item.dateAddedArr) {
-    return typeof item.dateAddedArr === 'string'
+  const arrDate = item.dateAddedArr
+    ? typeof item.dateAddedArr === 'string'
       ? new Date(item.dateAddedArr)
-      : item.dateAddedArr;
-  }
+      : item.dateAddedArr
+    : null;
 
-  return null;
+  switch (datePreference) {
+    case 'emby':
+      return embyDate || arrDate;
+    case 'arr':
+      return arrDate || embyDate;
+    case 'oldest':
+      if (embyDate && arrDate) {
+        return embyDate < arrDate ? embyDate : arrDate;
+      }
+      return embyDate || arrDate;
+    default:
+      return arrDate || embyDate;
+  }
 }
 
 export interface SortCriteria {

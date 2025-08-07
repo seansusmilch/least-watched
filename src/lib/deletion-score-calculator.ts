@@ -1,11 +1,12 @@
 import { DeletionScoreSettings } from './actions/settings/types';
+import type { DatePreference } from './types/media';
 
 export interface MediaItemForScoring {
   id: string;
   sizeOnDisk?: bigint | null;
   dateAddedEmby?: Date | null;
   dateAddedArr?: Date | null;
-  preferEmbyDateAdded?: boolean;
+  datePreference?: DatePreference;
   lastWatched?: Date | null;
   folderRemainingSpacePercent?: number | null;
 }
@@ -50,13 +51,27 @@ export interface ScoreBreakdownData {
 
 export class DeletionScoreCalculator {
   /**
-   * Determines which dateAdded value to use based on the preferEmbyDateAdded setting
+   * Determines which dateAdded value to use based on the date preference setting
    */
   private getEffectiveDateAdded(item: MediaItemForScoring): Date | null {
-    if (item.preferEmbyDateAdded && item.dateAddedEmby) {
-      return item.dateAddedEmby;
+    const datePreference = item.datePreference || 'arr';
+
+    const embyDate = item.dateAddedEmby;
+    const arrDate = item.dateAddedArr;
+
+    switch (datePreference) {
+      case 'emby':
+        return embyDate || arrDate || null;
+      case 'arr':
+        return arrDate || embyDate || null;
+      case 'oldest':
+        if (embyDate && arrDate) {
+          return embyDate < arrDate ? embyDate : arrDate;
+        }
+        return embyDate || arrDate || null;
+      default:
+        return arrDate || embyDate || null;
     }
-    return item.dateAddedArr || null;
   }
 
   /**

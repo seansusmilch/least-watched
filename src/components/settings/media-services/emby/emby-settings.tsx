@@ -34,7 +34,6 @@ export function EmbySettingsTab({ initialSettings }: EmbySettingsProps) {
   } = useEmbySettings();
 
   const [isEditing, setIsEditing] = useState(false);
-  const [preferEmbyDateAdded, setPreferEmbyDateAdded] = useState(false);
   const [connectionStatus, setConnectionStatus] =
     useState<ConnectionStatus>('idle');
 
@@ -64,7 +63,6 @@ export function EmbySettingsTab({ initialSettings }: EmbySettingsProps) {
     const apiKey = formData.get('apiKey') as string;
     const userId = formData.get('userId') as string;
     const enabled = formData.get('enabled') === 'on';
-    const preferEmbyDateAdded = formData.get('preferEmbyDateAdded') === 'on';
 
     const input = {
       name,
@@ -72,7 +70,6 @@ export function EmbySettingsTab({ initialSettings }: EmbySettingsProps) {
       apiKey,
       userId,
       enabled,
-      preferEmbyDateAdded,
     };
 
     try {
@@ -99,12 +96,10 @@ export function EmbySettingsTab({ initialSettings }: EmbySettingsProps) {
 
   const handleEdit = () => {
     setIsEditing(true);
-    setPreferEmbyDateAdded(settings?.preferEmbyDateAdded ?? false);
   };
 
   const handleCancel = () => {
     setIsEditing(false);
-    setPreferEmbyDateAdded(settings?.preferEmbyDateAdded ?? false);
   };
 
   const handleDelete = async () => {
@@ -226,19 +221,7 @@ export function EmbySettingsTab({ initialSettings }: EmbySettingsProps) {
                   />
                   <Label htmlFor='enabled'>Enabled</Label>
                 </div>
-                <div className='flex items-center space-x-2'>
-                  <Checkbox
-                    id='preferEmbyDateAdded'
-                    name='preferEmbyDateAdded'
-                    checked={preferEmbyDateAdded}
-                    onCheckedChange={(checked) =>
-                      setPreferEmbyDateAdded(checked === true)
-                    }
-                  />
-                  <Label htmlFor='preferEmbyDateAdded'>
-                    Prefer Emby Date Added
-                  </Label>
-                </div>
+
                 <div className='flex gap-2 pt-4'>
                   <Button type='submit' data-testid='save-instance'>
                     <Save className='mr-2 h-4 w-4' />
