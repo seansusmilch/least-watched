@@ -75,7 +75,7 @@ export function AdvancedSettings() {
         datePreference: datePreferenceQuery.data,
       });
     }
-  }, [datePreferenceQuery.data]);
+  }, [datePreferenceQuery.data, form]);
 
   const onSubmit = async (data: AdvancedSettingsFormData) => {
     const currentValue = datePreferenceQuery.data || 'arr';

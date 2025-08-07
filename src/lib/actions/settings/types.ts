@@ -19,8 +19,10 @@ export type EmbySettingsInput = {
   name: string;
   url: string;
   apiKey: string;
-  userId?: string;
   enabled?: boolean;
+  // New preferred field
+  selectedLibraries?: string[];
+  // Backward compatibility (deprecated)
   selectedFolders?: string[];
 };
 

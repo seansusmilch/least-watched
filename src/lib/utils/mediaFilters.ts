@@ -242,11 +242,18 @@ function applyGenreFilter(
   itemGenres: unknown,
   filterGenres: Set<string>
 ): boolean {
-  const genresArray = Array.from(itemGenres as string[]);
   if (filterGenres.size === 0) return true;
-  if (!genresArray || genresArray.length === 0) return false;
 
-  // Check if any of the item's genres match any of the filter genres
+  const genresArray: string[] = Array.isArray(itemGenres)
+    ? (itemGenres as unknown[]).filter(
+        (g): g is string => typeof g === 'string'
+      )
+    : typeof itemGenres === 'string'
+    ? [itemGenres]
+    : [];
+
+  if (genresArray.length === 0) return false;
+
   return genresArray.some((genre) => filterGenres.has(genre));
 }
 

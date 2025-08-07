@@ -30,7 +30,6 @@ interface SeedConfig {
         name: string;
         url: string;
         apiKey: string;
-        userId?: string;
         enabled: boolean;
         selectedFolders?: string[];
       }
@@ -38,7 +37,6 @@ interface SeedConfig {
         name: string;
         url: string;
         apiKey: string;
-        userId?: string;
         enabled: boolean;
         selectedFolders?: string[];
       }>;
@@ -144,7 +142,6 @@ function getDefaultSeedConfig(): SeedConfig {
         name: 'Main Emby',
         url: 'http://localhost:8096',
         apiKey: 'your-emby-api-key-here',
-        userId: 'emby-user-id',
         enabled: true,
         selectedFolders: ['/movies', '/tv'],
       },
@@ -152,7 +149,6 @@ function getDefaultSeedConfig(): SeedConfig {
         name: 'Jellyfin Server',
         url: 'http://jellyfin.local:8096',
         apiKey: 'jellyfin-api-key',
-        userId: 'jellyfin-user-id',
         enabled: false,
         selectedFolders: ['/media'],
       },
@@ -359,7 +355,6 @@ async function seedDatabase() {
           name: embySettingToCreate.name,
           url: embySettingToCreate.url,
           apiKey: embySettingToCreate.apiKey,
-          userId: embySettingToCreate.userId,
           enabled: embySettingToCreate.enabled,
           selectedFolders: embySettingToCreate.selectedFolders,
         });

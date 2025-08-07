@@ -45,7 +45,6 @@
         "name": "Main Emby",
         "url": "http://localhost:8096",
         "apiKey": "your-emby-api-key-here",
-        "userId": "emby-user-id",
         "enabled": true,
         "selectedFolders": [
             "/movies",

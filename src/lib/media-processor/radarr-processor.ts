@@ -84,11 +84,14 @@ export class RadarrProcessor {
       processedItem.sizePerHour = (sizeInGB / processedItem.runtime) * 60;
     }
 
-    // Try to get playback information from Emby
+    // Try to get playback information from Emby (ID-first)
     if (enhancedSettings?.enablePlaybackProgress) {
-      console.log(`   🎬 Querying Emby for playback info...`);
-      const embyData = await EmbyService.getEmbyMediaData({
+      console.log(`   🎬 Querying Emby for playback info (ID-first)...`);
+      const embyData = await EmbyService.getEmbyMediaDataEnhanced({
         title: movie.title || '',
+        type: 'movie',
+        tmdbId: movie.tmdbId ?? undefined,
+        imdbId: movie.imdbId ?? undefined,
         embyInstance,
       });
       if (embyData) {

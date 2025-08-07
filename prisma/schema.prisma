@@ -25,6 +25,7 @@ model MediaItem {
   type                 String
   tmdbId               Int?
   imdbId               String?
+  tvdbId               Int?
   year                 Int?
   lastWatched          DateTime?
   watchCount           Int       @default(0)
@@ -57,4 +58,8 @@ model MediaItem {
   updatedAt            DateTime  @updatedAt
 
   @@map("media_items")
+  @@index([tmdbId])
+  @@index([imdbId])
+  @@index([tvdbId])
+  @@index([embyId])
 }

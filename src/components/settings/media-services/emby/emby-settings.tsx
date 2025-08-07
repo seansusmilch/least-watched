@@ -17,7 +17,9 @@ import { Loader2, Play, Save, X } from 'lucide-react';
 
 import { useEmbySettings } from '@/hooks/useEmbySettings';
 import { EmbyInstanceCard } from './emby-instance-card';
+import { LibrarySelectionDialog } from './library-selection-dialog';
 import type { EmbySettings } from '@/lib/utils/single-emby-settings';
+// no direct fetch here; dialog handles fetching
 
 type ConnectionStatus = 'idle' | 'testing' | 'success' | 'error';
 
@@ -36,6 +38,7 @@ export function EmbySettingsTab({ initialSettings }: EmbySettingsProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [connectionStatus, setConnectionStatus] =
     useState<ConnectionStatus>('idle');
+  const [isLibraryDialogOpen, setIsLibraryDialogOpen] = useState(false);
 
   const settings = settingsQuery.data || initialSettings;
   const isLoading = settingsQuery.isLoading || settingsQuery.isFetching;
@@ -61,14 +64,12 @@ export function EmbySettingsTab({ initialSettings }: EmbySettingsProps) {
     const name = formData.get('name') as string;
     const url = formData.get('url') as string;
     const apiKey = formData.get('apiKey') as string;
-    const userId = formData.get('userId') as string;
     const enabled = formData.get('enabled') === 'on';
 
     const input = {
       name,
       url,
       apiKey,
-      userId,
       enabled,
     };
 
@@ -92,6 +93,16 @@ export function EmbySettingsTab({ initialSettings }: EmbySettingsProps) {
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Failed to save settings');
     }
+  };
+
+  const handleSelectLibraries = () => setIsLibraryDialogOpen(true);
+
+  const handleSaveLibraries = async (selectedIds: string[]) => {
+    const res = await updateMutation.mutateAsync({
+      input: { selectedLibraries: selectedIds },
+    });
+    if (res.success) toast.success('Libraries updated');
+    else toast.error(res.message || 'Failed to update libraries');
   };
 
   const handleEdit = () => {
@@ -157,6 +168,8 @@ export function EmbySettingsTab({ initialSettings }: EmbySettingsProps) {
             onTestConnection={handleTestConnection}
             onEdit={handleEdit}
             onDelete={handleDelete}
+            // open ad-hoc prompt selector for now (replace with dialog later)
+            onSelectLibraries={handleSelectLibraries}
           />
         ) : (
           <Card>
@@ -204,15 +217,7 @@ export function EmbySettingsTab({ initialSettings }: EmbySettingsProps) {
                     required
                   />
                 </div>
-                <div>
-                  <Label htmlFor='userId'>User ID (Optional)</Label>
-                  <Input
-                    id='userId'
-                    name='userId'
-                    defaultValue={settings?.userId || ''}
-                    placeholder='Enter user ID'
-                  />
-                </div>
+                {/* userId removed */}
                 <div className='flex items-center space-x-2'>
                   <Checkbox
                     id='enabled'
@@ -241,6 +246,12 @@ export function EmbySettingsTab({ initialSettings }: EmbySettingsProps) {
           </Card>
         )}
       </div>
+      <LibrarySelectionDialog
+        open={isLibraryDialogOpen}
+        onOpenChange={setIsLibraryDialogOpen}
+        currentSelectedLibraries={settings?.selectedLibraries || []}
+        onSave={handleSaveLibraries}
+      />
     </div>
   );
 }

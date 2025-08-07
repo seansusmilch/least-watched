@@ -60,8 +60,9 @@ export const EmbySettingsCreateSchema = z.object({
   name: NameSchema,
   url: UrlSchema,
   apiKey: ApiKeySchema,
-  userId: z.string().optional(),
   enabled: z.boolean().default(true),
+  // prefer libraries; keep folders for backward compatibility
+  selectedLibraries: z.array(z.string()).optional(),
   selectedFolders: z.array(z.string()).optional(),
 });
 
@@ -69,8 +70,8 @@ export const EmbySettingsUpdateSchema = z.object({
   name: NameSchema.optional(),
   url: UrlSchema.optional(),
   apiKey: ApiKeySchema.optional(),
-  userId: z.string().optional(),
   enabled: z.boolean().optional(),
+  selectedLibraries: z.array(z.string()).optional(),
   selectedFolders: z.array(z.string()).optional(),
 });
 

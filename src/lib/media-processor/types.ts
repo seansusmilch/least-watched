@@ -13,6 +13,7 @@ export interface ProcessedMediaItem {
   type: 'movie' | 'tv';
   tmdbId?: number | null;
   imdbId?: string | null;
+  tvdbId?: number | null;
   year?: number;
   mediaPath: string;
   parentFolder: string;

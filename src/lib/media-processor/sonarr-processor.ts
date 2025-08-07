@@ -25,6 +25,7 @@ export class SonarrProcessor {
     console.log(`   Added: ${series.added || 'Unknown'}`);
     console.log(`   TMDB ID: ${series.tmdbId || 'Unknown'}`);
     console.log(`   IMDB ID: ${series.imdbId || 'Unknown'}`);
+    console.log(`   TVDB ID: ${series.tvdbId || 'Unknown'}`);
 
     // Calculate completion percentage
     const episodesOnDisk = series.statistics?.episodeFileCount || 0;
@@ -39,6 +40,7 @@ export class SonarrProcessor {
       type: 'tv',
       tmdbId: series.tmdbId ?? undefined,
       imdbId: series.imdbId ?? undefined,
+      tvdbId: series.tvdbId ?? undefined,
       year: series.year,
       mediaPath: series.path || '',
       parentFolder: series.path ? path.dirname(series.path) : '',
@@ -91,11 +93,15 @@ export class SonarrProcessor {
         totalRuntime > 0 ? (sizeInGB / totalRuntime) * 60 : 0;
     }
 
-    // Try to get playback information from Emby
+    // Try to get playback information from Emby (ID-first)
     if (enhancedSettings?.enablePlaybackProgress) {
-      console.log(`   🎬 Querying Emby for playback info...`);
-      const embyData = await EmbyService.getEmbyMediaData({
+      console.log(`   🎬 Querying Emby for playback info (ID-first)...`);
+      const embyData = await EmbyService.getEmbyMediaDataEnhanced({
         title: series.title || '',
+        type: 'tv',
+        tvdbId: series.tvdbId ?? undefined,
+        tmdbId: series.tmdbId ?? undefined,
+        imdbId: series.imdbId ?? undefined,
         embyInstance,
       });
       if (embyData) {

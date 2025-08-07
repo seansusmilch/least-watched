@@ -165,7 +165,6 @@ async function addEmbyInteractive() {
   const name = await prompt('Enter Emby instance name: ');
   const url = await prompt('Enter Emby URL (e.g., http://localhost:8096): ');
   const apiKey = await prompt('Enter API Key: ');
-  const userId = await prompt('Enter User ID (optional): ');
 
   if (!name || !url || !apiKey) {
     console.log('❌ Name, URL, and API Key are required');
@@ -177,7 +176,6 @@ async function addEmbyInteractive() {
       name,
       url,
       apiKey,
-      userId: userId || undefined,
       enabled: true,
     });
     console.log(`✅ Created Emby setting: ${setting.name}`);

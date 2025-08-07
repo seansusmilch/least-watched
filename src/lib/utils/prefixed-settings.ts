@@ -9,7 +9,6 @@ export interface ServiceSettings {
   apiKey: string;
   enabled: boolean;
   selectedFolders?: string[];
-  userId?: string; // Only for Emby
   preferEmbyDateAdded?: boolean; // Only for Emby
   createdAt: Date;
   updatedAt: Date;
@@ -21,7 +20,6 @@ export interface CreateServiceSettingsInput {
   apiKey: string;
   enabled?: boolean;
   selectedFolders?: string[];
-  userId?: string; // Only for Emby
   preferEmbyDateAdded?: boolean; // Only for Emby
 }
 
@@ -31,7 +29,6 @@ export interface UpdateServiceSettingsInput {
   apiKey?: string;
   enabled?: boolean;
   selectedFolders?: string[];
-  userId?: string; // Only for Emby
   preferEmbyDateAdded?: boolean; // Only for Emby
 }
 
@@ -77,9 +74,6 @@ export const prefixedSettingsService = {
                 ? JSON.parse(setting.value)
                 : undefined;
               break;
-            case 'userId':
-              instance.userId = setting.value;
-              break;
             case 'preferEmbyDateAdded':
               instance.preferEmbyDateAdded = setting.value === 'true';
               break;
@@ -104,7 +98,6 @@ export const prefixedSettingsService = {
         apiKey: instance.apiKey!,
         enabled: instance.enabled ?? true,
         selectedFolders: instance.selectedFolders,
-        userId: instance.userId,
         preferEmbyDateAdded: instance.preferEmbyDateAdded,
         createdAt: instance.createdAt!,
         updatedAt: instance.updatedAt!,
@@ -153,9 +146,6 @@ export const prefixedSettingsService = {
             ? JSON.parse(setting.value)
             : undefined;
           break;
-        case 'userId':
-          instance.userId = setting.value;
-          break;
         case 'preferEmbyDateAdded':
           instance.preferEmbyDateAdded = setting.value === 'true';
           break;
@@ -180,7 +170,6 @@ export const prefixedSettingsService = {
       apiKey: instance.apiKey!,
       enabled: instance.enabled ?? true,
       selectedFolders: instance.selectedFolders,
-      userId: instance.userId,
       preferEmbyDateAdded: instance.preferEmbyDateAdded,
       createdAt,
       updatedAt,
@@ -236,14 +225,6 @@ export const prefixedSettingsService = {
       });
     }
 
-    if (data.userId) {
-      settingsToCreate.push({
-        key: `${prefix}userId`,
-        value: data.userId,
-        description: `${serviceType} user ID`,
-      });
-    }
-
     if (serviceType === 'emby' && data.preferEmbyDateAdded !== undefined) {
       settingsToCreate.push({
         key: `${prefix}preferEmbyDateAdded`,
@@ -270,7 +251,6 @@ export const prefixedSettingsService = {
       apiKey: data.apiKey,
       enabled: data.enabled ?? true,
       selectedFolders: data.selectedFolders,
-      userId: data.userId,
       preferEmbyDateAdded: data.preferEmbyDateAdded,
       createdAt: now,
       updatedAt: now,
@@ -339,22 +319,6 @@ export const prefixedSettingsService = {
       } else {
         updates.push(
           appSettingsService.delete(`${prefix}selectedFolders`).catch(() => {})
-        ); // Ignore if doesn't exist
-      }
-    }
-
-    if (data.userId !== undefined) {
-      if (data.userId) {
-        updates.push(
-          appSettingsService.setValue(
-            `${prefix}userId`,
-            data.userId,
-            `${serviceType} user ID`
-          )
-        );
-      } else {
-        updates.push(
-          appSettingsService.delete(`${prefix}userId`).catch(() => {})
         ); // Ignore if doesn't exist
       }
     }

@@ -14,6 +14,7 @@ import {
 import { ZodError } from 'zod';
 import { EmbySettingsInput } from '@/lib/actions/settings/types';
 import { type EmbySettings } from '@/lib/utils/single-emby-settings';
+// duplicate import removed
 
 // Emby Settings Actions (Single Instance)
 export async function getEmbySettings(): Promise<EmbySettings | null> {
@@ -36,8 +37,10 @@ export async function createEmbySetting(
       name: validatedData.name,
       url: validatedData.url,
       apiKey: validatedData.apiKey,
-      userId: validatedData.userId,
       enabled: validatedData.enabled,
+      // Prefer libraries if present; fallback to folders
+      selectedLibraries: validatedData.selectedLibraries,
+      selectedFolders: validatedData.selectedFolders,
     });
 
     revalidatePath('/settings');
@@ -66,8 +69,8 @@ export async function updateEmbySetting(
       name: validatedData.name,
       url: validatedData.url,
       apiKey: validatedData.apiKey,
-      userId: validatedData.userId,
       enabled: validatedData.enabled,
+      selectedLibraries: validatedData.selectedLibraries,
       selectedFolders: validatedData.selectedFolders,
     });
 
@@ -117,6 +120,29 @@ export async function testEmbyConnection() {
         error instanceof Error
           ? error.message
           : 'Failed to test Emby connection',
+    };
+  }
+}
+
+// List Emby libraries for selection UI
+export async function fetchEmbyLibraries() {
+  try {
+    const setting = await embySettingsService.get();
+    if (!setting) {
+      return { success: false, error: 'Emby not configured' };
+    }
+
+    const data = await EmbyService.listLibraries(setting);
+
+    return { success: true, data };
+  } catch (error) {
+    console.error('Failed to fetch Emby libraries:', error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Failed to fetch Emby libraries',
     };
   }
 }

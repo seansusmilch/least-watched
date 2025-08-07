@@ -29,6 +29,7 @@ interface ServiceInstanceCardProps {
   onEdit: () => void;
   onDelete: () => void;
   onSelectFolders: () => void;
+  onSelectLibraries?: () => void;
 }
 
 export function ServiceInstanceCard({
@@ -39,6 +40,7 @@ export function ServiceInstanceCard({
   onEdit,
   onDelete,
   onSelectFolders,
+  onSelectLibraries,
 }: ServiceInstanceCardProps) {
   const getServiceIcon = () => {
     if (serviceType === 'sonarr') {
@@ -102,13 +104,17 @@ export function ServiceInstanceCard({
           </div>
           <div>
             <span className='text-sm font-medium'>
-              {serviceType === 'emby' ? 'User ID' : 'Selected Folders'}
+              {serviceType === 'emby'
+                ? 'Selected Libraries'
+                : 'Selected Folders'}
             </span>
             <p className='text-sm text-muted-foreground'>
-              {serviceType === 'emby'
-                ? setting.userId || 'Not set'
-                : setting.selectedFolders && setting.selectedFolders.length > 0
-                ? `${setting.selectedFolders.length} folder(s) selected`
+              {setting.selectedFolders && setting.selectedFolders.length > 0
+                ? `${setting.selectedFolders.length} ${
+                    serviceType === 'emby' ? 'library' : 'folder'
+                  }(s) selected`
+                : serviceType === 'emby'
+                ? 'No libraries selected'
                 : 'No folders selected'}
             </p>
           </div>
@@ -132,7 +138,17 @@ export function ServiceInstanceCard({
               </>
             )}
           </Button>
-          {serviceType !== 'emby' && (
+          {serviceType === 'emby' ? (
+            <Button
+              variant='outline'
+              size='sm'
+              onClick={onSelectLibraries}
+              disabled={!onSelectLibraries}
+            >
+              <Folder className='mr-2 h-4 w-4' />
+              Select Libraries
+            </Button>
+          ) : (
             <Button variant='outline' size='sm' onClick={onSelectFolders}>
               <Folder className='mr-2 h-4 w-4' />
               Select Folders

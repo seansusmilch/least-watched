@@ -12,6 +12,7 @@ interface EmbyInstanceCardProps {
   onTestConnection: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onSelectLibraries?: () => void;
 }
 
 // Convert EmbySettings to ServiceSettings format
@@ -24,8 +25,8 @@ function convertEmbyToServiceSettings(
     url: embySettings.url,
     apiKey: embySettings.apiKey,
     enabled: embySettings.enabled,
-    userId: embySettings.userId,
-    selectedFolders: embySettings.selectedFolders,
+    selectedFolders:
+      embySettings.selectedLibraries ?? embySettings.selectedFolders,
     createdAt: embySettings.createdAt || new Date(),
     updatedAt: embySettings.updatedAt || new Date(),
   };
@@ -37,6 +38,7 @@ export function EmbyInstanceCard({
   onTestConnection,
   onEdit,
   onDelete,
+  onSelectLibraries,
 }: EmbyInstanceCardProps) {
   const serviceSetting = convertEmbyToServiceSettings(setting);
 
@@ -48,7 +50,8 @@ export function EmbyInstanceCard({
       onTestConnection={onTestConnection}
       onEdit={onEdit}
       onDelete={onDelete}
-      onSelectFolders={() => {}} // Emby doesn't use folder selection
+      onSelectFolders={() => {}}
+      onSelectLibraries={onSelectLibraries}
     />
   );
 }

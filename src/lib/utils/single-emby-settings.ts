@@ -4,8 +4,10 @@ export interface EmbySettings {
   name: string;
   url: string;
   apiKey: string;
-  userId?: string;
   enabled: boolean;
+  // New canonical field
+  selectedLibraries?: string[];
+  // Backward compatibility
   selectedFolders?: string[];
   createdAt?: Date;
   updatedAt?: Date;
@@ -15,8 +17,8 @@ export interface CreateEmbySettingsInput {
   name: string;
   url: string;
   apiKey: string;
-  userId?: string;
   enabled?: boolean;
+  selectedLibraries?: string[];
   selectedFolders?: string[];
 }
 
@@ -24,8 +26,8 @@ export interface UpdateEmbySettingsInput {
   name?: string;
   url?: string;
   apiKey?: string;
-  userId?: string;
   enabled?: boolean;
+  selectedLibraries?: string[];
   selectedFolders?: string[];
 }
 
@@ -33,24 +35,38 @@ export const singleEmbySettingsService = {
   // Get the single Emby instance
   async get(): Promise<EmbySettings | null> {
     try {
-      const [name, url, apiKey, enabled, userId, selectedFolders] =
-        await Promise.all([
-          appSettingsService.getValue('emby-name'),
-          appSettingsService.getValue('emby-url'),
-          appSettingsService.getValue('emby-apiKey'),
-          appSettingsService.getValue('emby-enabled'),
-          appSettingsService.getValue('emby-userId'),
-          appSettingsService.getValue('emby-selectedFolders'),
-        ]);
+      const [
+        name,
+        url,
+        apiKey,
+        enabled,
+        selectedLibrariesStr,
+        selectedFoldersStr,
+      ] = await Promise.all([
+        appSettingsService.getValue('emby-name'),
+        appSettingsService.getValue('emby-url'),
+        appSettingsService.getValue('emby-apiKey'),
+        appSettingsService.getValue('emby-enabled'),
+        appSettingsService.getValue('emby-selectedLibraries'),
+        appSettingsService.getValue('emby-selectedFolders'),
+      ]);
 
       if (!name || !url || !apiKey) {
         return null;
       }
 
+      let parsedSelectedLibraries: string[] | undefined;
       let parsedSelectedFolders: string[] | undefined;
       try {
-        parsedSelectedFolders = selectedFolders
-          ? JSON.parse(selectedFolders)
+        parsedSelectedLibraries = selectedLibrariesStr
+          ? JSON.parse(selectedLibrariesStr)
+          : undefined;
+      } catch {
+        parsedSelectedLibraries = undefined;
+      }
+      try {
+        parsedSelectedFolders = selectedFoldersStr
+          ? JSON.parse(selectedFoldersStr)
           : undefined;
       } catch {
         parsedSelectedFolders = undefined;
@@ -60,8 +76,8 @@ export const singleEmbySettingsService = {
         name,
         url,
         apiKey,
-        userId: userId || undefined,
         enabled: enabled === 'true',
+        selectedLibraries: parsedSelectedLibraries ?? parsedSelectedFolders,
         selectedFolders: parsedSelectedFolders,
       };
     } catch (error) {
@@ -108,16 +124,14 @@ export const singleEmbySettingsService = {
       },
     ];
 
-    // Add optional fields if they exist
-    if (data.userId) {
+    // Prefer writing libraries; keep folders if provided for compatibility
+    if (data.selectedLibraries && data.selectedLibraries.length > 0) {
       settingsToCreate.push({
-        key: 'emby-userId',
-        value: data.userId,
-        description: 'Emby user ID',
+        key: 'emby-selectedLibraries',
+        value: JSON.stringify(data.selectedLibraries),
+        description: 'Emby selected libraries',
       });
-    }
-
-    if (data.selectedFolders && data.selectedFolders.length > 0) {
+    } else if (data.selectedFolders && data.selectedFolders.length > 0) {
       settingsToCreate.push({
         key: 'emby-selectedFolders',
         value: JSON.stringify(data.selectedFolders),
@@ -140,7 +154,6 @@ export const singleEmbySettingsService = {
       name: data.name,
       url: data.url,
       apiKey: data.apiKey,
-      userId: data.userId,
       enabled: data.enabled ?? true,
       selectedFolders: data.selectedFolders,
     };
@@ -188,19 +201,20 @@ export const singleEmbySettingsService = {
       });
     }
 
-    if (data.userId !== undefined) {
-      if (data.userId) {
+    // Update libraries if provided; also allow legacy folders
+    if (data.selectedLibraries !== undefined) {
+      if (data.selectedLibraries && data.selectedLibraries.length > 0) {
         updates.push({
-          key: 'emby-userId',
-          value: data.userId,
-          description: 'Emby user ID',
+          key: 'emby-selectedLibraries',
+          value: JSON.stringify(data.selectedLibraries),
+          description: 'Emby selected libraries',
         });
       } else {
-        // Remove userId if set to undefined/null (ignore if doesn't exist)
-        await appSettingsService.delete('emby-userId').catch(() => {});
+        await appSettingsService
+          .delete('emby-selectedLibraries')
+          .catch(() => {});
       }
     }
-
     if (data.selectedFolders !== undefined) {
       if (data.selectedFolders && data.selectedFolders.length > 0) {
         updates.push({
@@ -209,7 +223,6 @@ export const singleEmbySettingsService = {
           description: 'Emby selected folders',
         });
       } else {
-        // Remove selectedFolders if set to empty array (ignore if doesn't exist)
         await appSettingsService.delete('emby-selectedFolders').catch(() => {});
       }
     }
@@ -241,7 +254,7 @@ export const singleEmbySettingsService = {
       'emby-url',
       'emby-apiKey',
       'emby-enabled',
-      'emby-userId',
+      'emby-selectedLibraries',
       'emby-selectedFolders',
     ];
 

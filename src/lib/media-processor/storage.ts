@@ -49,6 +49,7 @@ export class MediaStorage {
         type: item.type,
         tmdbId: item.tmdbId,
         imdbId: item.imdbId,
+        tvdbId: item.tvdbId,
         year: item.year,
         mediaPath: item.mediaPath,
         parentFolder: item.parentFolder,
@@ -112,6 +113,14 @@ export class MediaStorage {
       if (item.radarrId) {
         findConditions.push({
           radarrId: item.radarrId,
+          source: item.source,
+        });
+      }
+
+      // Prefer matching on Emby identity when available
+      if (item.embyId) {
+        findConditions.push({
+          embyId: item.embyId,
           source: item.source,
         });
       }
