@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { prisma } from '@/lib/database';
+import { deletionScoreService } from '@/lib/services/deletion-score-service';
 import type { DatePreference } from '@/lib/types/media';
 
 const DatePreferenceSchema = z.enum(['arr', 'emby', 'oldest']);
@@ -82,6 +83,49 @@ export async function getDatePreference(): Promise<DatePreference> {
 }
 
 /**
+ * Centralized function to trigger deletion score recalculation if deletion scoring is enabled
+ */
+export async function triggerDeletionScoreRecalculation(): Promise<{
+  success: boolean;
+  message: string;
+  recalculationTriggered: boolean;
+}> {
+  try {
+    // Import here to avoid circular dependency
+    const { getDeletionScoreSettings } = await import('./deletion-score');
+    const deletionScoreSettings = await getDeletionScoreSettings();
+
+    if (!deletionScoreSettings.enabled) {
+      return {
+        success: true,
+        message: 'Settings updated successfully. Deletion scoring is disabled.',
+        recalculationTriggered: false,
+      };
+    }
+
+    // Trigger recalculation in the background if deletion scoring is enabled
+    deletionScoreService.recalculateAllDeletionScores().catch((error) => {
+      console.error('Background deletion score recalculation failed:', error);
+    });
+
+    return {
+      success: true,
+      message:
+        'Settings updated successfully. Deletion scores are being recalculated in the background.',
+      recalculationTriggered: true,
+    };
+  } catch (error) {
+    console.error('Error during deletion score recalculation trigger:', error);
+    return {
+      success: true,
+      message:
+        'Settings updated successfully, but deletion score recalculation could not be triggered.',
+      recalculationTriggered: false,
+    };
+  }
+}
+
+/**
  * Update just the date preference setting
  */
 export async function updateDatePreference(datePreference: DatePreference) {
@@ -97,10 +141,22 @@ export async function updateDatePreference(datePreference: DatePreference) {
     });
 
     revalidatePath('/settings');
-    return { success: true };
+
+    // Trigger deletion score recalculation since date preference affects age calculations
+    const recalculationResult = await triggerDeletionScoreRecalculation();
+
+    return {
+      success: true,
+      message: recalculationResult.message,
+      recalculationTriggered: recalculationResult.recalculationTriggered,
+    };
   } catch (error) {
     console.error('Error updating date preference:', error);
-    return { success: false, error: 'Failed to update date preference' };
+    return {
+      success: false,
+      error: 'Failed to update date preference',
+      recalculationTriggered: false,
+    };
   }
 }
 

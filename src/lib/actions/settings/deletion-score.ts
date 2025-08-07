@@ -1,10 +1,13 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { getAppSetting, setAppSetting } from './app-settings';
+import {
+  getAppSetting,
+  setAppSetting,
+  triggerDeletionScoreRecalculation,
+} from './app-settings';
 import type { DeletionScoreSettings, Breakpoint } from './types';
 import { appSettingsService } from '@/lib/database';
-import { deletionScoreService } from '@/lib/services/deletion-score-service';
 
 const DEFAULT_DELETION_SCORE_SETTINGS: DeletionScoreSettings = {
   enabled: true,
@@ -339,19 +342,13 @@ export async function setDeletionScoreSettings(
       'Folder space breakpoints'
     );
 
-    // Trigger recalculation in the background if deletion scoring is enabled
-    if (settings.enabled) {
-      // Fire and forget - don't wait for completion
-      deletionScoreService.recalculateAllDeletionScores().catch((error) => {
-        console.error('Background deletion score recalculation failed:', error);
-      });
-    }
+    // Use centralized recalculation function
+    const recalculationResult = await triggerDeletionScoreRecalculation();
 
     revalidatePath('/settings');
     return {
       success: true,
-      message:
-        'Deletion score settings updated successfully. Scores are being recalculated in the background.',
+      message: recalculationResult.message,
     };
   } catch (error) {
     console.error('Failed to set deletion score settings:', error);

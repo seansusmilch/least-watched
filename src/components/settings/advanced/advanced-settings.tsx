@@ -43,9 +43,14 @@ import {
   type AdvancedSettingsFormData,
 } from '@/lib/validation/schemas';
 import type { DatePreference } from '@/lib/types/media';
+import { DatePreferenceConfirmationDialog } from './date-preference-confirmation-dialog';
 
 export function AdvancedSettings() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [showDatePreferenceConfirmDialog, setShowDatePreferenceConfirmDialog] =
+    useState(false);
+  const [pendingDatePreference, setPendingDatePreference] =
+    useState<DatePreference | null>(null);
 
   const {
     datePreferenceQuery,
@@ -70,13 +75,44 @@ export function AdvancedSettings() {
   }, [datePreferenceQuery.data, form]);
 
   const onSubmit = async (data: AdvancedSettingsFormData) => {
+    const currentValue = datePreferenceQuery.data || 'arr';
+
+    // If the date preference is changing, show confirmation dialog
+    if (data.datePreference !== currentValue) {
+      setPendingDatePreference(data.datePreference);
+      setShowDatePreferenceConfirmDialog(true);
+      return;
+    }
+
+    // If no change, just save normally
+    await handleDatePreferenceUpdate(data.datePreference);
+  };
+
+  const handleDatePreferenceUpdate = async (datePreference: DatePreference) => {
     try {
-      await updateDatePreferenceMutation.mutateAsync(data.datePreference);
-      toast.success('Settings saved successfully');
+      const result = await updateDatePreferenceMutation.mutateAsync(
+        datePreference
+      );
+
+      if (result.recalculationTriggered) {
+        toast.success(
+          'Date preference updated successfully. Deletion scores are being recalculated in the background.'
+        );
+      } else {
+        toast.success('Date preference updated successfully.');
+      }
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : 'Failed to save settings'
       );
+    }
+  };
+
+  const handleConfirmDatePreferenceChange = async () => {
+    if (pendingDatePreference) {
+      await handleDatePreferenceUpdate(pendingDatePreference);
+      setShowDatePreferenceConfirmDialog(false);
+      setPendingDatePreference(null);
     }
   };
 
@@ -122,6 +158,12 @@ export function AdvancedSettings() {
                     scores. &quot;Oldest&quot; will use the earliest date
                     available between Arr and Emby dates.
                   </p>
+                  <p className='text-sm text-muted-foreground'>
+                    <strong>
+                      Changing this setting will recalculate deletion scores for
+                      all existing media items.
+                    </strong>
+                  </p>
                 </div>
                 <FormField
                   control={form.control}
@@ -132,7 +174,7 @@ export function AdvancedSettings() {
                         <Select
                           disabled={datePreferenceQuery.isLoading}
                           onValueChange={field.onChange}
-                          defaultValue={field.value}
+                          value={field.value}
                         >
                           <SelectTrigger className='w-36'>
                             <SelectValue
@@ -263,6 +305,15 @@ export function AdvancedSettings() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Date Preference Confirmation Dialog */}
+      <DatePreferenceConfirmationDialog
+        open={showDatePreferenceConfirmDialog}
+        onOpenChange={setShowDatePreferenceConfirmDialog}
+        onSave={handleConfirmDatePreferenceChange}
+        currentValue={datePreferenceQuery.data || 'arr'}
+        newValue={pendingDatePreference || 'arr'}
+      />
     </div>
   );
 }

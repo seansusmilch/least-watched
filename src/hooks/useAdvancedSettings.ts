@@ -25,6 +25,17 @@ export function useAdvancedSettings() {
         queryClient.invalidateQueries({ queryKey: ['date-preference'] });
         // Also invalidate media items since date preference affects their display
         queryClient.invalidateQueries({ queryKey: ['media-items'] });
+
+        // If deletion scores were recalculated, also invalidate related queries
+        if (result.recalculationTriggered) {
+          queryClient.invalidateQueries({
+            queryKey: ['processed-media-items'],
+          });
+          queryClient.invalidateQueries({ queryKey: ['media-summary'] });
+          queryClient.invalidateQueries({
+            queryKey: ['deletion-score-breakdown'],
+          });
+        }
       } else {
         throw new Error(result.error || 'Failed to update date preference');
       }
