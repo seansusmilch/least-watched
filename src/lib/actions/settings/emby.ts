@@ -1,8 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { embySettingsService } from '../../database';
-import { apiService } from '../../api';
+import { embySettingsService } from '@/lib/database';
+import { EmbyService } from '@/lib/services/emby-service';
 import {
   EmbySettingsCreateSchema,
   EmbySettingsUpdateSchema,
@@ -10,10 +10,10 @@ import {
   handleValidationErrors,
   handleServerError,
   type FormState,
-} from '../../validation/schemas';
+} from '@/lib/validation/schemas';
 import { ZodError } from 'zod';
-import { EmbySettingsInput } from './types';
-import { type EmbySettings } from '../../utils/single-emby-settings';
+import { EmbySettingsInput } from '@/lib/actions/settings/types';
+import { type EmbySettings } from '@/lib/utils/single-emby-settings';
 
 // Emby Settings Actions (Single Instance)
 export async function getEmbySettings(): Promise<EmbySettings | null> {
@@ -109,7 +109,7 @@ export async function testEmbyConnection() {
     }
 
     // Test connection to the single Emby instance
-    const isConnected = await apiService.testEmbyConnection();
+    const isConnected = await EmbyService.testConnection(setting);
     return { success: isConnected };
   } catch (error) {
     console.error('Failed to test Emby connection:', error);

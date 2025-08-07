@@ -9,7 +9,6 @@ export type {
   RadarrMovie,
   SonarrInstance,
   RadarrInstance,
-  EmbySettings,
   EmbyPlaybackInfo,
 } from './types';
 
@@ -19,7 +18,6 @@ export { TESTING_LIMIT, getQualityScore } from './constants';
 // Individual processors (if needed for specific use cases)
 export { SonarrProcessor } from './sonarr-processor';
 export { RadarrProcessor } from './radarr-processor';
-export { EmbyProcessor } from './emby-processor';
 export { MediaStorage } from './storage';
 
 // Export default as MediaProcessor for convenience

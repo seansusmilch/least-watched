@@ -1,12 +1,12 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { appSettingsService } from '../../database';
+import { appSettingsService } from '@/lib/database';
 import type {
   AppSettingsInput,
   BatchSettings,
   EnhancedProcessingSettings,
-} from './types';
+} from '@/lib/actions/settings/types';
 
 // App Settings Actions
 export async function getAppSettings() {

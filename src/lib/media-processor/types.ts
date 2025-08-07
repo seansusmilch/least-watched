@@ -81,9 +81,6 @@ export interface RadarrInstance {
   updatedAt: Date;
 }
 
-// Re-export EmbySettings as the single instance type
-export type { EmbySettings } from '../utils/single-emby-settings';
-
 export interface EmbyPlaybackInfo {
   lastWatched?: Date;
   watchCount?: number;

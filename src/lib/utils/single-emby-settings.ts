@@ -1,4 +1,4 @@
-import { appSettingsService } from '../database';
+import { appSettingsService } from '@/lib/database';
 
 export interface EmbySettings {
   name: string;

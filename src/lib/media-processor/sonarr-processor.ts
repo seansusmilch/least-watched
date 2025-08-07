@@ -5,7 +5,7 @@ import {
   type ProcessedMediaItem,
 } from './types';
 import { type EnhancedProcessingSettings } from '@/lib/actions/settings';
-import { EmbyProcessor } from './emby-processor';
+import { EmbyService } from '@/lib/services/emby-service';
 import { type EmbySettings } from '@/lib/utils/single-emby-settings';
 import { sonarrApiClient } from '@/lib/services/arr-client';
 
@@ -94,7 +94,7 @@ export class SonarrProcessor {
     // Try to get playback information from Emby
     if (enhancedSettings?.enablePlaybackProgress) {
       console.log(`   🎬 Querying Emby for playback info...`);
-      const embyData = await EmbyProcessor.getEmbyMediaData({
+      const embyData = await EmbyService.getEmbyMediaData({
         title: series.title || '',
         embyInstance,
       });

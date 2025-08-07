@@ -6,7 +6,7 @@ import {
 } from '@/lib/media-processor/types';
 import { type EnhancedProcessingSettings } from '@/lib/actions/settings';
 import { getQualityScore } from '@/lib/media-processor/constants';
-import { EmbyProcessor } from '@/lib/media-processor/emby-processor';
+import { EmbyService } from '@/lib/services/emby-service';
 import { type EmbySettings } from '@/lib/utils/single-emby-settings';
 import { radarrApiClient } from '@/lib/services/arr-client';
 
@@ -87,7 +87,7 @@ export class RadarrProcessor {
     // Try to get playback information from Emby
     if (enhancedSettings?.enablePlaybackProgress) {
       console.log(`   🎬 Querying Emby for playback info...`);
-      const embyData = await EmbyProcessor.getEmbyMediaData({
+      const embyData = await EmbyService.getEmbyMediaData({
         title: movie.title || '',
         embyInstance,
       });
