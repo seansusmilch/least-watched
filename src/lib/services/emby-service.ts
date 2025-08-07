@@ -410,8 +410,8 @@ export class EmbyService {
     // Use custom SQL query to get both playback activity and watch count in one query
     const customQueryUrl = `${embyInstance.url}/emby/user_usage_stats/submit_custom_query`;
 
-    // Escape single quotes in the title for SQL
-    const escapedTitle = title.replace(/'/g, "''");
+    // Escape single and double quotes in the title for SQL
+    const escapedTitle = title.replace(/'/g, "''").replace(/"/g, '""');
 
     // Build comprehensive SQL query to get all information in one go
     const sqlQuery = `

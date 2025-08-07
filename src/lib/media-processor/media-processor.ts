@@ -132,6 +132,15 @@ export class MediaProcessor {
     const folderSpaceData = await folderSpaceService.getFolderSpaceData();
 
     const limited = embyItems.slice(0, totalItems);
+    console.log(
+      `     🔎 Emby listLibraryItems returned ${limited.length} items`
+    );
+    // For each item, fetch and log its title
+    for (const item of limited) {
+      if (item && item.Name) {
+        console.log(`     📄 Emby item title: ${item.Id} ${item.Name}`);
+      }
+    }
 
     for (let i = 0; i < limited.length; i++) {
       const item = limited[i] as Emby.BaseItem;
