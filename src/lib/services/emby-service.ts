@@ -421,7 +421,8 @@ export class EmbyService {
     const pageSize = 500;
     while (true) {
       const params: Record<string, string | number | boolean> = {
-        ParentId: seriesId,
+        // Use AncestorIds to be robust even if the series has nested seasons/virtual folders
+        AncestorIds: seriesId,
         IncludeItemTypes: 'Episode',
         Fields: 'DateCreated',
         StartIndex: startIndex,
@@ -594,28 +595,43 @@ export class EmbyService {
   private static parsePlaybackResponse(
     data: {
       results: Array<Array<string | number>>;
-      colums?: string[]; // Note: "colums" appears to be a typo but keeping as is
+      colums?: string[]; // Emby returns this misspelled sometimes
     },
     title: string
   ): EmbyPlaybackInfo | null {
     if (data.results && data.results.length > 0) {
       const result = data.results[0];
 
-      // Map the result based on the columns (now includes WatchCount)
-      const columnIndex = {
-        rowid: data.colums?.indexOf('ROWID') ?? 0,
-        dateCreated: data.colums?.indexOf('DateCreated') ?? 1,
-        itemId: data.colums?.indexOf('ItemId') ?? 2,
-        itemName: data.colums?.indexOf('ItemName') ?? 3,
-        playDuration: data.colums?.indexOf('PlayDuration') ?? 4,
-        watchCount: data.colums?.indexOf('WatchCount') ?? 5,
+      // Use only the documented 'colums' key from the plugin response
+      const rawCols = (data.colums ?? []) as string[];
+      const normalizedCols = rawCols.map((c) =>
+        typeof c === 'string' ? c.toLowerCase() : ''
+      );
+      const indexOfCi = (name: string, fallbackIndex: number): number => {
+        const exact = rawCols.indexOf(name);
+        if (exact >= 0) return exact;
+        const ci = normalizedCols.indexOf(name.toLowerCase());
+        if (ci >= 0) return ci;
+        return fallbackIndex;
       };
 
-      const lastWatchedStr = String(result[columnIndex.dateCreated]);
-      const itemId = String(result[columnIndex.itemId]);
-      const itemName = String(result[columnIndex.itemName]);
-      const playDuration = String(result[columnIndex.playDuration]);
-      const watchCount = parseInt(String(result[columnIndex.watchCount])) || 1;
+      // We selected columns in this order in SQL:
+      // r.ROWID, r.DateCreated, r.ItemId, r.ItemName, r.PlayDuration, w.WatchCount
+      const rowIdIdx = indexOfCi('ROWID', 0);
+      const dateIdx = indexOfCi('DateCreated', 1);
+      const itemIdIdx = indexOfCi('ItemId', 2);
+      const itemNameIdx = indexOfCi('ItemName', 3);
+      const durationIdx = indexOfCi('PlayDuration', 4);
+      const watchCountIdx = indexOfCi('WatchCount', 5);
+
+      const lastWatchedStr = String(result?.[dateIdx] ?? '');
+      const itemId = String(result?.[itemIdIdx] ?? '');
+      const itemName = String(result?.[itemNameIdx] ?? '');
+      const playDuration = String(result?.[durationIdx] ?? '');
+      const watchCountRaw = result?.[watchCountIdx];
+      const watchCount = Number.isFinite(Number(watchCountRaw))
+        ? Number(watchCountRaw)
+        : 0;
 
       console.log(`     ✅ Found playback activity for: ${itemName}`);
       console.log(`     📅 Last watched: ${lastWatchedStr}`);
@@ -642,14 +658,31 @@ export class EmbyService {
   ): { lastWatched?: Date; watchCount: number } {
     try {
       const row = data?.results?.[0];
-      const cols: string[] = (data?.colums || data?.columns || []) as string[];
-      const lastIdx = cols.indexOf('LastWatched');
-      const countIdx = cols.indexOf('WatchCount');
-      const lastStr = lastIdx >= 0 ? String(row?.[lastIdx] ?? '') : '';
-      const watchCount = countIdx >= 0 ? Number(row?.[countIdx] ?? 0) : 0;
+      const rawCols = (data?.colums ?? []) as string[];
+
+      const normalizedCols = rawCols.map((c) =>
+        typeof c === 'string' ? c.toLowerCase() : ''
+      );
+      const indexOfCi = (name: string, fallbackIndex: number): number => {
+        const exact = rawCols.indexOf(name);
+        if (exact >= 0) return exact;
+        const ci = normalizedCols.indexOf(name.toLowerCase());
+        if (ci >= 0) return ci;
+        return fallbackIndex; // fallback to positional index when columns are missing
+      };
+
+      // For the aggregate query we always select: LastWatched, WatchCount
+      const lastIdx = indexOfCi('LastWatched', 0);
+      const countIdx = indexOfCi('WatchCount', 1);
+
+      const lastStr = String(row?.[lastIdx] ?? '');
+      const watchCountRaw = row?.[countIdx];
+      const watchCount = Number.isFinite(Number(watchCountRaw))
+        ? Number(watchCountRaw)
+        : 0;
       return {
         lastWatched: lastStr ? new Date(lastStr) : undefined,
-        watchCount: Number.isFinite(watchCount) ? watchCount : 0,
+        watchCount,
       };
     } catch {
       return { lastWatched: undefined, watchCount: 0 };
