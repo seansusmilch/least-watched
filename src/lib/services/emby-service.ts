@@ -347,32 +347,60 @@ export class EmbyService {
     seriesId: string,
     embyInstance: EmbySettings | null
   ): Promise<string[]> {
-    if (!embyInstance) return [];
+    if (!embyInstance) {
+      console.log('     ℹ️ No Emby instance available for listing episode ids');
+      return [];
+    }
     const client = this.createClient(embyInstance);
     const episodeIds: string[] = [];
     let startIndex = 0;
     const pageSize = 500;
-    while (true) {
-      const params: Record<string, string | number | boolean> = {
-        // Use AncestorIds to be robust even if the series has nested seasons/virtual folders
-        AncestorIds: seriesId,
-        IncludeItemTypes: 'Episode',
-        Fields: 'DateCreated',
-        StartIndex: startIndex,
-        Limit: pageSize,
-        Recursive: true,
-      };
-      const result: Emby.QueryResultBaseItem = await client.items.list(
-        params as Record<string, unknown>
-      );
-      const page: Emby.BaseItem[] = (result?.Items as Emby.BaseItem[]) ?? [];
-      for (const ep of page) {
-        if (ep?.Id) episodeIds.push(String(ep.Id));
+
+    console.log(
+      `     🔹 Listing episode ItemIds for series=${seriesId} (pageSize=${pageSize})`
+    );
+
+    try {
+      while (true) {
+        console.log(
+          `       ↪️ Fetching page startIndex=${startIndex} limit=${pageSize}`
+        );
+        const params: Record<string, string | number | boolean> = {
+          // Use AncestorIds to be robust even if the series has nested seasons/virtual folders
+          AncestorIds: seriesId,
+          IncludeItemTypes: 'Episode',
+          Fields: 'DateCreated',
+          StartIndex: startIndex,
+          Limit: pageSize,
+          Recursive: true,
+        };
+        const result: Emby.QueryResultBaseItem = await client.items.list(
+          params as Record<string, unknown>
+        );
+        const page: Emby.BaseItem[] = (result?.Items as Emby.BaseItem[]) ?? [];
+        console.log(
+          `       📦 Received ${page.length} episodes (cumulative=${
+            episodeIds.length + page.length
+          })`
+        );
+        for (const ep of page) {
+          if (ep?.Id) episodeIds.push(String(ep.Id));
+        }
+        if (page.length < pageSize) {
+          console.log('       🛑 Last page reached');
+          break;
+        }
+        startIndex += pageSize;
       }
-      if (page.length < pageSize) break;
-      startIndex += pageSize;
+      console.log(`     ✅ Total episode ids found: ${episodeIds.length}`);
+      return episodeIds;
+    } catch (error) {
+      console.error(
+        `     ❌ Error while listing episode ids for series=${seriesId}:`,
+        error
+      );
+      return episodeIds;
     }
-    return episodeIds;
   }
 
   /**
