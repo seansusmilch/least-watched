@@ -13,7 +13,16 @@ type EmbyCustomQueryResponse = {
   columns?: string[];
 };
 
+export type EmbyAggregationInput = {
+  title?: string;
+  type?: 'movie' | 'tv';
+  embyId?: string;
+};
+
 export class EmbyService {
+  /** Input shape for generic aggregation requests */
+  static readonly AGG_DEFAULT_BATCH_SIZE = 800;
+
   private static createClient(embyInstance: EmbySettings): Emby {
     return new Emby({
       baseURL: embyInstance.url,
@@ -301,7 +310,7 @@ export class EmbyService {
     if (!embyInstance || itemIds.length === 0)
       return { lastWatched: undefined, watchCount: 0 };
 
-    const batchSize = opts?.batchSize ?? 800;
+    const batchSize = opts?.batchSize ?? EmbyService.AGG_DEFAULT_BATCH_SIZE;
     const chunks: string[][] = [];
     for (let i = 0; i < itemIds.length; i += batchSize) {
       chunks.push(itemIds.slice(i, i + batchSize));
@@ -312,22 +321,16 @@ export class EmbyService {
 
     for (const chunk of chunks) {
       const escapedIdList = chunk
-        .map((id) => `'${String(id).replace(/'/g, "''")}'`)
+        .map((id) => `'${String(id).replace(/'/g, "''").replace(/;/g, '')}'`)
         .join(',');
-      const sqlQuery = `
-        WITH Activity AS (
-          SELECT ItemId, DateCreated, PlayDuration
+      const sqlQuery = `SELECT
+          MAX(DateCreated) AS LastWatched,
+          SUM(CASE WHEN PlayDuration > 300 AND PlayDuration < 28800 THEN 1 ELSE 0 END) AS WatchCount
+        FROM (
+          SELECT DateCreated, PlayDuration
           FROM PlaybackActivity
           WHERE ItemId IN (${escapedIdList})
-        ),
-        Totals AS (
-          SELECT
-            MAX(DateCreated) AS LastWatched,
-            SUM(CASE WHEN PlayDuration > 300 AND PlayDuration < 28800 THEN 1 ELSE 0 END) AS WatchCount
-          FROM Activity
-        )
-        SELECT LastWatched, WatchCount FROM Totals;
-      `;
+        ) AS Activity`;
 
       const data = await this.executeCustomQuery(sqlQuery, embyInstance);
       const partial = this.parseAggregatedPlaybackResponse(data);
@@ -342,66 +345,7 @@ export class EmbyService {
     return { lastWatched: overallLastWatched, watchCount: overallWatchCount };
   }
 
-  /** List episode ItemIds for a given series ItemId */
-  static async listEpisodeItemIdsForSeries(
-    seriesId: string,
-    embyInstance: EmbySettings | null
-  ): Promise<string[]> {
-    if (!embyInstance) {
-      console.log('     ℹ️ No Emby instance available for listing episode ids');
-      return [];
-    }
-    const client = this.createClient(embyInstance);
-    const episodeIds: string[] = [];
-    let startIndex = 0;
-    const pageSize = 500;
-
-    console.log(
-      `     🔹 Listing episode ItemIds for series=${seriesId} (pageSize=${pageSize})`
-    );
-
-    try {
-      while (true) {
-        console.log(
-          `       ↪️ Fetching page startIndex=${startIndex} limit=${pageSize}`
-        );
-        const params: Record<string, string | number | boolean> = {
-          // Use AncestorIds to be robust even if the series has nested seasons/virtual folders
-          AncestorIds: seriesId,
-          IncludeItemTypes: 'Episode',
-          Fields: 'DateCreated',
-          StartIndex: startIndex,
-          Limit: pageSize,
-          Recursive: true,
-        };
-        const result: Emby.QueryResultBaseItem = await client.items.list(
-          params as Record<string, unknown>
-        );
-        const page: Emby.BaseItem[] = (result?.Items as Emby.BaseItem[]) ?? [];
-        console.log(
-          `       📦 Received ${page.length} episodes (cumulative=${
-            episodeIds.length + page.length
-          })`
-        );
-        for (const ep of page) {
-          if (ep?.Id) episodeIds.push(String(ep.Id));
-        }
-        if (page.length < pageSize) {
-          console.log('       🛑 Last page reached');
-          break;
-        }
-        startIndex += pageSize;
-      }
-      console.log(`     ✅ Total episode ids found: ${episodeIds.length}`);
-      return episodeIds;
-    } catch (error) {
-      console.error(
-        `     ❌ Error while listing episode ids for series=${seriesId}:`,
-        error
-      );
-      return episodeIds;
-    }
-  }
+  // Removed per design: we no longer list episodes for series playback aggregation
 
   /**
    * Fetches combined media data (metadata + playback info)
@@ -428,59 +372,73 @@ export class EmbyService {
   }
 
   /**
-   * Enhanced: Try provider-id mapping first, then title fallback
+   * Generic aggregation API for both movies and series.
+   * Consumers provide minimal identifying info and this method
+   * chooses the best strategy (emby id or title-based).
    */
-  static async getMediaAndPlaybackByProviderIds({
-    title,
-    type,
-    tvdbId,
-    tmdbId,
-    imdbId,
-    embyInstance,
-  }: {
-    title: string;
-    type?: 'movie' | 'tv';
-    tvdbId?: number | null;
-    tmdbId?: number | null;
-    imdbId?: string | null;
-    embyInstance: EmbySettings | null;
-  }): Promise<EmbyPlaybackInfo | null> {
-    const matchedItem = await this.findItemByProviderIds(
-      { tvdbId, tmdbId, imdbId, type },
-      embyInstance
-    );
+  static async getAggregatedPlaybackInfo(
+    input: EmbyAggregationInput,
+    embyInstance: EmbySettings | null
+  ): Promise<EmbyPlaybackInfo | null> {
+    if (!embyInstance) return null;
 
-    if (matchedItem?.Id) {
-      const isTv = type === 'tv' || matchedItem.Type === 'Series';
-      if (isTv) {
-        const episodeIds = await this.listEpisodeItemIdsForSeries(
-          matchedItem.Id as string,
-          embyInstance
+    const { type, title, embyId } = input;
+
+    // Series: prefer title-based aggregation to avoid gigantic episode-id queries
+    if (type === 'tv') {
+      if (!title) {
+        console.error(
+          '     ❌ Unable to aggregate series playback without title. Provide title for series aggregation.'
         );
-        const aggregate = await this.getAggregatedPlaybackForItemIds(
-          episodeIds,
-          embyInstance
-        );
-        return {
-          ...aggregate,
-          embyId: matchedItem.Id,
-          metadata: matchedItem,
-        };
-      } else {
-        const playback = await this.getAggregatedPlaybackForItemIds(
-          [matchedItem.Id as string],
-          embyInstance
-        );
-        return {
-          ...playback,
-          embyId: matchedItem.Id,
-          metadata: matchedItem,
-        };
+        return null;
       }
+      const agg = await this.getAggregatedPlaybackBySeriesTitle(
+        title,
+        embyInstance as EmbySettings
+      );
+      return { ...agg, embyId: embyId ?? '' };
     }
 
-    // Fallback: attempt to resolve by exact title match via SDK, then query by ItemId
-    return this.getMediaAndPlaybackByTitle({ title, embyInstance });
+    // Movies: require a concrete item id
+    if (type === 'movie') {
+      if (embyId) {
+        const agg = await this.getAggregatedPlaybackForItemIds(
+          [embyId],
+          embyInstance
+        );
+        return { ...agg, embyId };
+      }
+      console.error(
+        '     ❌ Unable to aggregate movie playback without embyId.'
+      );
+      return null;
+    }
+
+    // Unknown type: require explicit type, no fallbacks
+    console.error(
+      '     ❌ Unable to aggregate playback: unknown or missing type.'
+    );
+    return null;
+  }
+
+  /** Aggregate playback info for a series using the user_usage_stats ItemName convention "[title] - s%" */
+  private static async getAggregatedPlaybackBySeriesTitle(
+    seriesTitle: string,
+    embyInstance: EmbySettings
+  ): Promise<Pick<EmbyPlaybackInfo, 'lastWatched' | 'watchCount'>> {
+    const safeTitle = this.escapeSqlString(seriesTitle).replace(/;/g, '');
+    const likePattern = `${safeTitle} - s%`;
+    const sqlQuery = `SELECT
+        MAX(DateCreated) AS LastWatched,
+        SUM(CASE WHEN PlayDuration > 300 AND PlayDuration < 28800 THEN 1 ELSE 0 END) AS WatchCount
+      FROM (
+        SELECT DateCreated, PlayDuration
+        FROM PlaybackActivity
+        WHERE lower(ItemName) LIKE lower('${likePattern}')
+      ) AS Activity`;
+
+    const data = await this.executeCustomQuery(sqlQuery, embyInstance);
+    return this.parseAggregatedPlaybackResponse(data);
   }
 
   /**
@@ -535,8 +493,13 @@ export class EmbyService {
         );
         return null;
       }
+      const data = await response.json();
+      if (data.message) {
+        console.error(`     ❌ Emby custom query failed: ${data.message}`);
+        return null;
+      }
 
-      return (await response.json()) as EmbyCustomQueryResponse;
+      return data as EmbyCustomQueryResponse;
     } catch (error) {
       clearTimeout(timeoutId);
       if (error instanceof Error && error.name === 'AbortError') {
@@ -555,7 +518,7 @@ export class EmbyService {
   ): { lastWatched?: Date; watchCount: number } {
     try {
       const row = data?.results?.[0];
-      const rawCols = (data?.colums ?? []) as string[];
+      const rawCols = (data?.columns ?? data?.colums ?? []) as string[];
 
       const normalizedCols = rawCols.map((c) =>
         typeof c === 'string' ? c.toLowerCase() : ''
@@ -584,5 +547,9 @@ export class EmbyService {
     } catch {
       return { lastWatched: undefined, watchCount: 0 };
     }
+  }
+
+  private static escapeSqlString(value: string): string {
+    return String(value).replace(/'/g, "''");
   }
 }

@@ -78,3 +78,20 @@ Example Response 2
   "message": ""
 }
 ```
+
+Error Response Example
+
+```json
+{
+  colums: [],
+  results: [],
+  message: "Error Running Query</br>SQL contains more than one statment<pre>System.ArgumentException: SQL contains more than one statment\n' +
+    '   at SQLitePCL.pretty.DatabaseConnection.PrepareStatement(IDatabaseConnection This, String sql)\n' +
+    '   at playback_reporting.Data.ActivityRepository.RunCustomQuery(String query_string, List`1 col_names, List`1 results)</pre>"
+}
+```
+
+## Getting Series playback.
+
+- queries w too many episode ids might not work properly
+- could fall back to querying by title
