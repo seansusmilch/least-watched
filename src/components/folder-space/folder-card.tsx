@@ -7,6 +7,7 @@ import { HardDrive, Tv, Film } from 'lucide-react';
 import { formatFileSize } from '@/lib/utils/formatters';
 import { DiskSpaceDetails } from './disk-space-details';
 import type { FolderSpaceData } from '@/lib/types/media-processing';
+import { cn } from '@/lib/utils';
 
 interface FolderCardProps {
   folder: FolderSpaceData;
@@ -21,9 +22,7 @@ export function FolderCard({ folder, onClick }: FolderCardProps) {
 
   return (
     <Card
-      className={`cursor-pointer hover:shadow-md transition-shadow ${
-        hasDiskSpaceData ? 'border-blue-200' : ''
-      }`}
+      className={cn(hasDiskSpaceData && 'border-blue-200')}
       onClick={() => onClick(folder.path)}
     >
       <CardContent className='p-4'>

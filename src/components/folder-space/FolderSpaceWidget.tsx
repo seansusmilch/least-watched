@@ -89,7 +89,7 @@ export function FolderSpaceWidget({
                   return (
                     <Card
                       key={folderId}
-                      className='cursor-pointer flex-shrink-0 w-80 hover:bg-muted relative'
+                      className='flex-shrink-0 w-80 relative'
                     >
                       <CardHeader className='flex items-center justify-between px-4'>
                         <CardTitle className='flex items-center space-x-2'>

@@ -15,10 +15,7 @@ export function FolderSpaceSkeleton() {
       <CardContent>
         <div className='flex flex-row gap-4 overflow-x-auto flex-nowrap pb-2'>
           {Array.from({ length: 3 }).map((_, idx) => (
-            <Card
-              key={idx}
-              className='cursor-pointer flex-shrink-0 w-80 hover:bg-muted relative'
-            >
+            <Card key={idx} className='flex-shrink-0 w-80 relative'>
               <CardHeader className='flex items-center justify-between px-4'>
                 {/* Header skeleton: icon and title */}
                 <Skeleton className='h-4 w-4' />
