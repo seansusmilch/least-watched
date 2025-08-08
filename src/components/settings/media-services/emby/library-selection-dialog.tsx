@@ -93,6 +93,11 @@ export function LibrarySelectionDialog({
           </DialogTitle>
           <DialogDescription>
             Choose which Emby libraries to include when scanning media.
+            <br />
+            <span className='text-muted-foreground text-sm font-bold'>
+              If no libraries are selected, all movies and series from your
+              entire Emby server will be scanned.
+            </span>
           </DialogDescription>
         </DialogHeader>
 
