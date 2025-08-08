@@ -97,7 +97,7 @@ export function AllSettingsBackup() {
       <CardContent className='flex gap-2 justify-between flex-col sm:flex-row'>
         <div className='flex gap-2'>
           <Button variant='outline' onClick={handleExport} disabled={importing}>
-            <Download className='h-4 w-4 mr-2' /> Export All Settings
+            <Download className='h-4 w-4 mr-2' /> Export Settings
           </Button>
 
           <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>

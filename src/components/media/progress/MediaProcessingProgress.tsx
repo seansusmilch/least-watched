@@ -6,6 +6,10 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, CheckCircle, X, AlertCircle } from 'lucide-react';
 import { useProgress } from '@/hooks/use-progress';
+import { useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
+import { revalidateAfterProcessing } from '@/lib/actions/media-processing';
 
 interface MediaProcessingProgressProps {
   onClose?: () => void;
@@ -17,11 +21,34 @@ export function MediaProcessingProgress({
   onComplete,
 }: MediaProcessingProgressProps) {
   const { state, progress, isLoading, error, clearProgress } = useProgress();
+  const queryClient = useQueryClient();
+  const router = useRouter();
 
-  // Handle completion
-  if (state === 'completed' && onComplete) {
-    onComplete();
-  }
+  const hasError = !!error;
+  const progressPercentage = progress?.percentage || 0;
+
+  useEffect(() => {
+    if (state === 'completed' && !hasError) {
+      onComplete?.();
+      queryClient.invalidateQueries({ queryKey: ['media-items'] });
+      queryClient.invalidateQueries({ queryKey: ['processed-media-items'] });
+      queryClient.invalidateQueries({ queryKey: ['media-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['deletion-score-breakdown'] });
+
+      // Force immediate refetch for active client queries
+      queryClient.refetchQueries({ queryKey: ['media-items'], type: 'active' });
+      queryClient.refetchQueries({
+        queryKey: ['processed-media-items'],
+        type: 'active',
+      });
+
+      const timeoutId = window.setTimeout(() => {
+        clearProgress();
+      }, 10_000);
+      return () => clearTimeout(timeoutId);
+    }
+    return undefined;
+  }, [state, hasError, clearProgress, onComplete, queryClient, router]);
 
   // Don't render anything if no progress
   if (state === 'none' || (!progress && !isLoading)) {
@@ -40,9 +67,6 @@ export function MediaProcessingProgress({
   const handleClearCompleted = async () => {
     await clearProgress();
   };
-
-  const hasError = !!error;
-  const progressPercentage = progress?.percentage || 0;
 
   return (
     <Card className='w-full'>

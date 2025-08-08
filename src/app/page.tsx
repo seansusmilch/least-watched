@@ -5,9 +5,9 @@ import {
   MediaSummaryCardsSkeleton,
   MediaProcessingProgressSkeleton,
   MediaProcessingProgress,
-  MediaSummaryCardsServer,
+  MediaSummaryCardsClient,
   PageActions,
-  MediaPageServer,
+  MediaPageClient,
 } from '@/components/media';
 import {
   FolderSpaceSkeleton,
@@ -43,12 +43,12 @@ export default function LeastWatchedPage() {
           <FolderSpaceWidgetWithInitialData />
         </Suspense>
 
-        {/* Dynamic Summary Cards - Streamed */}
+        {/* Summary Cards (client, refetchable) */}
         <Suspense fallback={<MediaSummaryCardsSkeleton />}>
-          <MediaSummaryCardsServer />
+          <MediaSummaryCardsClient />
         </Suspense>
 
-        {/* Dynamic Media Page (Filters + Table) - Streamed */}
+        {/* Media Page (client, refetchable) */}
         <Suspense
           fallback={
             <div className='space-y-6'>
@@ -57,7 +57,7 @@ export default function LeastWatchedPage() {
             </div>
           }
         >
-          <MediaPageServer />
+          <MediaPageClient />
         </Suspense>
       </div>
     </AppLayout>

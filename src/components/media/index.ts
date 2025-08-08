@@ -7,6 +7,7 @@ export { MediaTableWithFilters } from './table/MediaTableWithFilters';
 // Summary components
 export { MediaSummaryCards } from './summary/MediaSummaryCards';
 export { MediaSummaryCardsServer } from './summary/MediaSummaryCardsServer';
+export { MediaSummaryCardsClient } from './summary/MediaSummaryCardsClient';
 export { MediaSummaryCardsSkeleton } from './summary/MediaSummaryCardsSkeleton';
 export { DeletionScoreBreakdown } from './summary/DeletionScoreBreakdown';
 
@@ -24,4 +25,4 @@ export { PageActions } from './PageActions';
 
 // Page components
 export { MediaPageContent } from './MediaPageContent';
-export { MediaPageServer } from './MediaPageServer';
+export { MediaPageClient } from './MediaPageClient';

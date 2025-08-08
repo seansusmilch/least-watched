@@ -28,9 +28,7 @@ export function useAdvancedSettings() {
 
         // If deletion scores were recalculated, also invalidate related queries
         if (result.recalculationTriggered) {
-          queryClient.invalidateQueries({
-            queryKey: ['processed-media-items'],
-          });
+          queryClient.invalidateQueries({ queryKey: ['media-items'] });
           queryClient.invalidateQueries({ queryKey: ['media-summary'] });
           queryClient.invalidateQueries({
             queryKey: ['deletion-score-breakdown'],
@@ -49,7 +47,6 @@ export function useAdvancedSettings() {
       if (result.success) {
         // Invalidate media items and related queries
         queryClient.invalidateQueries({ queryKey: ['media-items'] });
-        queryClient.invalidateQueries({ queryKey: ['processed-media-items'] });
       } else {
         throw new Error(result.error || 'Failed to clear media items');
       }
