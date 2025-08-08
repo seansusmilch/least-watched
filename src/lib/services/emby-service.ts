@@ -617,7 +617,6 @@ export class EmbyService {
 
       // We selected columns in this order in SQL:
       // r.ROWID, r.DateCreated, r.ItemId, r.ItemName, r.PlayDuration, w.WatchCount
-      const rowIdIdx = indexOfCi('ROWID', 0);
       const dateIdx = indexOfCi('DateCreated', 1);
       const itemIdIdx = indexOfCi('ItemId', 2);
       const itemNameIdx = indexOfCi('ItemName', 3);
