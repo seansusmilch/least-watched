@@ -1,4 +1,4 @@
-import { appSettingsService } from '@/lib/database';
+import { kvSettingsStore } from '@/lib/utils/kv-settings';
 
 export interface EmbySettings {
   name: string;
@@ -43,12 +43,12 @@ export const singleEmbySettingsService = {
         selectedLibrariesStr,
         selectedFoldersStr,
       ] = await Promise.all([
-        appSettingsService.getValue('emby-name'),
-        appSettingsService.getValue('emby-url'),
-        appSettingsService.getValue('emby-apiKey'),
-        appSettingsService.getValue('emby-enabled'),
-        appSettingsService.getValue('emby-selectedLibraries'),
-        appSettingsService.getValue('emby-selectedFolders'),
+        kvSettingsStore.get('emby-name'),
+        kvSettingsStore.get('emby-url'),
+        kvSettingsStore.get('emby-apiKey'),
+        kvSettingsStore.get('emby-enabled'),
+        kvSettingsStore.get('emby-selectedLibraries'),
+        kvSettingsStore.get('emby-selectedFolders'),
       ]);
 
       if (!name || !url || !apiKey) {
@@ -142,11 +142,7 @@ export const singleEmbySettingsService = {
     // Create all settings
     await Promise.all(
       settingsToCreate.map((setting) =>
-        appSettingsService.setValue(
-          setting.key,
-          setting.value,
-          setting.description
-        )
+        kvSettingsStore.set(setting.key, setting.value, setting.description)
       )
     );
 
@@ -210,9 +206,7 @@ export const singleEmbySettingsService = {
           description: 'Emby selected libraries',
         });
       } else {
-        await appSettingsService
-          .delete('emby-selectedLibraries')
-          .catch(() => {});
+        await kvSettingsStore.delete('emby-selectedLibraries').catch(() => {});
       }
     }
     if (data.selectedFolders !== undefined) {
@@ -223,18 +217,14 @@ export const singleEmbySettingsService = {
           description: 'Emby selected folders',
         });
       } else {
-        await appSettingsService.delete('emby-selectedFolders').catch(() => {});
+        await kvSettingsStore.delete('emby-selectedFolders').catch(() => {});
       }
     }
 
     // Apply all updates
     await Promise.all(
       updates.map((update) =>
-        appSettingsService.setValue(
-          update.key,
-          update.value,
-          update.description
-        )
+        kvSettingsStore.set(update.key, update.value, update.description)
       )
     );
 
@@ -260,7 +250,7 @@ export const singleEmbySettingsService = {
 
     await Promise.all(
       keys.map((key) =>
-        appSettingsService.delete(key).catch(() => {
+        kvSettingsStore.delete(key).catch(() => {
           // Ignore errors for keys that don't exist
         })
       )

@@ -206,21 +206,11 @@ Create a small server module (e.g., `src/lib/actions/settings/backup.ts`) exposi
 - Keep all writes in server actions; never write from client.
 - Consider opt-out checkboxes for importing API keys (optional enhancement).
 
-#### Testing
-
-- Unit tests for Zod schemas (app, deletionScore, services) and full envelope.
-- Unit tests for `importAllSettings` upsert flows (mocks for appSettingsService, sonarr/radarr/emby services, deletion score service).
-- Manual QA:
-  - Export → wipe DB → Import → values restored (including multiple Sonarr/Radarr instances and Emby).
-  - Import with partial sections present (only app, only services, etc.).
-  - Changing `datePreference` and/or deletion scoring triggers background recalculation.
-
 #### Incremental rollout
 
 1. Server actions + schemas (export/import all settings).
 2. UI buttons & dialogs in a central Settings Backup section.
 3. README: new "All Settings Export/Import" section (update examples and guidance).
-4. Optional: CLI under `scripts/` to export/import from terminal.
 
 #### Future extensions
 

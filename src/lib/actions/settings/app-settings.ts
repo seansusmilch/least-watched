@@ -2,8 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { prisma } from '@/lib/database';
 import { deletionScoreService } from '@/lib/services/deletion-score-service';
+import { kvSettingsStore } from '@/lib/utils/kv-settings';
 import type { DatePreference } from '@/lib/types/media';
 
 const DatePreferenceSchema = z.enum(['arr', 'emby', 'oldest']);
@@ -23,15 +23,11 @@ const DEFAULT_SETTINGS: AppSettings = {
  */
 export async function getAppSettings(): Promise<AppSettings> {
   try {
-    const datePreference = await prisma.appSettings.findUnique({
-      where: { key: 'date-preference' },
-    });
-
-    return {
-      datePreference:
-        (datePreference?.value as DatePreference) ||
-        DEFAULT_SETTINGS.datePreference,
-    };
+    const datePreference =
+      ((await kvSettingsStore.get(
+        'date-preference'
+      )) as DatePreference | null) || DEFAULT_SETTINGS.datePreference;
+    return { datePreference };
   } catch (error) {
     console.error('Error getting app settings:', error);
     return DEFAULT_SETTINGS;
@@ -47,15 +43,11 @@ export async function updateAppSettings(settings: Partial<AppSettings>) {
 
     // Update date preference if provided
     if (validatedSettings.datePreference) {
-      await prisma.appSettings.upsert({
-        where: { key: 'date-preference' },
-        update: { value: validatedSettings.datePreference },
-        create: {
-          key: 'date-preference',
-          value: validatedSettings.datePreference,
-          description: 'Date preference for media items (arr, emby, oldest)',
-        },
-      });
+      await kvSettingsStore.set(
+        'date-preference',
+        validatedSettings.datePreference,
+        'Date preference for media items (arr, emby, oldest)'
+      );
     }
 
     revalidatePath('/settings');
@@ -71,11 +63,10 @@ export async function updateAppSettings(settings: Partial<AppSettings>) {
  */
 export async function getDatePreference(): Promise<DatePreference> {
   try {
-    const setting = await prisma.appSettings.findUnique({
-      where: { key: 'date-preference' },
-    });
-
-    return (setting?.value as DatePreference) || 'arr';
+    const value = (await kvSettingsStore.get(
+      'date-preference'
+    )) as DatePreference | null;
+    return value || 'arr';
   } catch (error) {
     console.error('Error getting date preference:', error);
     return 'arr';
@@ -130,15 +121,11 @@ export async function triggerDeletionScoreRecalculation(): Promise<{
  */
 export async function updateDatePreference(datePreference: DatePreference) {
   try {
-    await prisma.appSettings.upsert({
-      where: { key: 'date-preference' },
-      update: { value: datePreference },
-      create: {
-        key: 'date-preference',
-        value: datePreference,
-        description: 'Date preference for media items (arr, emby, oldest)',
-      },
-    });
+    await kvSettingsStore.set(
+      'date-preference',
+      datePreference,
+      'Date preference for media items (arr, emby, oldest)'
+    );
 
     revalidatePath('/settings');
 
@@ -165,10 +152,17 @@ export async function updateDatePreference(datePreference: DatePreference) {
  */
 export async function getAppSetting(key: string) {
   try {
-    const setting = await prisma.appSettings.findUnique({
-      where: { key },
-    });
-    return setting;
+    // For compatibility; prefer using kvSettingsStore directly elsewhere
+    const value = await kvSettingsStore.get(key);
+    return value
+      ? {
+          key,
+          value,
+          description: undefined,
+          createdAt: undefined,
+          updatedAt: undefined,
+        }
+      : null;
   } catch (error) {
     console.error('Error getting app setting:', error);
     return null;
@@ -184,15 +178,7 @@ export async function setAppSetting(data: {
   description?: string;
 }) {
   try {
-    await prisma.appSettings.upsert({
-      where: { key: data.key },
-      update: { value: data.value, description: data.description },
-      create: {
-        key: data.key,
-        value: data.value,
-        description: data.description,
-      },
-    });
+    await kvSettingsStore.set(data.key, data.value, data.description);
 
     revalidatePath('/settings');
     return { success: true };

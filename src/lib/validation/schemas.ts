@@ -182,3 +182,51 @@ export const AdvancedSettingsSchema = z.object({
 });
 
 export type AdvancedSettingsFormData = z.infer<typeof AdvancedSettingsSchema>;
+
+// Backup/Restore Schemas
+export const ServiceInstanceSchema = z.object({
+  name: NameSchema,
+  url: UrlSchema,
+  apiKey: ApiKeySchema,
+  enabled: z.boolean().optional().default(true),
+  selectedFolders: z.array(z.string()).optional(),
+});
+
+export const EmbyInstanceSchema = z.object({
+  name: NameSchema,
+  url: UrlSchema,
+  apiKey: ApiKeySchema,
+  enabled: z.boolean().optional().default(true),
+  selectedLibraries: z.array(z.string()).optional(),
+  selectedFolders: z.array(z.string()).optional(),
+});
+
+export const AppExportSchema = z.object({
+  datePreference: z.enum(['arr', 'emby', 'oldest']),
+  other: z
+    .array(
+      z.object({
+        key: z.string(),
+        value: z.string(),
+        description: z.string().optional(),
+      })
+    )
+    .optional(),
+});
+
+export const AllSettingsEnvelopeSchema = z.object({
+  version: z.literal('1.0'),
+  exportedAt: z.string(),
+  type: z.literal('all-settings'),
+  data: z.object({
+    app: AppExportSchema,
+    deletionScore: DeletionScoreSettingsSchema.optional(),
+    services: z.object({
+      sonarr: z.array(ServiceInstanceSchema).optional().default([]),
+      radarr: z.array(ServiceInstanceSchema).optional().default([]),
+      emby: EmbyInstanceSchema.nullable().optional(),
+    }),
+  }),
+});
+
+export type AllSettingsEnvelope = z.infer<typeof AllSettingsEnvelopeSchema>;

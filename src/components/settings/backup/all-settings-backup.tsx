@@ -48,7 +48,7 @@ export function AllSettingsBackup() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       toast.success('Exported all settings');
-    } catch (e) {
+    } catch {
       toast.error('Failed to export settings');
     }
   };
@@ -75,7 +75,7 @@ export function AllSettingsBackup() {
       } else {
         toast.error(res.message || 'Failed to import settings');
       }
-    } catch (err) {
+    } catch {
       toast.error('Invalid settings file');
     } finally {
       setImporting(false);

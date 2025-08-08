@@ -1,4 +1,4 @@
-import { appSettingsService } from '../database';
+import { kvSettingsStore } from '@/lib/utils/kv-settings';
 
 export type ServiceType = 'sonarr' | 'radarr' | 'emby';
 
@@ -37,57 +37,61 @@ export const prefixedSettingsService = {
   // Get all instances of a service type
   async getAll(serviceType: ServiceType): Promise<ServiceSettings[]> {
     const prefix = `${serviceType}-`;
-    const allSettings = await appSettingsService.getAll();
+    const allSettings = await kvSettingsStore.listByPrefix(prefix);
 
     // Group settings by instance ID
     const instanceMap = new Map<string, Partial<ServiceSettings>>();
 
-    allSettings
-      .filter((setting) => setting.key.startsWith(prefix))
-      .forEach((setting) => {
-        const keyParts = setting.key.split('-');
-        if (keyParts.length >= 3) {
-          const instanceId = keyParts[1];
-          const fieldName = keyParts.slice(2).join('-');
+    allSettings.forEach((setting) => {
+      const keyParts = setting.key.split('-');
+      if (keyParts.length >= 3) {
+        const instanceId = keyParts[1];
+        const fieldName = keyParts.slice(2).join('-');
 
-          if (!instanceMap.has(instanceId)) {
-            instanceMap.set(instanceId, { id: instanceId });
-          }
-
-          const instance = instanceMap.get(instanceId)!;
-
-          switch (fieldName) {
-            case 'name':
-              instance.name = setting.value;
-              break;
-            case 'url':
-              instance.url = setting.value;
-              break;
-            case 'apiKey':
-              instance.apiKey = setting.value;
-              break;
-            case 'enabled':
-              instance.enabled = setting.value === 'true';
-              break;
-            case 'selectedFolders':
-              instance.selectedFolders = setting.value
-                ? JSON.parse(setting.value)
-                : undefined;
-              break;
-            case 'preferEmbyDateAdded':
-              instance.preferEmbyDateAdded = setting.value === 'true';
-              break;
-          }
-
-          // Use the earliest createdAt and latest updatedAt
-          if (!instance.createdAt || setting.createdAt < instance.createdAt) {
-            instance.createdAt = setting.createdAt;
-          }
-          if (!instance.updatedAt || setting.updatedAt > instance.updatedAt) {
-            instance.updatedAt = setting.updatedAt;
-          }
+        if (!instanceMap.has(instanceId)) {
+          instanceMap.set(instanceId, { id: instanceId });
         }
-      });
+
+        const instance = instanceMap.get(instanceId)!;
+
+        switch (fieldName) {
+          case 'name':
+            instance.name = setting.value;
+            break;
+          case 'url':
+            instance.url = setting.value;
+            break;
+          case 'apiKey':
+            instance.apiKey = setting.value;
+            break;
+          case 'enabled':
+            instance.enabled = setting.value === 'true';
+            break;
+          case 'selectedFolders':
+            instance.selectedFolders = setting.value
+              ? JSON.parse(setting.value)
+              : undefined;
+            break;
+          case 'preferEmbyDateAdded':
+            instance.preferEmbyDateAdded = setting.value === 'true';
+            break;
+        }
+
+        // Use the earliest createdAt and latest updatedAt
+        if (
+          !instance.createdAt ||
+          (setting.createdAt && setting.createdAt < instance.createdAt)
+        ) {
+          instance.createdAt = setting.createdAt;
+        }
+        if (
+          !instance.updatedAt ||
+          (setting.updatedAt && setting.updatedAt > instance.updatedAt)
+        ) {
+          instance.updatedAt = setting.updatedAt;
+        }
+      }
+    });
 
     return Array.from(instanceMap.values())
       .filter((instance) => instance.name && instance.url && instance.apiKey)
@@ -111,11 +115,7 @@ export const prefixedSettingsService = {
     id: string
   ): Promise<ServiceSettings | null> {
     const prefix = `${serviceType}-${id}-`;
-    const allSettings = await appSettingsService.getAll();
-
-    const instanceSettings = allSettings.filter((setting) =>
-      setting.key.startsWith(prefix)
-    );
+    const instanceSettings = await kvSettingsStore.listByPrefix(prefix);
 
     if (instanceSettings.length === 0) {
       return null;
@@ -151,10 +151,10 @@ export const prefixedSettingsService = {
           break;
       }
 
-      if (setting.createdAt < createdAt) {
+      if (setting.createdAt && setting.createdAt < createdAt) {
         createdAt = setting.createdAt;
       }
-      if (setting.updatedAt > updatedAt) {
+      if (setting.updatedAt && setting.updatedAt > updatedAt) {
         updatedAt = setting.updatedAt;
       }
     });
@@ -236,11 +236,7 @@ export const prefixedSettingsService = {
     // Create all settings
     await Promise.all(
       settingsToCreate.map((setting) =>
-        appSettingsService.setValue(
-          setting.key,
-          setting.value,
-          setting.description
-        )
+        kvSettingsStore.set(setting.key, setting.value, setting.description)
       )
     );
 
@@ -269,7 +265,7 @@ export const prefixedSettingsService = {
 
     if (data.name !== undefined) {
       updates.push(
-        appSettingsService.setValue(
+        kvSettingsStore.set(
           `${prefix}name`,
           data.name,
           `${serviceType} instance name`
@@ -279,7 +275,7 @@ export const prefixedSettingsService = {
 
     if (data.url !== undefined) {
       updates.push(
-        appSettingsService.setValue(
+        kvSettingsStore.set(
           `${prefix}url`,
           data.url,
           `${serviceType} server URL`
@@ -289,7 +285,7 @@ export const prefixedSettingsService = {
 
     if (data.apiKey !== undefined) {
       updates.push(
-        appSettingsService.setValue(
+        kvSettingsStore.set(
           `${prefix}apiKey`,
           data.apiKey,
           `${serviceType} API key`
@@ -299,7 +295,7 @@ export const prefixedSettingsService = {
 
     if (data.enabled !== undefined) {
       updates.push(
-        appSettingsService.setValue(
+        kvSettingsStore.set(
           `${prefix}enabled`,
           data.enabled.toString(),
           `${serviceType} instance enabled status`
@@ -310,7 +306,7 @@ export const prefixedSettingsService = {
     if (data.selectedFolders !== undefined) {
       if (data.selectedFolders && data.selectedFolders.length > 0) {
         updates.push(
-          appSettingsService.setValue(
+          kvSettingsStore.set(
             `${prefix}selectedFolders`,
             JSON.stringify(data.selectedFolders),
             `${serviceType} selected folders`
@@ -318,7 +314,7 @@ export const prefixedSettingsService = {
         );
       } else {
         updates.push(
-          appSettingsService.delete(`${prefix}selectedFolders`).catch(() => {})
+          kvSettingsStore.delete(`${prefix}selectedFolders`).catch(() => {})
         ); // Ignore if doesn't exist
       }
     }
@@ -326,7 +322,7 @@ export const prefixedSettingsService = {
     if (data.preferEmbyDateAdded !== undefined) {
       if (serviceType === 'emby') {
         updates.push(
-          appSettingsService.setValue(
+          kvSettingsStore.set(
             `${prefix}preferEmbyDateAdded`,
             data.preferEmbyDateAdded.toString(),
             `${serviceType} prefer Emby date added`
@@ -348,15 +344,7 @@ export const prefixedSettingsService = {
   // Delete an instance
   async delete(serviceType: ServiceType, id: string): Promise<void> {
     const prefix = `${serviceType}-${id}-`;
-    const allSettings = await appSettingsService.getAll();
-
-    const keysToDelete = allSettings
-      .filter((setting) => setting.key.startsWith(prefix))
-      .map((setting) => setting.key);
-
-    await Promise.all(
-      keysToDelete.map((key) => appSettingsService.delete(key))
-    );
+    await kvSettingsStore.deleteByPrefix(prefix);
   },
 
   // Get only enabled instances
