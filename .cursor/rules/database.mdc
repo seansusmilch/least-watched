@@ -2,7 +2,15 @@
 description: whenever data from the database is needed, or the database schema needs changing, or prisma is mentioned
 alwaysApply: false
 ---
+
 ## Database Management Rules
+
 - use prisma for ORM
 - use migrations for all database schema changes
 - log database operations for debugging and monitoring
+
+### Updating the schema
+
+1. Make schema changes in prisma/schema.prisma
+2. Create a migration: bunx prisma migrate dev --name change-name
+3. Generate client: bunx prisma generate
