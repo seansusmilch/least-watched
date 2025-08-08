@@ -49,7 +49,10 @@ RUN adduser --system --uid 1001 nextjs
 # https://nextjs.org/docs/advanced-features/output-file-tracing
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY ./prisma .
+COPY ./docker-entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh && chown nextjs:nodejs /app/entrypoint.sh
 
 USER nextjs
 
@@ -64,4 +67,4 @@ VOLUME /data
 # server.js is created by next build from the standalone output
 # https://nextjs.org/docs/pages/api-reference/config/next-config-js/output
 ENV HOSTNAME="0.0.0.0"
-CMD bunx prisma migrate deploy && bun server.js
+CMD ["/app/entrypoint.sh"]
