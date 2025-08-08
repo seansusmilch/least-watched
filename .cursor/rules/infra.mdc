@@ -10,43 +10,45 @@ This document provides a summary of the `least-watched` project to be used by th
 
 **Key Features:**
 
-*   Connects to multiple Sonarr, Radarr, and Emby instances.
-*   Monitors disk space.
-*   Calculates a "deletion score" for media.
-*   Filters and sorts media.
-*   Exports/imports deletion score settings.
-*   Database seeding for development.
+- Connects to multiple Sonarr, Radarr, and Emby instances.
+- Monitors disk space.
+- Calculates a "deletion score" for media.
+- Filters and sorts media.
+- Exports/imports deletion score settings.
+- Database seeding for development.
 
 ## Technical Details
 
 **Tech Stack:**
 
-*   **Framework:** Next.js (with Turbopack)
-*   **Language:** TypeScript
-*   **UI:** React, Tailwind CSS, Radix UI, shadcn/ui
-*   **State Management:** Zustand, @tanstack/react-query
-*   **Database:** SQLite with Prisma ORM
-*   **Package Manager:** bun
+- **Framework:** Next.js (with Turbopack)
+- **Language:** TypeScript
+- **UI:** React, Tailwind CSS, Radix UI, shadcn/ui
+- **State Management:** Zustand, @tanstack/react-query
+- **Database:** SQLite with Prisma ORM
+- **Package Manager:** bun
 
 **Project Structure:**
 
-*   `@/` import alias that maps to `./src` (PREFER TO USE THIS RATHER THAN ../)
-*   `src/app`: Next.js App Router pages.
-*   `src/components`: React components, organized by feature.
-*   `src/lib`: Core logic, including server actions, services for external APIs, and database utilities.
-*   `prisma`: Database schema and migrations.
-*   `scripts`: Standalone scripts for database management.
+- `@/` import alias that maps to `./src` (PREFER TO USE THIS RATHER THAN ../)
+- `src/app`: Next.js App Router pages.
+- `src/components`: React components, organized by feature.
+- `src/lib`: Core logic, including server actions, services for external APIs, and database utilities.
+- `prisma`: Database schema and migrations.
+- `scripts`: Standalone scripts for database management.
 
 ## Development
 
 **Important Commands:**
 
-*   `bun dev`: Starts the development server.
-*   `bun build`: Builds the application for production.
-*   `bun start`: Starts the production server.
-*   `bun lint`: Type checks AND lints the code. (USE THIS FREQUENTLY TO CHECK YOUR WORK)
-*   `bun run db:generate`: Generates the Prisma client.
-*   `bun run db:push`: Pushes schema changes to the database.
-*   `bun run db:migrate`: Deploys database migrations.
-*   `bun run db:reset`: Resets the database.
-*   `bun run db:seed`: Seeds the database with test data.
+Run these commands EXACTLY as they are. Do not pipe extra commands before or after them.
+
+- `bun dev`: Starts the development server.
+- `bun build`: Builds the application for production.
+- `bun start`: Starts the production server.
+- `bun lint`: Type checks AND lints the code. (USE THIS FREQUENTLY TO CHECK YOUR WORK)
+- `bun run db:generate`: Generates the Prisma client.
+- `bun run db:push`: Pushes schema changes to the database.
+- `bun run db:migrate`: Deploys database migrations.
+- `bun run db:reset`: Resets the database.
+- `bun run db:seed`: Seeds the database with test data.
