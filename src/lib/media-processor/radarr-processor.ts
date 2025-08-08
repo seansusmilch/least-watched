@@ -25,6 +25,21 @@ export class RadarrProcessor {
     console.log(`   TMDB ID: ${movie.tmdbId || 'Unknown'}`);
     console.log(`   IMDB ID: ${movie.imdbId || 'Unknown'}`);
 
+    // Emby-first: resolve Emby mapping up front; skip if not resolvable
+    console.log(`   🎬 Querying Emby for playback info (ID-first)...`);
+    const embyData = await EmbyService.getEmbyMediaDataEnhanced({
+      title: movie.title || '',
+      type: 'movie',
+      tmdbId: movie.tmdbId ?? undefined,
+      imdbId: movie.imdbId ?? undefined,
+      embyInstance,
+    });
+    if (!embyData?.embyId) {
+      throw new Error(
+        `No Emby mapping found for movie: ${movie.title || movie.id}`
+      );
+    }
+
     const processedItem: ProcessedMediaItem = {
       title: movie.title || 'Unknown',
       type: 'movie',
@@ -37,73 +52,47 @@ export class RadarrProcessor {
       dateAddedArr: movie.added ? new Date(movie.added) : new Date(),
       source: radarrInstance.name,
       radarrId: movie.id,
+      embyId: embyData.embyId,
 
       // Enhanced movie fields
       quality: movie.movieFile?.quality?.quality?.name ?? undefined,
       monitored: movie.monitored,
+      lastWatched: embyData.lastWatched,
+      watchCount: embyData.watchCount || 0,
     };
 
-    {
-      processedItem.qualityScore = getQualityScore(processedItem.quality);
+    if (embyData.metadata?.DateCreated) {
+      console.log(`   🎬 Emby date added: ${embyData.metadata.DateCreated}`);
+      processedItem.dateAddedEmby = new Date(embyData.metadata.DateCreated);
     }
 
-    {
-      try {
-        const details = await radarrApiClient.getMovieById(
-          radarrInstance,
-          movie.id || 0
-        );
+    processedItem.qualityScore = getQualityScore(processedItem.quality);
 
-        if (details) {
-          processedItem.runtime = details.runtime ?? undefined;
-          processedItem.genres = details.genres ?? [];
-          processedItem.overview = details.overview ?? undefined;
+    try {
+      const details = await radarrApiClient.getMovieById(
+        radarrInstance,
+        movie.id || 0
+      );
 
-          // Extract ratings
-          if (details.ratings) {
-            processedItem.imdbRating = details.ratings.imdb?.value ?? undefined;
-            processedItem.tmdbRating = details.ratings.tmdb?.value ?? undefined;
-          }
+      if (details) {
+        processedItem.runtime = details.runtime ?? undefined;
+        processedItem.genres = details.genres ?? [];
+        processedItem.overview = details.overview ?? undefined;
 
-          console.log(`   ✅ Enhanced metadata retrieved for: ${movie.title}`);
+        if (details.ratings) {
+          processedItem.imdbRating = details.ratings.imdb?.value ?? undefined;
+          processedItem.tmdbRating = details.ratings.tmdb?.value ?? undefined;
         }
-      } catch {
-        console.log(
-          `   ⚠️ Could not fetch enhanced details for: ${movie.title}`
-        );
+
+        console.log(`   ✅ Enhanced metadata retrieved for: ${movie.title}`);
       }
+    } catch {
+      console.log(`   ⚠️ Could not fetch enhanced details for: ${movie.title}`);
     }
 
-    // Calculate size efficiency
     if (processedItem.runtime && processedItem.sizeOnDisk) {
       const sizeInGB = processedItem.sizeOnDisk / (1024 * 1024 * 1024);
       processedItem.sizePerHour = (sizeInGB / processedItem.runtime) * 60;
-    }
-
-    // Try to get playback information from Emby (ID-first)
-    {
-      console.log(`   🎬 Querying Emby for playback info (ID-first)...`);
-      const embyData = await EmbyService.getEmbyMediaDataEnhanced({
-        title: movie.title || '',
-        type: 'movie',
-        tmdbId: movie.tmdbId ?? undefined,
-        imdbId: movie.imdbId ?? undefined,
-        embyInstance,
-      });
-      if (embyData) {
-        processedItem.embyId = embyData.embyId;
-        processedItem.lastWatched = embyData.lastWatched;
-        processedItem.watchCount = embyData.watchCount || 0;
-
-        if (embyData.metadata?.DateCreated) {
-          console.log(
-            `   🎬 Emby date added: ${embyData.metadata.DateCreated}`
-          );
-          processedItem.dateAddedEmby = new Date(embyData.metadata.DateCreated);
-        }
-      } else {
-        console.log(`   ❌ No Emby data found for: ${movie.title}`);
-      }
     }
 
     console.log(

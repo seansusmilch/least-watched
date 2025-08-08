@@ -86,7 +86,7 @@ export interface RadarrInstance {
 export interface EmbyPlaybackInfo {
   lastWatched?: Date;
   watchCount?: number;
-  embyId?: string;
+  embyId: string;
   metadata?: EmbyMetadata;
 }
 

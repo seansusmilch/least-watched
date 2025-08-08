@@ -153,6 +153,10 @@ export class MediaProcessor {
       );
 
       try {
+        if (!item?.Id) {
+          console.log(`     ⚠️ Skipping Emby item without Id: ${name}`);
+          continue;
+        }
         const providerIds: Record<string, string> = Object.fromEntries(
           Object.entries(
             ((item as unknown as { ProviderIds?: Record<string, string> })
@@ -177,7 +181,7 @@ export class MediaProcessor {
             ? new Date(item.DateCreated)
             : undefined,
           source: 'Emby',
-          embyId: item.Id,
+          embyId: String(item.Id),
         };
 
         // Enrich from Arr maps

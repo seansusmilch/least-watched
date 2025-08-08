@@ -379,8 +379,19 @@ async function seedDatabase() {
     console.log(`⚙️ Created ${appSettings.count} app settings`);
 
     // Seed Media Items
+    const transformed = config.mediaItems.map(transformMediaItemForDatabase);
+    const valid = transformed.filter(
+      (m) =>
+        typeof (m as any).embyId === 'string' && (m as any).embyId.length > 0
+    );
+    const skipped = transformed.length - valid.length;
+    if (skipped > 0) {
+      console.log(
+        `⚠️  Skipping ${skipped} media items without required embyId`
+      );
+    }
     const mediaItems = await prisma.mediaItem.createMany({
-      data: config.mediaItems.map(transformMediaItemForDatabase),
+      data: valid as any,
     });
     console.log(`🎯 Created ${mediaItems.count} media items`);
 

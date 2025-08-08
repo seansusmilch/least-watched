@@ -98,9 +98,7 @@ export class MediaStorage {
         deletionScore: deletionScore,
       };
 
-      let result;
-
-      result = await prisma.mediaItem.upsert({
+      const result = await prisma.mediaItem.upsert({
         where: { embyId: item.embyId },
         update: itemData,
         create: itemData,

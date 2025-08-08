@@ -33,6 +33,22 @@ export class SonarrProcessor {
         ? Math.round((episodesOnDisk / totalEpisodes) * 100)
         : 0;
 
+    // Emby-first: resolve Emby mapping up front; skip if not resolvable
+    console.log(`   🎬 Querying Emby for playback info (ID-first)...`);
+    const embyData = await EmbyService.getEmbyMediaDataEnhanced({
+      title: series.title || '',
+      type: 'tv',
+      tvdbId: series.tvdbId ?? undefined,
+      tmdbId: series.tmdbId ?? undefined,
+      imdbId: series.imdbId ?? undefined,
+      embyInstance,
+    });
+    if (!embyData?.embyId) {
+      throw new Error(
+        `No Emby mapping found for series: ${series.title || series.id}`
+      );
+    }
+
     const processedItem: ProcessedMediaItem = {
       title: series.title || 'Unknown',
       type: 'tv',
@@ -46,6 +62,7 @@ export class SonarrProcessor {
       dateAddedArr: series.added ? new Date(series.added) : new Date(),
       source: sonarrInstance.name,
       sonarrId: series.id,
+      embyId: embyData.embyId,
 
       // Enhanced TV show fields
       episodesOnDisk,
@@ -53,69 +70,44 @@ export class SonarrProcessor {
       seasonCount: series.statistics?.seasonCount || 0,
       completionPercentage,
       monitored: series.monitored !== undefined ? series.monitored : undefined,
+      lastWatched: embyData.lastWatched,
+      watchCount: embyData.watchCount || 0,
     };
 
-    // Get enhanced details if enabled
-    {
-      try {
-        const details = await sonarrApiClient.getSeriesById(
-          sonarrInstance,
-          series.id || 0
-        );
-
-        if (details) {
-          processedItem.runtime = details.runtime || undefined;
-          processedItem.genres = details.genres || undefined;
-          processedItem.overview = details.overview || undefined;
-
-          // Extract ratings
-          if (details.ratings) {
-            processedItem.imdbRating = details.ratings?.value || undefined;
-            processedItem.tmdbRating = details.ratings?.value || undefined;
-          }
-
-          console.log(`   ✅ Enhanced metadata retrieved for: ${series.title}`);
-        }
-      } catch {
-        console.log(
-          `   ⚠️ Could not fetch enhanced details for: ${series.title}`
-        );
-      }
+    if (embyData.metadata?.DateCreated) {
+      console.log(`   🎬 Emby date added: ${embyData.metadata.DateCreated}`);
+      processedItem.dateAddedEmby = new Date(embyData.metadata.DateCreated);
     }
 
-    // Calculate size efficiency
+    try {
+      const details = await sonarrApiClient.getSeriesById(
+        sonarrInstance,
+        series.id || 0
+      );
+
+      if (details) {
+        processedItem.runtime = details.runtime || undefined;
+        processedItem.genres = details.genres || undefined;
+        processedItem.overview = details.overview || undefined;
+
+        if (details.ratings) {
+          processedItem.imdbRating = details.ratings?.value || undefined;
+          processedItem.tmdbRating = details.ratings?.value || undefined;
+        }
+
+        console.log(`   ✅ Enhanced metadata retrieved for: ${series.title}`);
+      }
+    } catch {
+      console.log(
+        `   ⚠️ Could not fetch enhanced details for: ${series.title}`
+      );
+    }
+
     if (processedItem.runtime && processedItem.episodesOnDisk) {
       const totalRuntime = processedItem.runtime * processedItem.episodesOnDisk;
       const sizeInGB = processedItem.sizeOnDisk / (1024 * 1024 * 1024);
       processedItem.sizePerHour =
         totalRuntime > 0 ? (sizeInGB / totalRuntime) * 60 : 0;
-    }
-
-    // Try to get playback information from Emby (ID-first)
-    {
-      console.log(`   🎬 Querying Emby for playback info (ID-first)...`);
-      const embyData = await EmbyService.getEmbyMediaDataEnhanced({
-        title: series.title || '',
-        type: 'tv',
-        tvdbId: series.tvdbId ?? undefined,
-        tmdbId: series.tmdbId ?? undefined,
-        imdbId: series.imdbId ?? undefined,
-        embyInstance,
-      });
-      if (embyData) {
-        processedItem.embyId = embyData.embyId;
-        processedItem.lastWatched = embyData.lastWatched;
-        processedItem.watchCount = embyData.watchCount || 0;
-
-        if (embyData.metadata?.DateCreated) {
-          console.log(
-            `   🎬 Emby date added: ${embyData.metadata.DateCreated}`
-          );
-          processedItem.dateAddedEmby = new Date(embyData.metadata.DateCreated);
-        }
-      } else {
-        console.log(`   ❌ No Emby data found for: ${series.title}`);
-      }
     }
 
     console.log(
