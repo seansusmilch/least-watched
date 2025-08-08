@@ -1,19 +1,10 @@
 import { sonarrSettingsService, radarrSettingsService } from '@/lib/database';
-import { type DatePreference } from '@/lib/types/media';
 import { type DeletionScoreSettings } from '@/lib/actions/settings/types';
 import { folderSpaceService } from '@/lib/services/folder-space-service';
 import { ProgressStore } from './progress-store';
 import { TESTING_LIMIT } from './constants';
-import { SonarrProcessor } from './sonarr-processor';
-import { RadarrProcessor } from './radarr-processor';
 import { MediaStorage } from './storage';
-import {
-  type MediaProcessingProgress,
-  type ProcessedMediaItem,
-  type SonarrInstance,
-  type RadarrInstance,
-} from './types';
-import { type FolderSpaceData } from '@/lib/types/media-processing';
+import { type MediaProcessingProgress, type ProcessedMediaItem } from './types';
 import { getDeletionScoreSettings } from '@/lib/actions/settings';
 import { getDatePreference } from '@/lib/actions/settings/app-settings';
 import { sonarrApiClient } from '@/lib/services/sonarr-service';
@@ -25,14 +16,9 @@ import path from 'path';
 
 export class MediaProcessor {
   private onProgress?: (progress: MediaProcessingProgress) => void;
-  private progressId: string;
 
-  constructor(
-    onProgress?: (progress: MediaProcessingProgress) => void,
-    progressId?: string
-  ) {
+  constructor(onProgress?: (progress: MediaProcessingProgress) => void) {
     this.onProgress = onProgress;
-    this.progressId = progressId || 'default';
   }
 
   private async updateProgress(
@@ -251,18 +237,18 @@ export class MediaProcessor {
         // Optional: playback enrichment using ItemId-based queries (no title prefix)
         {
           if (item.Type === 'Series') {
-            const episodeIds = await EmbyService.listEpisodeIdsForSeries(
+            const episodeIds = await EmbyService.listEpisodeItemIdsForSeries(
               String(item.Id),
               embyInstance
             );
-            const aggregate = await EmbyService.getPlaybackInfoByItemIds(
+            const aggregate = await EmbyService.getAggregatedPlaybackForItemIds(
               episodeIds,
               embyInstance
             );
             processed.lastWatched = aggregate.lastWatched;
             processed.watchCount = aggregate.watchCount || 0;
           } else if (item.Id) {
-            const aggregate = await EmbyService.getPlaybackInfoByItemIds(
+            const aggregate = await EmbyService.getAggregatedPlaybackForItemIds(
               [String(item.Id)],
               embyInstance
             );
@@ -293,109 +279,5 @@ export class MediaProcessor {
     });
 
     return allProcessedItems;
-  }
-
-  private async processSonarrInstance(
-    sonarrInstance: SonarrInstance,
-    datePreference: DatePreference,
-    processedItemCount: number,
-    totalItems: number,
-    deletionScoreSettings: DeletionScoreSettings,
-    folderSpaceData: FolderSpaceData[]
-  ): Promise<ProcessedMediaItem[]> {
-    const processedItems: ProcessedMediaItem[] = [];
-    const embyInstance = await singleEmbySettingsService.getEnabled();
-
-    // Get raw series data from Sonarr
-    const series = await sonarrApiClient.getSeries(sonarrInstance);
-    const limitedSeries = series.slice(0, TESTING_LIMIT);
-
-    // Process each series individually
-    for (let i = 0; i < limitedSeries.length; i++) {
-      const seriesData = limitedSeries[i];
-      const currentItemIndex = processedItemCount + i + 1;
-
-      await this.updateProgress(
-        'Processing TV Shows',
-        currentItemIndex,
-        totalItems,
-        `Processing: ${seriesData.title}`
-      );
-
-      try {
-        // Process single series item
-        const processedItem = await SonarrProcessor.processSingleItem(
-          seriesData,
-          sonarrInstance,
-          embyInstance
-        );
-
-        // Store the item immediately
-        await MediaStorage.storeProcessedItem(
-          processedItem,
-          deletionScoreSettings,
-          folderSpaceData,
-          datePreference
-        );
-
-        processedItems.push(processedItem);
-      } catch (error) {
-        console.error(`Error processing series ${seriesData.title}:`, error);
-      }
-    }
-
-    return processedItems;
-  }
-
-  private async processRadarrInstance(
-    radarrInstance: RadarrInstance,
-    datePreference: DatePreference,
-    processedItemCount: number,
-    totalItems: number,
-    deletionScoreSettings: DeletionScoreSettings,
-    folderSpaceData: FolderSpaceData[]
-  ): Promise<ProcessedMediaItem[]> {
-    const processedItems: ProcessedMediaItem[] = [];
-    const embyInstance = await singleEmbySettingsService.getEnabled();
-
-    // Get raw movie data from Radarr
-    const movies = await radarrApiClient.getMovies(radarrInstance);
-    const limitedMovies = movies.slice(0, TESTING_LIMIT);
-
-    // Process each movie individually
-    for (let i = 0; i < limitedMovies.length; i++) {
-      const movieData = limitedMovies[i];
-      const currentItemIndex = processedItemCount + i + 1;
-
-      await this.updateProgress(
-        'Processing Movies',
-        currentItemIndex,
-        totalItems,
-        `Processing: ${movieData.title}`
-      );
-
-      try {
-        // Process single movie item
-        const processedItem = await RadarrProcessor.processSingleItem(
-          movieData,
-          radarrInstance,
-          embyInstance
-        );
-
-        // Store the item immediately
-        await MediaStorage.storeProcessedItem(
-          processedItem,
-          deletionScoreSettings,
-          folderSpaceData,
-          datePreference
-        );
-
-        processedItems.push(processedItem);
-      } catch (error) {
-        console.error(`Error processing movie ${movieData.title}:`, error);
-      }
-    }
-
-    return processedItems;
   }
 }

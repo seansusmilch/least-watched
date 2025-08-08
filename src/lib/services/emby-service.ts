@@ -235,7 +235,7 @@ export class EmbyService {
   /**
    * Fetches item metadata from Emby using the SDK
    */
-  static async getItemMetadata(
+  static async findItemByExactTitle(
     title: string,
     embyInstance: EmbySettings | null
   ): Promise<EmbyMetadata | null> {
@@ -293,7 +293,7 @@ export class EmbyService {
   }
 
   /** Aggregate playback info across multiple ItemIds (e.g., all episodes of a series) */
-  static async getPlaybackInfoByItemIds(
+  static async getAggregatedPlaybackForItemIds(
     itemIds: string[],
     embyInstance: EmbySettings | null,
     opts?: { batchSize?: number }
@@ -343,7 +343,7 @@ export class EmbyService {
   }
 
   /** List episode ItemIds for a given series ItemId */
-  static async listEpisodeIdsForSeries(
+  static async listEpisodeItemIdsForSeries(
     seriesId: string,
     embyInstance: EmbySettings | null
   ): Promise<string[]> {
@@ -406,17 +406,17 @@ export class EmbyService {
   /**
    * Fetches combined media data (metadata + playback info)
    */
-  static async getEmbyMediaData({
+  static async getMediaAndPlaybackByTitle({
     title,
     embyInstance,
   }: {
     title: string;
     embyInstance: EmbySettings | null;
   }): Promise<EmbyPlaybackInfo | null> {
-    const itemMetadata = await this.getItemMetadata(title, embyInstance);
+    const itemMetadata = await this.findItemByExactTitle(title, embyInstance);
     if (!itemMetadata?.Id) return null;
 
-    const playbackAgg = await this.getPlaybackInfoByItemIds(
+    const playbackAgg = await this.getAggregatedPlaybackForItemIds(
       [itemMetadata.Id],
       embyInstance
     );
@@ -430,7 +430,7 @@ export class EmbyService {
   /**
    * Enhanced: Try provider-id mapping first, then title fallback
    */
-  static async getEmbyMediaDataEnhanced({
+  static async getMediaAndPlaybackByProviderIds({
     title,
     type,
     tvdbId,
@@ -453,11 +453,11 @@ export class EmbyService {
     if (matchedItem?.Id) {
       const isTv = type === 'tv' || matchedItem.Type === 'Series';
       if (isTv) {
-        const episodeIds = await this.listEpisodeIdsForSeries(
+        const episodeIds = await this.listEpisodeItemIdsForSeries(
           matchedItem.Id as string,
           embyInstance
         );
-        const aggregate = await this.getPlaybackInfoByItemIds(
+        const aggregate = await this.getAggregatedPlaybackForItemIds(
           episodeIds,
           embyInstance
         );
@@ -467,7 +467,7 @@ export class EmbyService {
           metadata: matchedItem,
         };
       } else {
-        const playback = await this.getPlaybackInfoByItemIds(
+        const playback = await this.getAggregatedPlaybackForItemIds(
           [matchedItem.Id as string],
           embyInstance
         );
@@ -480,7 +480,7 @@ export class EmbyService {
     }
 
     // Fallback: attempt to resolve by exact title match via SDK, then query by ItemId
-    return this.getEmbyMediaData({ title, embyInstance });
+    return this.getMediaAndPlaybackByTitle({ title, embyInstance });
   }
 
   /**

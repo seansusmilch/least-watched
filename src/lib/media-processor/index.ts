@@ -16,8 +16,6 @@ export type {
 export { TESTING_LIMIT, getQualityScore } from './constants';
 
 // Individual processors (if needed for specific use cases)
-export { SonarrProcessor } from './sonarr-processor';
-export { RadarrProcessor } from './radarr-processor';
 export { MediaStorage } from './storage';
 
 // Export default as MediaProcessor for convenience
