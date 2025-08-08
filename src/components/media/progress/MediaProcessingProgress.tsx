@@ -9,7 +9,6 @@ import { useProgress } from '@/hooks/use-progress';
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { revalidateAfterProcessing } from '@/lib/actions/media-processing';
 
 interface MediaProcessingProgressProps {
   onClose?: () => void;
