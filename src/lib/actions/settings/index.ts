@@ -6,3 +6,4 @@ export * from './emby';
 export * from './app-settings';
 export * from './deletion-score';
 export * from './folders';
+export * from './backup';

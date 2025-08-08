@@ -6,9 +6,10 @@ import { useQuery } from '@tanstack/react-query';
 import { AppLayout } from '@/components/app-layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
-import { Server, Trash2, Settings } from 'lucide-react';
+import { Server, Trash2, Settings, DatabaseBackup } from 'lucide-react';
 import { MediaServices } from '@/components/settings/media-services';
 import { DeletionScoreSettings } from '@/components/settings/deletion-score';
+import { AllSettingsBackup } from '@/components/settings/backup';
 import { AdvancedSettings } from '@/components/settings/advanced';
 import {
   getSonarrSettings,
@@ -146,7 +147,7 @@ function SettingsPageContent() {
           onValueChange={handleTabChange}
           className='space-y-4'
         >
-          <TabsList className='grid w-full grid-cols-3'>
+          <TabsList className='grid w-full grid-cols-4'>
             <TabsTrigger
               value={TAB_VALUES.SERVICES}
               data-testid='media-services-tab'
@@ -171,6 +172,14 @@ function SettingsPageContent() {
               <Settings className='h-4 w-4' />
               Advanced
             </TabsTrigger>
+            <TabsTrigger
+              value='backup'
+              data-testid='backup-settings-tab'
+              className='flex items-center gap-2'
+            >
+              <DatabaseBackup className='h-4 w-4' />
+              Backup
+            </TabsTrigger>
           </TabsList>
 
           {/* Media Services */}
@@ -192,6 +201,11 @@ function SettingsPageContent() {
           {/* Advanced Settings */}
           <TabsContent value={TAB_VALUES.ADVANCED} className='space-y-4'>
             <AdvancedSettings />
+          </TabsContent>
+
+          {/* Backup & Restore */}
+          <TabsContent value='backup' className='space-y-4'>
+            <AllSettingsBackup />
           </TabsContent>
         </Tabs>
       </div>
