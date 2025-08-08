@@ -292,73 +292,6 @@ export class EmbyService {
     }
   }
 
-  /**
-   * Fetches playback information using custom query endpoint
-   */
-  static async getPlaybackInfo(
-    title: string,
-    embyInstance: EmbySettings | null
-  ): Promise<EmbyPlaybackInfo | null> {
-    if (!embyInstance) {
-      console.log('     ℹ️ No Emby instance available');
-      return null;
-    }
-
-    console.log(
-      `     🔍 Resolving ItemId for "${title}" in Emby (exact match)`
-    );
-
-    try {
-      const metadata = await this.getItemMetadata(title, embyInstance);
-      if (!metadata?.Id) {
-        console.log(`     ❌ Could not resolve ItemId for "${title}"`);
-        return null;
-      }
-      return await this.getPlaybackInfoByItemId(metadata.Id, embyInstance);
-    } catch (error) {
-      console.error(`     ❌ Error querying Emby:`, error);
-      return null;
-    }
-  }
-
-  /** Fetch playback info by a specific Emby ItemId */
-  static async getPlaybackInfoByItemId(
-    itemId: string,
-    embyInstance: EmbySettings | null
-  ): Promise<EmbyPlaybackInfo | null> {
-    if (!embyInstance) return null;
-
-    const sqlQuery = `
-      WITH RecentActivity AS (
-        SELECT ROWID, DateCreated, ItemId, ItemName, PlayDuration
-        FROM PlaybackActivity 
-        WHERE ItemId = '${itemId.replace(/'/g, "''")}'
-        ORDER BY DateCreated DESC
-        LIMIT 1
-      ),
-      WatchCount AS (
-        SELECT COUNT(*) as WatchCount
-        FROM PlaybackActivity 
-        WHERE ItemId = '${itemId.replace(/'/g, "''")}'
-        AND PlayDuration > 300 
-        AND PlayDuration < 28800
-      )
-      SELECT 
-        r.ROWID, 
-        r.DateCreated, 
-        r.ItemId, 
-        r.ItemName, 
-        r.PlayDuration,
-        w.WatchCount
-      FROM RecentActivity r
-      CROSS JOIN WatchCount w
-    `;
-
-    const data = await this.executeCustomQuery(sqlQuery, embyInstance);
-    if (!data) return null;
-    return this.parsePlaybackResponse(data, `ItemId:${itemId}`);
-  }
-
   /** Aggregate playback info across multiple ItemIds (e.g., all episodes of a series) */
   static async getPlaybackInfoByItemIds(
     itemIds: string[],
@@ -455,12 +388,12 @@ export class EmbyService {
     const itemMetadata = await this.getItemMetadata(title, embyInstance);
     if (!itemMetadata?.Id) return null;
 
-    const playback = await this.getPlaybackInfoByItemId(
-      itemMetadata.Id,
+    const playbackAgg = await this.getPlaybackInfoByItemIds(
+      [itemMetadata.Id],
       embyInstance
     );
     return {
-      ...playback,
+      ...playbackAgg,
       embyId: itemMetadata.Id,
       metadata: itemMetadata,
     };
@@ -506,8 +439,8 @@ export class EmbyService {
           metadata: matchedItem,
         };
       } else {
-        const playback = await this.getPlaybackInfoByItemId(
-          matchedItem.Id as string,
+        const playback = await this.getPlaybackInfoByItemIds(
+          [matchedItem.Id as string],
           embyInstance
         );
         return {
@@ -585,69 +518,6 @@ export class EmbyService {
       } else {
         console.error(`     ❌ Error making custom query request:`, error);
       }
-      return null;
-    }
-  }
-
-  /**
-   * Private method to parse playback response data
-   */
-  private static parsePlaybackResponse(
-    data: {
-      results: Array<Array<string | number>>;
-      colums?: string[]; // Emby returns this misspelled sometimes
-    },
-    title: string
-  ): EmbyPlaybackInfo | null {
-    if (data.results && data.results.length > 0) {
-      const result = data.results[0];
-
-      // Use only the documented 'colums' key from the plugin response
-      const rawCols = (data.colums ?? []) as string[];
-      const normalizedCols = rawCols.map((c) =>
-        typeof c === 'string' ? c.toLowerCase() : ''
-      );
-      const indexOfCi = (name: string, fallbackIndex: number): number => {
-        const exact = rawCols.indexOf(name);
-        if (exact >= 0) return exact;
-        const ci = normalizedCols.indexOf(name.toLowerCase());
-        if (ci >= 0) return ci;
-        return fallbackIndex;
-      };
-
-      // We selected columns in this order in SQL:
-      // r.ROWID, r.DateCreated, r.ItemId, r.ItemName, r.PlayDuration, w.WatchCount
-      const dateIdx = indexOfCi('DateCreated', 1);
-      const itemIdIdx = indexOfCi('ItemId', 2);
-      const itemNameIdx = indexOfCi('ItemName', 3);
-      const durationIdx = indexOfCi('PlayDuration', 4);
-      const watchCountIdx = indexOfCi('WatchCount', 5);
-
-      const lastWatchedStr = String(result?.[dateIdx] ?? '');
-      const itemId = String(result?.[itemIdIdx] ?? '');
-      const itemName = String(result?.[itemNameIdx] ?? '');
-      const playDuration = String(result?.[durationIdx] ?? '');
-      const watchCountRaw = result?.[watchCountIdx];
-      const watchCount = Number.isFinite(Number(watchCountRaw))
-        ? Number(watchCountRaw)
-        : 0;
-
-      console.log(`     ✅ Found playback activity for: ${itemName}`);
-      console.log(`     📅 Last watched: ${lastWatchedStr}`);
-      console.log(`     🆔 Item ID: ${itemId}`);
-      console.log(`     ⏱️ Play duration: ${playDuration} seconds`);
-      console.log(`     🔢 Total watch count: ${watchCount}`);
-
-      // Parse the date
-      const lastWatched = lastWatchedStr ? new Date(lastWatchedStr) : undefined;
-
-      return {
-        lastWatched,
-        watchCount,
-        embyId: itemId,
-      };
-    } else {
-      console.log(`     ❌ No playback activity found in Emby for: ${title}`);
       return null;
     }
   }

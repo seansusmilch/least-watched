@@ -262,14 +262,12 @@ export class MediaProcessor {
             processed.lastWatched = aggregate.lastWatched;
             processed.watchCount = aggregate.watchCount || 0;
           } else if (item.Id) {
-            const playback = await EmbyService.getPlaybackInfoByItemId(
-              String(item.Id),
+            const aggregate = await EmbyService.getPlaybackInfoByItemIds(
+              [String(item.Id)],
               embyInstance
             );
-            if (playback) {
-              processed.lastWatched = playback.lastWatched;
-              processed.watchCount = playback.watchCount || 0;
-            }
+            processed.lastWatched = aggregate.lastWatched;
+            processed.watchCount = aggregate.watchCount || 0;
           }
         }
 
