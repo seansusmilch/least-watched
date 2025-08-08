@@ -2,29 +2,24 @@
 
 import React, { useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Play, Download, AlertCircle } from 'lucide-react';
+import { RefreshCw, Play, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import {
   startMediaProcessing,
   refreshMediaItems,
-  exportMediaItems,
   refreshFolderSpaceData,
 } from '@/lib/actions/media-processing';
 import { useProgress } from '@/hooks/use-progress';
 import { LatestUpdateTimestamp } from './LatestUpdateTimestamp';
 
 interface PageActionsProps {
-  selectedItems?: string[];
   onRefreshComplete?: () => void;
-  onExportComplete?: (count: number) => void;
   disabled?: boolean;
 }
 
 export function PageActions({
-  selectedItems = [],
   onRefreshComplete,
-  onExportComplete,
   disabled = false,
 }: PageActionsProps) {
   const { state: progressState } = useProgress();
@@ -78,37 +73,6 @@ export function PageActions({
     },
   });
 
-  // Export Items Mutation
-  const exportMutation = useMutation({
-    mutationFn: async (items: string[]) => {
-      if (items.length === 0) {
-        throw new Error('No items selected for export');
-      }
-
-      const formData = new FormData();
-      items.forEach((id) => formData.append('selectedIds', id));
-
-      return exportMediaItems(undefined, formData);
-    },
-    onSuccess: (result) => {
-      if (result?.success) {
-        if (
-          result.data &&
-          typeof result.data === 'object' &&
-          'count' in result.data
-        ) {
-          onExportComplete?.((result.data as { count: number }).count);
-        }
-      } else {
-        throw new Error(result?.message || 'Failed to export items');
-      }
-    },
-    onError: (error: Error) => {
-      const errorMessage = error.message || 'Failed to export items';
-      toast.error(errorMessage);
-    },
-  });
-
   // Handle functions
   const handleProcess = useCallback(() => {
     processMutation.mutate();
@@ -118,18 +82,11 @@ export function PageActions({
     refreshMutation.mutate();
   }, [refreshMutation]);
 
-  const handleExport = useCallback(() => {
-    exportMutation.mutate(selectedItems);
-  }, [exportMutation, selectedItems]);
-
   // Disable actions if there's an active process or if explicitly disabled
   const shouldDisable = disabled || hasActiveProcess;
 
   // Check if any mutation has an error
-  const hasError =
-    processMutation.isError ||
-    refreshMutation.isError ||
-    exportMutation.isError;
+  const hasError = processMutation.isError || refreshMutation.isError;
 
   return (
     <div className='flex items-center space-x-2'>
@@ -179,31 +136,6 @@ export function PageActions({
           <RefreshCw className='h-4 w-4 mr-2' />
         )}
         Refresh
-      </Button>
-
-      {/* Export Button */}
-      <Button
-        variant='outline'
-        size='sm'
-        disabled={
-          shouldDisable ||
-          selectedItems.length === 0 ||
-          exportMutation.isPending
-        }
-        onClick={handleExport}
-        className='relative'
-      >
-        {exportMutation.isPending ? (
-          <>
-            <RefreshCw className='h-4 w-4 mr-2 animate-spin' />
-            Exporting...
-          </>
-        ) : (
-          <>
-            <Download className='h-4 w-4 mr-2' />
-            Export ({selectedItems.length})
-          </>
-        )}
       </Button>
 
       {/* Error Indicator */}

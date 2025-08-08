@@ -177,40 +177,6 @@ export async function getSelectedFoldersFromDatabase(): Promise<SelectedFoldersF
   }
 }
 
-export async function exportMediaItems(
-  prevState: FormState | undefined,
-  formData: FormData
-): Promise<FormState> {
-  try {
-    const selectedIds = formData.getAll('selectedIds') as string[];
-
-    if (!selectedIds || selectedIds.length === 0) {
-      return createFormState(false, 'No items selected for export');
-    }
-
-    // Get media items
-    const allItems = await getMediaItems();
-    const selectedItems = allItems.filter((item) =>
-      selectedIds.includes(item.id)
-    );
-
-    if (selectedItems.length === 0) {
-      return createFormState(false, 'No valid items found for export');
-    }
-
-    console.warn('NOT IMPLEMENTED: Exporting media items:', selectedItems);
-    const message = `Successfully exported ${selectedItems.length} item${
-      selectedItems.length === 1 ? '' : 's'
-    }`;
-
-    return createFormState(true, message, undefined, {
-      count: selectedItems.length,
-    });
-  } catch (error) {
-    return handleServerError(error, 'Failed to export media items');
-  }
-}
-
 export async function clearMediaItems(): Promise<{
   success: boolean;
   message?: string;
