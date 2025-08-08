@@ -244,16 +244,28 @@ export class MediaProcessor {
           }
         }
 
-        // Optional: playback enrichment using custom query by title from Emby
+        // Optional: playback enrichment using ItemId-based queries (no title prefix)
         {
-          const embyTitle = item.Name || item.OriginalTitle || processed.title;
-          const playback = await EmbyService.getPlaybackInfo(
-            embyTitle,
-            embyInstance
-          );
-          if (playback) {
-            processed.lastWatched = playback.lastWatched;
-            processed.watchCount = playback.watchCount || 0;
+          if (item.Type === 'Series') {
+            const episodeIds = await EmbyService.listEpisodeIdsForSeries(
+              String(item.Id),
+              embyInstance
+            );
+            const aggregate = await EmbyService.getPlaybackInfoByItemIds(
+              episodeIds,
+              embyInstance
+            );
+            processed.lastWatched = aggregate.lastWatched;
+            processed.watchCount = aggregate.watchCount || 0;
+          } else if (item.Id) {
+            const playback = await EmbyService.getPlaybackInfoByItemId(
+              String(item.Id),
+              embyInstance
+            );
+            if (playback) {
+              processed.lastWatched = playback.lastWatched;
+              processed.watchCount = playback.watchCount || 0;
+            }
           }
         }
 

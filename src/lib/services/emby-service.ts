@@ -7,6 +7,12 @@ import {
 
 const DEFAULT_TIMEOUT = 10000; // 10 seconds
 
+type EmbyCustomQueryResponse = {
+  results: Array<Array<string | number>>;
+  colums?: string[];
+  columns?: string[];
+};
+
 export class EmbyService {
   private static createClient(embyInstance: EmbySettings): Emby {
     return new Emby({
@@ -298,17 +304,142 @@ export class EmbyService {
       return null;
     }
 
-    console.log(`     🔍 Searching for "${title}" in Emby`);
+    console.log(
+      `     🔍 Resolving ItemId for "${title}" in Emby (exact match)`
+    );
 
     try {
-      return await this.fetchPlaybackInfoViaCustomQuery(title, embyInstance);
+      const metadata = await this.getItemMetadata(title, embyInstance);
+      if (!metadata?.Id) {
+        console.log(`     ❌ Could not resolve ItemId for "${title}"`);
+        return null;
+      }
+      return await this.getPlaybackInfoByItemId(metadata.Id, embyInstance);
     } catch (error) {
       console.error(`     ❌ Error querying Emby:`, error);
       return null;
     }
   }
 
-  // Removed ItemId-based variant to rely solely on title-based custom query
+  /** Fetch playback info by a specific Emby ItemId */
+  static async getPlaybackInfoByItemId(
+    itemId: string,
+    embyInstance: EmbySettings | null
+  ): Promise<EmbyPlaybackInfo | null> {
+    if (!embyInstance) return null;
+
+    const sqlQuery = `
+      WITH RecentActivity AS (
+        SELECT ROWID, DateCreated, ItemId, ItemName, PlayDuration
+        FROM PlaybackActivity 
+        WHERE ItemId = '${itemId.replace(/'/g, "''")}'
+        ORDER BY DateCreated DESC
+        LIMIT 1
+      ),
+      WatchCount AS (
+        SELECT COUNT(*) as WatchCount
+        FROM PlaybackActivity 
+        WHERE ItemId = '${itemId.replace(/'/g, "''")}'
+        AND PlayDuration > 300 
+        AND PlayDuration < 28800
+      )
+      SELECT 
+        r.ROWID, 
+        r.DateCreated, 
+        r.ItemId, 
+        r.ItemName, 
+        r.PlayDuration,
+        w.WatchCount
+      FROM RecentActivity r
+      CROSS JOIN WatchCount w
+    `;
+
+    const data = await this.executeCustomQuery(sqlQuery, embyInstance);
+    if (!data) return null;
+    return this.parsePlaybackResponse(data, `ItemId:${itemId}`);
+  }
+
+  /** Aggregate playback info across multiple ItemIds (e.g., all episodes of a series) */
+  static async getPlaybackInfoByItemIds(
+    itemIds: string[],
+    embyInstance: EmbySettings | null,
+    opts?: { batchSize?: number }
+  ): Promise<Pick<EmbyPlaybackInfo, 'lastWatched' | 'watchCount'>> {
+    if (!embyInstance || itemIds.length === 0)
+      return { lastWatched: undefined, watchCount: 0 };
+
+    const batchSize = opts?.batchSize ?? 800;
+    const chunks: string[][] = [];
+    for (let i = 0; i < itemIds.length; i += batchSize) {
+      chunks.push(itemIds.slice(i, i + batchSize));
+    }
+
+    let overallLastWatched: Date | undefined = undefined;
+    let overallWatchCount = 0;
+
+    for (const chunk of chunks) {
+      const escapedIdList = chunk
+        .map((id) => `'${String(id).replace(/'/g, "''")}'`)
+        .join(',');
+      const sqlQuery = `
+        WITH Activity AS (
+          SELECT ItemId, DateCreated, PlayDuration
+          FROM PlaybackActivity
+          WHERE ItemId IN (${escapedIdList})
+        ),
+        Totals AS (
+          SELECT
+            MAX(DateCreated) AS LastWatched,
+            SUM(CASE WHEN PlayDuration > 300 AND PlayDuration < 28800 THEN 1 ELSE 0 END) AS WatchCount
+          FROM Activity
+        )
+        SELECT LastWatched, WatchCount FROM Totals;
+      `;
+
+      const data = await this.executeCustomQuery(sqlQuery, embyInstance);
+      const partial = this.parseAggregatedPlaybackResponse(data);
+      if (partial.lastWatched) {
+        if (!overallLastWatched || partial.lastWatched > overallLastWatched) {
+          overallLastWatched = partial.lastWatched;
+        }
+      }
+      overallWatchCount += partial.watchCount ?? 0;
+    }
+
+    return { lastWatched: overallLastWatched, watchCount: overallWatchCount };
+  }
+
+  /** List episode ItemIds for a given series ItemId */
+  static async listEpisodeIdsForSeries(
+    seriesId: string,
+    embyInstance: EmbySettings | null
+  ): Promise<string[]> {
+    if (!embyInstance) return [];
+    const client = this.createClient(embyInstance);
+    const episodeIds: string[] = [];
+    let startIndex = 0;
+    const pageSize = 500;
+    while (true) {
+      const params: Record<string, string | number | boolean> = {
+        ParentId: seriesId,
+        IncludeItemTypes: 'Episode',
+        Fields: 'DateCreated',
+        StartIndex: startIndex,
+        Limit: pageSize,
+        Recursive: true,
+      };
+      const result: Emby.QueryResultBaseItem = await client.items.list(
+        params as Record<string, unknown>
+      );
+      const page: Emby.BaseItem[] = (result?.Items as Emby.BaseItem[]) ?? [];
+      for (const ep of page) {
+        if (ep?.Id) episodeIds.push(String(ep.Id));
+      }
+      if (page.length < pageSize) break;
+      startIndex += pageSize;
+    }
+    return episodeIds;
+  }
 
   /**
    * Fetches combined media data (metadata + playback info)
@@ -320,15 +451,15 @@ export class EmbyService {
     title: string;
     embyInstance: EmbySettings | null;
   }): Promise<EmbyPlaybackInfo | null> {
-    const playbackResponse = await this.getPlaybackInfo(title, embyInstance);
-    const itemId = playbackResponse?.embyId;
-    if (!itemId) return playbackResponse;
-
     const itemMetadata = await this.getItemMetadata(title, embyInstance);
-    if (!itemMetadata) return playbackResponse;
+    if (!itemMetadata?.Id) return null;
 
+    const playback = await this.getPlaybackInfoByItemId(
+      itemMetadata.Id,
+      embyInstance
+    );
     return {
-      ...playbackResponse,
+      ...playback,
       embyId: itemMetadata.Id,
       metadata: itemMetadata,
     };
@@ -358,23 +489,35 @@ export class EmbyService {
     );
 
     if (matchedItem?.Id) {
-      const playback = await this.getPlaybackInfo(
-        (matchedItem.Name as string) ||
-          (matchedItem.OriginalTitle as string) ||
-          title,
-        embyInstance
-      );
-      if (playback) {
+      const isTv = type === 'tv' || matchedItem.Type === 'Series';
+      if (isTv) {
+        const episodeIds = await this.listEpisodeIdsForSeries(
+          matchedItem.Id as string,
+          embyInstance
+        );
+        const aggregate = await this.getPlaybackInfoByItemIds(
+          episodeIds,
+          embyInstance
+        );
+        return {
+          ...aggregate,
+          embyId: matchedItem.Id,
+          metadata: matchedItem,
+        };
+      } else {
+        const playback = await this.getPlaybackInfoByItemId(
+          matchedItem.Id as string,
+          embyInstance
+        );
         return {
           ...playback,
           embyId: matchedItem.Id,
           metadata: matchedItem,
         };
       }
-      return { embyId: matchedItem.Id, metadata: matchedItem };
     }
 
-    // Fallback to title-based approach
+    // Fallback: attempt to resolve by exact title match via SDK, then query by ItemId
     return this.getEmbyMediaData({ title, embyInstance });
   }
 
@@ -400,52 +543,14 @@ export class EmbyService {
     }
   }
 
-  /**
-   * Private method to handle custom SQL query for playback stats
-   */
-  private static async fetchPlaybackInfoViaCustomQuery(
-    title: string,
+  /** Execute a custom SQL query against the Emby user_usage_stats plugin */
+  private static async executeCustomQuery(
+    sqlQuery: string,
     embyInstance: EmbySettings
-  ): Promise<EmbyPlaybackInfo | null> {
-    // Use custom SQL query to get both playback activity and watch count in one query
+  ): Promise<EmbyCustomQueryResponse | null> {
     const customQueryUrl = `${embyInstance.url}/emby/user_usage_stats/submit_custom_query`;
+    const payload = { CustomQueryString: sqlQuery, ReplaceUserId: true };
 
-    // Escape single and double quotes in the title for SQL
-    const escapedTitle = title.replace(/'/g, "''").replace(/"/g, '""');
-
-    // Build comprehensive SQL query to get all information in one go
-    const sqlQuery = `
-      WITH RecentActivity AS (
-        SELECT ROWID, DateCreated, ItemId, ItemName, PlayDuration
-        FROM PlaybackActivity 
-        WHERE ItemName LIKE '${escapedTitle}%'
-        ORDER BY DateCreated DESC
-        LIMIT 1
-      ),
-      WatchCount AS (
-        SELECT COUNT(*) as WatchCount
-        FROM PlaybackActivity 
-        WHERE ItemName LIKE '${escapedTitle}%'
-        AND PlayDuration > 300 
-        AND PlayDuration < 28800
-      )
-      SELECT 
-        r.ROWID, 
-        r.DateCreated, 
-        r.ItemId, 
-        r.ItemName, 
-        r.PlayDuration,
-        w.WatchCount
-      FROM RecentActivity r
-      CROSS JOIN WatchCount w
-    `;
-
-    const payload = {
-      CustomQueryString: sqlQuery,
-      ReplaceUserId: true,
-    };
-
-    // Create an AbortController for timeout handling
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT);
 
@@ -469,8 +574,7 @@ export class EmbyService {
         return null;
       }
 
-      const data = await response.json();
-      return this.parsePlaybackResponse(data, title);
+      return (await response.json()) as EmbyCustomQueryResponse;
     } catch (error) {
       clearTimeout(timeoutId);
       if (error instanceof Error && error.name === 'AbortError') {
@@ -480,7 +584,7 @@ export class EmbyService {
       } else {
         console.error(`     ❌ Error making custom query request:`, error);
       }
-      throw error;
+      return null;
     }
   }
 
@@ -530,6 +634,25 @@ export class EmbyService {
     } else {
       console.log(`     ❌ No playback activity found in Emby for: ${title}`);
       return null;
+    }
+  }
+
+  private static parseAggregatedPlaybackResponse(
+    data: EmbyCustomQueryResponse | null
+  ): { lastWatched?: Date; watchCount: number } {
+    try {
+      const row = data?.results?.[0];
+      const cols: string[] = (data?.colums || data?.columns || []) as string[];
+      const lastIdx = cols.indexOf('LastWatched');
+      const countIdx = cols.indexOf('WatchCount');
+      const lastStr = lastIdx >= 0 ? String(row?.[lastIdx] ?? '') : '';
+      const watchCount = countIdx >= 0 ? Number(row?.[countIdx] ?? 0) : 0;
+      return {
+        lastWatched: lastStr ? new Date(lastStr) : undefined,
+        watchCount: Number.isFinite(watchCount) ? watchCount : 0,
+      };
+    } catch {
+      return { lastWatched: undefined, watchCount: 0 };
     }
   }
 }
