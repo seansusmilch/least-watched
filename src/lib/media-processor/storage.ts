@@ -42,7 +42,7 @@ export class MediaStorage {
             },
             deletionScoreSettings
           )
-        : null;
+        : -1;
 
       const itemData = {
         title: item.title,
@@ -57,7 +57,11 @@ export class MediaStorage {
         dateAddedEmby: item.dateAddedEmby,
         dateAddedArr: item.dateAddedArr,
         source: item.source,
+
         embyId: item.embyId,
+        sonarrId: item.sonarrId,
+        radarrId: item.radarrId,
+
         lastWatched: item.lastWatched,
         watchCount: item.watchCount || 0,
 
@@ -91,77 +95,18 @@ export class MediaStorage {
         overview: item.overview,
 
         // Deletion score
-        deletionScore:
-          deletionScore === null || isNaN(deletionScore as number)
-            ? undefined
-            : deletionScore,
+        deletionScore: deletionScore,
       };
 
-      // Note: For true upsert efficiency, we would need unique constraints in the schema
-      // For now, we'll use a hybrid approach with findFirst + upsert
+      let result;
 
-      // Create a deterministic composite key for finding existing items
-      const findConditions = [];
-
-      if (item.sonarrId) {
-        findConditions.push({
-          sonarrId: item.sonarrId,
-          source: item.source,
-        });
-      }
-
-      if (item.radarrId) {
-        findConditions.push({
-          radarrId: item.radarrId,
-          source: item.source,
-        });
-      }
-
-      // Prefer matching on Emby identity when available
-      if (item.embyId) {
-        findConditions.push({
-          embyId: item.embyId,
-          source: item.source,
-        });
-      }
-
-      // Fallback to title and type if no specific IDs
-      if (findConditions.length === 0) {
-        findConditions.push({
-          title: item.title,
-          type: item.type,
-          source: item.source,
-        });
-      }
-
-      // Try to find existing item
-      const existingItem = await prisma.mediaItem.findFirst({
-        where: {
-          OR: findConditions,
-        },
-      });
-
-      const result = await prisma.mediaItem.upsert({
-        where: {
-          id: existingItem?.id || 'nonexistent-id', // Use existing ID or dummy ID for create
-        },
+      result = await prisma.mediaItem.upsert({
+        where: { embyId: item.embyId },
         update: itemData,
-        create: {
-          ...itemData,
-          sonarrId: item.sonarrId,
-          radarrId: item.radarrId,
-          deletionScore:
-            deletionScore === null || isNaN(deletionScore as number)
-              ? 0
-              : deletionScore,
-        },
+        create: itemData,
       });
 
-      console.log(
-        `✅ ${existingItem ? 'Updated' : 'Created'} item: ${item.title} (ID: ${
-          result.id
-        })`
-      );
+      console.log(`✅ Upserted item: ${item.title} (ID: ${result.id})`);
     } catch (error) {
       console.error(`❌ Error storing item ${item.title}:`, error);
       console.error(`   Item data:`, JSON.stringify(item, null, 2));

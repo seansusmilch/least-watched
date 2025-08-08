@@ -31,7 +31,7 @@ model MediaItem {
   watchCount           Int       @default(0)
   sonarrId             Int?
   radarrId             Int?
-  embyId               String?
+  embyId               String    @unique
   mediaPath            String?
   parentFolder         String?
   sizeOnDisk           BigInt?
@@ -61,5 +61,4 @@ model MediaItem {
   @@index([tmdbId])
   @@index([imdbId])
   @@index([tvdbId])
-  @@index([embyId])
 }

@@ -23,7 +23,7 @@ export interface ProcessedMediaItem {
   source: string;
   sonarrId?: number;
   radarrId?: number;
-  embyId?: string;
+  embyId: string;
   lastWatched?: Date;
   watchCount?: number;
 
