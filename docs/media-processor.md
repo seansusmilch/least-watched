@@ -44,8 +44,8 @@ High-signal notes for future work on the media processing pipeline that ingests 
 - Emby
   - Single-instance settings via `single-emby-settings` (KV): `name`, `url`, `apiKey`, `enabled`, `selectedLibraries` (preferred) or legacy `selectedFolders`.
   - Listing: `EmbyService.listLibraryItems()` pages through items with fields `DateCreated, ProviderIds, Path, ProductionYear, MediaSources`.
-  - Playback aggregation requires the Emby `user_usage_stats` plugin; custom SQL endpoints are used to compute `LastWatched` and `WatchCount`.
-  - Series aggregation uses an ItemName convention of `[title] - s%` for episodes; movies aggregate by concrete `ItemId`.
+  - Playback aggregation requires the Emby `user_usage_stats` plugin; custom SQL endpoint computes `LastWatched` and `WatchCount` using a single-statement (no CTEs, no semicolons).
+  - Strict paths: TV aggregates by ItemName pattern `[title] - s%`; Movies aggregate by concrete `ItemId`. No fallbacks and no episode listing.
 - Sonarr/Radarr
   - Multiple instances supported; fetched in parallel. Used for enrichment and folder space data.
   - Clients live in `src/lib/services/{sonarr,radarr}-service.ts` with resilient `safeApiCall` wrappers.
@@ -79,9 +79,10 @@ High-signal notes for future work on the media processing pipeline that ingests 
 ### Playback aggregation specifics
 
 - Implemented in `src/lib/services/emby-service.ts`.
-- Uses custom SQL via the Emby plugin for batch aggregation with timeouts and defensive parsing.
-- Series aggregation is title-based to avoid enumerating all episodes; ensure titles in Emby match the canonical series title.
-- Movies prefer concrete `ItemId` when available; otherwise try provider-id match, then exact title.
+- Uses custom SQL via the Emby plugin for batch aggregation with timeouts and defensive parsing. Queries are submitted as a single `SELECT` with a subquery; no CTEs or semicolons.
+- Series: title-based aggregation using ItemName convention `[title] - s%` (avoids enumerating episodes). Requires `title`; if missing, returns null and logs an error.
+- Movies: aggregation strictly by `embyId` (ItemId). Requires `embyId`; if missing, returns null and logs an error.
+- Unknown or missing `type` returns null and logs an error. No fallback behavior.
 
 ### Progress reporting
 

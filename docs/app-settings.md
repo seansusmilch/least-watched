@@ -72,8 +72,10 @@ model AppSettings {
   - UI breakdown: `src/components/media/summary/DeletionScoreBreakdown.tsx` reads both deletion score settings and date preference
 
 - Settings UI
-  - `src/app/settings/page.tsx`: Hosts tabs for Services, Deletion Scoring, Advanced, Backup
+  - `src/app/settings/page.tsx`: Hosts tabs for Services, Deletion Scoring, Advanced. Backup & Restore is a section within the Advanced tab
   - Advanced tab uses `src/hooks/useAdvancedSettings.ts` (React Query integration for date preference)
+  - Backup UI component `AllSettingsBackup` is rendered inside `src/components/settings/advanced/advanced-settings.tsx`
+  - Legacy URLs using `?tab=backup` are normalized to the Advanced tab
 
 ### Validation
 
@@ -87,7 +89,7 @@ model AppSettings {
 - Implemented in `src/lib/actions/settings/backup.ts`
   - Export includes: `app.datePreference`, `app.other` (all non-prefixed keys except known core), deletion score, and all service instances
   - Import applies app settings, then deletion score, then service instances; revalidates `/settings`
-  - See `docs/app-settings-backup-restore.md` for full plan and rationale
+  - See `docs/plans/app-settings-backup-restore.md` for full plan and rationale
 
 ### Invariants and Conventions
 

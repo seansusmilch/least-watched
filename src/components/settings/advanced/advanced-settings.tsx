@@ -44,6 +44,7 @@ import {
 } from '@/lib/validation/schemas';
 import type { DatePreference } from '@/lib/types/media';
 import { DatePreferenceConfirmationDialog } from './date-preference-confirmation-dialog';
+import { AllSettingsBackup } from '@/components/settings/backup';
 
 export function AdvancedSettings() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -256,6 +257,7 @@ export function AdvancedSettings() {
           </Form>
         </CardContent>
       </Card>
+      <AllSettingsBackup />
       <Card>
         <CardHeader>
           <CardTitle className='flex items-center gap-2'>

@@ -6,10 +6,9 @@ import { useQuery } from '@tanstack/react-query';
 import { AppLayout } from '@/components/app-layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
-import { Server, Trash2, Settings, DatabaseBackup } from 'lucide-react';
+import { Server, Trash2, Settings } from 'lucide-react';
 import { MediaServices } from '@/components/settings/media-services';
 import { DeletionScoreSettings } from '@/components/settings/deletion-score';
-import { AllSettingsBackup } from '@/components/settings/backup';
 import { AdvancedSettings } from '@/components/settings/advanced';
 import {
   getSonarrSettings,
@@ -81,7 +80,8 @@ function SettingsPageContent() {
 
   // Handle URL parameters on mount and when they change
   useEffect(() => {
-    const tab = searchParams.get('tab') || TAB_VALUES.SERVICES;
+    const requestedTab = searchParams.get('tab') || TAB_VALUES.SERVICES;
+    const tab = requestedTab === 'backup' ? TAB_VALUES.ADVANCED : requestedTab;
     const subTab = searchParams.get('subtab');
     setActiveTab(tab);
     setActiveSubTab(subTab);
@@ -147,7 +147,7 @@ function SettingsPageContent() {
           onValueChange={handleTabChange}
           className='space-y-4'
         >
-          <TabsList className='grid w-full grid-cols-4'>
+          <TabsList className='grid w-full grid-cols-3'>
             <TabsTrigger
               value={TAB_VALUES.SERVICES}
               data-testid='media-services-tab'
@@ -172,14 +172,7 @@ function SettingsPageContent() {
               <Settings className='h-4 w-4' />
               Advanced
             </TabsTrigger>
-            <TabsTrigger
-              value='backup'
-              data-testid='backup-settings-tab'
-              className='flex items-center gap-2'
-            >
-              <DatabaseBackup className='h-4 w-4' />
-              Backup
-            </TabsTrigger>
+            {/* Backup tab removed; backup UI moved under Advanced */}
           </TabsList>
 
           {/* Media Services */}
@@ -203,10 +196,7 @@ function SettingsPageContent() {
             <AdvancedSettings />
           </TabsContent>
 
-          {/* Backup & Restore */}
-          <TabsContent value='backup' className='space-y-4'>
-            <AllSettingsBackup />
-          </TabsContent>
+          {/* Backup moved into Advanced tab */}
         </Tabs>
       </div>
     </AppLayout>
