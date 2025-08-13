@@ -122,3 +122,4 @@ High-signal notes for future work on the media processing pipeline that ingests 
 - Ensure the Emby `user_usage_stats` plugin is installed and reachable; without it, playback aggregation will be empty for series.
 - The upsert key is `embyId`. If Emby items are removed and recreated, downstream dedupe relies on this ID’s stability.
 - `datePreference` impacts scoring; if you change it, a recalculation is triggered elsewhere, but it won’t re-scan media—only scores.
+- Importing settings via Backup & Restore triggers a deletion score recalculation for existing media (no re-scan), provided scoring is enabled.

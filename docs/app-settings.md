@@ -88,7 +88,7 @@ model AppSettings {
 
 - Implemented in `src/lib/actions/settings/backup.ts`
   - Export includes: `app.datePreference`, `app.other` (all non-prefixed keys except known core), deletion score, and all service instances
-  - Import applies app settings, then deletion score, then service instances; revalidates `/settings`
+  - Import applies app settings, then deletion score, then service instances; triggers a deletion score recalculation once at the end (skips if scoring is disabled); revalidates `/settings`
   - See `docs/plans/app-settings-backup-restore.md` for full plan and rationale
 
 ### Invariants and Conventions

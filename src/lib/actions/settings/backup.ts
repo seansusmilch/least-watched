@@ -4,7 +4,11 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { kvSettingsStore } from '@/lib/utils/kv-settings';
 import { AllSettingsEnvelopeSchema } from '@/lib/validation/schemas';
-import { getAppSettings, updateAppSettings } from './app-settings';
+import {
+  getAppSettings,
+  updateAppSettings,
+  triggerDeletionScoreRecalculation,
+} from './app-settings';
 import {
   getDeletionScoreSettings,
   setDeletionScoreSettings,
@@ -188,6 +192,12 @@ export async function importAllSettings(payload: unknown): Promise<{
       });
       results.emby.created = 1;
     }
+  }
+
+  // Trigger deletion score recalculation once after import completes if it
+  // hasn't already been triggered by updating deletion score settings above.
+  if (!data.deletionScore) {
+    await triggerDeletionScoreRecalculation();
   }
 
   revalidatePath('/settings');
