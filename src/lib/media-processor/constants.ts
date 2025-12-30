@@ -1,5 +1,5 @@
 // Configuration constants
-export const TESTING_LIMIT = 30000; // Limit number of items processed per instance for testing
+export const TESTING_LIMIT = 10; // Limit number of items processed per instance for testing
 
 // Quality mapping for scoring
 export const QUALITY_SCORE_MAP: Record<string, number> = {

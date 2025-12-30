@@ -13,7 +13,7 @@ This guide explains how the Media Items Table and Filters are wired, and how to 
 - **Composition**: `src/components/media/MediaPageContent.tsx`
 
   - Wraps content in `MediaFilterProvider` so children can read/update filters and sorting.
-  - Renders `MediaFiltersClient` (controls) and `MediaTableWithFilters` (data grid).
+  - Renders `MediaTableWithFilters` (data grid). The filters UI is opened from the Media Items header via a Filters dialog.
 
 - **Filter state provider**: `src/components/media/filters/MediaFilterProvider.tsx`
 
@@ -30,6 +30,7 @@ This guide explains how the Media Items Table and Filters are wired, and how to 
   - Reads `filters` + `sortCriteria` from context.
   - Uses `filterAndSortMediaItems(items, filters, sortCriteria)`.
   - Initializes table via `useMediaTable(filteredAndSortedItems)` and renders `MediaTableBase`.
+  - The table header contains a persistent global search input and a Filters button that opens a dialog with all filter controls.
 
 - **Table state and config**: `src/hooks/useMediaTable.ts`
   - Wraps TanStack Table. Handles sorting, column filters, global filter, row selection, and column visibility.
@@ -68,12 +69,15 @@ Notes:
   - Default visibility is defined in `availableColumns` in `src/lib/utils/columnConfig.ts`.
   - Actual visibility is persisted in `localStorage` under `least-watched-column-visibility`.
   - `ColumnVisibilityDropdown` renders a popover to toggle columns.
-- Global search: implemented in `useMediaTable` to search across `title`, `type`, `source`, `parentFolder`.
+- Global search: implemented in `useMediaTable` to search across `title`, `type`, `source`, `parentFolder`; surfaced as a persistent input in the Media Items header (`MediaTableBase`).
+- Filters dialog: opened from the Media Items header via a Filters button. The dialog hosts the full `MediaFiltersClient` UI.
 
 ### UI controls: `MediaFiltersClient`
 
 - Renders the filter UI and dispatches to `updateFilter`, `applyQuickFilter`, `resetFilters`, and `handleSort` from context.
 - Consumes available `genres`, `qualities`, `sources`, `folders` from props (produced by `getUniqueFilterOptions`).
+- Is rendered inside a Dialog opened by the Filters button in the Media Items header (not inline on the page).
+- The UI is organized to be compact by default: Quick Filters and Basic Filters are collapsible (closed by default), Advanced Filters use an accordion; an active-filters summary appears in the header when any filters are applied.
 
 ### How to add a new filter
 
@@ -132,3 +136,8 @@ Notes:
 - Table: `src/components/media/table/MediaTableWithFilters.tsx`, `src/hooks/useMediaTable.ts`, `src/components/media/table/MediaTableBase.tsx`, `src/components/media/table/mediaTableColumns.tsx`, `src/components/media/table/ColumnVisibilityDropdown.tsx`
 - Column config: `src/lib/utils/columnConfig.ts`
 - Types: `src/lib/types/media.ts`
+
+### Dialog implementation
+
+- The filters dialog uses the shared dialog components in `src/components/ui/dialog.tsx`.
+- The dialog content is sized responsively and scrollable to handle many controls.

@@ -117,7 +117,9 @@ export class MediaProcessor {
       await getDeletionScoreSettings();
     const folderSpaceData = await folderSpaceService.getFolderSpaceData();
 
-    const limited = embyItems.slice(0, totalItems);
+    const limited = embyItems
+      .filter((item) => item.Type === 'Series') // TODO: Add movie support
+      .slice(0, totalItems);
     console.log(
       `     🔎 Emby listLibraryItems returned ${limited.length} items`
     );
@@ -242,8 +244,8 @@ export class MediaProcessor {
               type,
               embyId: String(item.Id),
             },
-              embyInstance
-            );
+            embyInstance
+          );
           if (playback) {
             processed.lastWatched = playback.lastWatched;
             processed.watchCount = playback.watchCount || 0;

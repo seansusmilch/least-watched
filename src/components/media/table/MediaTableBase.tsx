@@ -3,8 +3,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { flexRender, Table as TanStackTable } from '@tanstack/react-table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Film, SortAsc, SortDesc } from 'lucide-react';
+import { Film, SortAsc, SortDesc, Search, Filter } from 'lucide-react';
+import { MediaFiltersClient } from '../filters/MediaFiltersClient';
 import { MediaItem } from '@/lib/types/media';
 import { formatFileSize } from '@/lib/utils/formatters';
 import { DeletionScoreBreakdown } from '../summary/DeletionScoreBreakdown';
@@ -14,9 +17,21 @@ import { cn } from '@/lib/utils';
 
 interface MediaTableBaseProps {
   table: TanStackTable<MediaItem>;
+  availableGenres: string[];
+  availableQualities: string[];
+  availableSources: string[];
+  availableFolders: string[];
+  totalItems: number;
 }
 
-export function MediaTableBase({ table }: MediaTableBaseProps) {
+export function MediaTableBase({
+  table,
+  availableGenres,
+  availableQualities,
+  availableSources,
+  availableFolders,
+  totalItems,
+}: MediaTableBaseProps) {
   const [breakdownItem, setBreakdownItem] = useState<MediaItem | null>(null);
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [columnPopoverOpen, setColumnPopoverOpen] = useState(false);
@@ -120,6 +135,36 @@ export function MediaTableBase({ table }: MediaTableBaseProps) {
             <span>Media Items</span>
           </CardTitle>
           <div className='flex items-center space-x-2'>
+            <div className='relative'>
+              <Search className='absolute left-2 top-2.5 h-4 w-4 text-muted-foreground' />
+              <Input
+                aria-label='Search media'
+                placeholder='Search...'
+                value={(table.getState().globalFilter as string) ?? ''}
+                onChange={(e) => table.setGlobalFilter(e.target.value)}
+                className='h-8 w-[200px] pl-8'
+              />
+            </div>
+            <Dialog>
+              <DialogTrigger asChild>
+                <button
+                  type='button'
+                  className='inline-flex h-8 items-center rounded-md border px-2 text-sm hover:bg-muted'
+                  aria-label='Open filters'
+                >
+                  <Filter className='h-4 w-4 mr-2' /> Filters
+                </button>
+              </DialogTrigger>
+              <DialogContent className='w-[90vw] sm:max-w-[1000px] p-0 max-h-[80vh] overflow-auto'>
+                <MediaFiltersClient
+                  availableGenres={availableGenres}
+                  availableQualities={availableQualities}
+                  availableSources={availableSources}
+                  availableFolders={availableFolders}
+                  totalItems={totalItems}
+                />
+              </DialogContent>
+            </Dialog>
             {selectedRows.length > 0 && (
               <Badge variant='secondary'>
                 {selectedRows.length} selected ({formatFileSize(selectedSize)})

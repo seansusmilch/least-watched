@@ -224,98 +224,148 @@ export function MediaFiltersClient({
             </Button>
           </div>
         </CardTitle>
+        {activeFilterCount > 0 && (
+          <div className='text-sm text-muted-foreground mt-2'>
+            Active:{' '}
+            {[
+              filters.searchTerm && `“${filters.searchTerm}”`,
+              filters.mediaTypes.size > 0 &&
+                `${filters.mediaTypes.size} type(s)`,
+              filters.sources.size > 0 && `${filters.sources.size} source(s)`,
+              filters.watchStates.size > 0 &&
+                `${filters.watchStates.size} watch state(s)`,
+              (filters.unwatchedDaysRange.min ||
+                filters.unwatchedDaysRange.max) &&
+                'unwatched days',
+              (filters.sizeRange.min || filters.sizeRange.max) && 'size',
+              filters.qualities.size > 0 &&
+                `${filters.qualities.size} quality(ies)`,
+              (filters.qualityScoreRange.min ||
+                filters.qualityScoreRange.max) &&
+                'quality score',
+              (filters.yearRange.min || filters.yearRange.max) && 'year',
+              filters.genres.size > 0 && `${filters.genres.size} genre(s)`,
+              (filters.runtimeRange.min || filters.runtimeRange.max) &&
+                'runtime',
+              (filters.completionRange.min || filters.completionRange.max) &&
+                'completion %',
+              filters.folders.size > 0 && `${filters.folders.size} folder(s)`,
+              (filters.deletionScoreRange.min ||
+                filters.deletionScoreRange.max) &&
+                'deletion score',
+              filters.monitored !== undefined && 'monitored',
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          </div>
+        )}
       </CardHeader>
       <CardContent className='space-y-6'>
         {/* Quick Filters */}
-        <div className='space-y-2'>
-          <Label>Quick Filters</Label>
-          <div className='flex flex-wrap gap-2'>
-            {quickFilters.map((quickFilter) => (
-              <Button
-                key={quickFilter.id}
-                variant='outline'
-                size='sm'
-                onClick={() => applyQuickFilterHandler(quickFilter)}
-                className='text-xs'
-              >
-                <Zap className='h-3 w-3 mr-1' />
-                {quickFilter.label}
-              </Button>
-            ))}
-          </div>
-        </div>
+        <Collapsible defaultOpen={false}>
+          <CollapsibleTrigger asChild>
+            <Button variant='ghost' size='sm' className='justify-start w-full'>
+              <Zap className='h-4 w-4 mr-2' /> Quick Filters
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className='mt-2 space-y-2'>
+            <div className='flex flex-wrap gap-2'>
+              {quickFilters.map((quickFilter) => (
+                <Button
+                  key={quickFilter.id}
+                  variant='outline'
+                  size='sm'
+                  onClick={() => applyQuickFilterHandler(quickFilter)}
+                  className='text-xs'
+                >
+                  <Zap className='h-3 w-3 mr-1' />
+                  {quickFilter.label}
+                </Button>
+              ))}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
 
-        {/* Basic Filters - Always Visible */}
-        <div className='space-y-4'>
-          <div className='grid gap-4 md:grid-cols-2'>
-            <div className='space-y-2'>
-              <Label htmlFor='search'>Search</Label>
-              <div className='relative'>
-                <Search className='absolute left-2 top-2.5 h-4 w-4 text-muted-foreground' />
-                <Input
-                  id='search'
-                  placeholder='Search titles...'
-                  value={filters.searchTerm}
-                  onChange={(e) => updateFilter({ searchTerm: e.target.value })}
-                  className='pl-8'
+        {/* Basic Filters - Collapsible */}
+        <Collapsible defaultOpen={false}>
+          <CollapsibleTrigger asChild>
+            <Button variant='ghost' size='sm' className='justify-start w-full'>
+              <Filter className='h-4 w-4 mr-2' /> Basic Filters
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className='mt-2 space-y-4'>
+            <div className='grid gap-4 md:grid-cols-2'>
+              <div className='space-y-2'>
+                <Label htmlFor='search'>Search</Label>
+                <div className='relative'>
+                  <Search className='absolute left-2 top-2.5 h-4 w-4 text-muted-foreground' />
+                  <Input
+                    id='search'
+                    placeholder='Search titles...'
+                    value={filters.searchTerm}
+                    onChange={(e) =>
+                      updateFilter({ searchTerm: e.target.value })
+                    }
+                    className='pl-8'
+                  />
+                </div>
+              </div>
+              <div className='space-y-2'>
+                <Label>Search Type</Label>
+                <Select
+                  value={filters.searchType}
+                  onValueChange={(value: 'contains' | 'exact' | 'regex') =>
+                    updateFilter({ searchType: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='contains'>Contains</SelectItem>
+                    <SelectItem value='exact'>Exact Match</SelectItem>
+                    <SelectItem value='regex'>Regex</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className='grid gap-4 md:grid-cols-2'>
+              <div className='space-y-2'>
+                <Label>Media Types</Label>
+                <MultiSelect
+                  options={[
+                    { label: 'Movies', value: 'movie' },
+                    { label: 'TV Shows', value: 'tv' },
+                  ]}
+                  onValueChange={(values) =>
+                    updateFilter({
+                      mediaTypes: arrayToSet(values) as Set<'movie' | 'tv'>,
+                    })
+                  }
+                  defaultValue={setToArray(filters.mediaTypes)}
+                  placeholder='All types'
+                  maxCount={2}
+                />
+              </div>
+              <div className='space-y-2'>
+                <Label>Sources</Label>
+                <MultiSelect
+                  options={availableSources.map((source) => ({
+                    label: source,
+                    value: source,
+                  }))}
+                  onValueChange={(values) =>
+                    updateFilter({ sources: arrayToSet(values) })
+                  }
+                  defaultValue={setToArray(filters.sources)}
+                  placeholder='All sources'
+                  maxCount={3}
                 />
               </div>
             </div>
-            <div className='space-y-2'>
-              <Label>Search Type</Label>
-              <Select
-                value={filters.searchType}
-                onValueChange={(value: 'contains' | 'exact' | 'regex') =>
-                  updateFilter({ searchType: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value='contains'>Contains</SelectItem>
-                  <SelectItem value='exact'>Exact Match</SelectItem>
-                  <SelectItem value='regex'>Regex</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className='grid gap-4 md:grid-cols-2'>
-            <div className='space-y-2'>
-              <Label>Media Types</Label>
-              <MultiSelect
-                options={[
-                  { label: 'Movies', value: 'movie' },
-                  { label: 'TV Shows', value: 'tv' },
-                ]}
-                onValueChange={(values) =>
-                  updateFilter({
-                    mediaTypes: arrayToSet(values) as Set<'movie' | 'tv'>,
-                  })
-                }
-                defaultValue={setToArray(filters.mediaTypes)}
-                placeholder='All types'
-                maxCount={2}
-              />
-            </div>
-            <div className='space-y-2'>
-              <Label>Sources</Label>
-              <MultiSelect
-                options={availableSources.map((source) => ({
-                  label: source,
-                  value: source,
-                }))}
-                onValueChange={(values) =>
-                  updateFilter({ sources: arrayToSet(values) })
-                }
-                defaultValue={setToArray(filters.sources)}
-                placeholder='All sources'
-                maxCount={3}
-              />
-            </div>
-          </div>
-        </div>
+          </CollapsibleContent>
+        </Collapsible>
 
         {/* Advanced Filters Accordion */}
         <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>

@@ -9,9 +9,21 @@ import { filterAndSortMediaItems } from '@/lib/utils/mediaFilters';
 
 interface MediaTableWithFiltersProps {
   items: MediaItem[];
+  availableGenres: string[];
+  availableQualities: string[];
+  availableSources: string[];
+  availableFolders: string[];
+  totalItems: number;
 }
 
-export function MediaTableWithFilters({ items }: MediaTableWithFiltersProps) {
+export function MediaTableWithFilters({
+  items,
+  availableGenres,
+  availableQualities,
+  availableSources,
+  availableFolders,
+  totalItems,
+}: MediaTableWithFiltersProps) {
   const { filters, sortCriteria } = useMediaFilterContext();
 
   // Apply filters and sorting
@@ -22,5 +34,14 @@ export function MediaTableWithFilters({ items }: MediaTableWithFiltersProps) {
   // Initialize TanStack Table with pre-filtered data
   const { table } = useMediaTable(filteredAndSortedItems);
 
-  return <MediaTableBase table={table} />;
+  return (
+    <MediaTableBase
+      table={table}
+      availableGenres={availableGenres}
+      availableQualities={availableQualities}
+      availableSources={availableSources}
+      availableFolders={availableFolders}
+      totalItems={totalItems}
+    />
+  );
 }

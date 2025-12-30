@@ -1,7 +1,6 @@
 'use client';
 
 import { MediaFilterProvider } from './filters/MediaFilterProvider';
-import { MediaFiltersClient } from './filters/MediaFiltersClient';
 import { MediaTableWithFilters } from './table/MediaTableWithFilters';
 import { MediaItem } from '@/lib/types/media';
 
@@ -23,17 +22,15 @@ export function MediaPageContent({
   return (
     <MediaFilterProvider>
       <div className='space-y-6'>
-        {/* Enhanced Filters */}
-        <MediaFiltersClient
+        {/* Media Table with Filtering and Filters Popover */}
+        <MediaTableWithFilters
+          items={items}
           availableGenres={availableGenres}
           availableQualities={availableQualities}
           availableSources={availableSources}
           availableFolders={availableFolders}
           totalItems={items.length}
         />
-
-        {/* Media Table with Filtering */}
-        <MediaTableWithFilters items={items} />
       </div>
     </MediaFilterProvider>
   );
