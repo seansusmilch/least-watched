@@ -1,16 +1,23 @@
 'use client';
 
-import { MediaTableBase } from './MediaTableBase';
 import { MediaItem } from '@/lib/types/media';
-import { useMediaTable } from '@/hooks/useMediaTable';
+import { MediaPageContent } from '@/components/media/MediaPageContent';
+import { getUniqueFilterOptions } from '@/lib/utils/mediaFilters';
 
 interface MediaTableWithDataProps {
   items: MediaItem[];
 }
 
 export function MediaTableWithData({ items }: MediaTableWithDataProps) {
-  // Initialize TanStack Table
-  const { table } = useMediaTable(items);
+  const filterOptions = getUniqueFilterOptions(items);
 
-  return <MediaTableBase table={table} />;
+  return (
+    <MediaPageContent
+      items={items}
+      availableGenres={filterOptions.genres}
+      availableQualities={filterOptions.qualities}
+      availableSources={filterOptions.sources}
+      availableFolders={filterOptions.folders}
+    />
+  );
 }

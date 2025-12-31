@@ -26,6 +26,79 @@ export class FolderSpaceService {
       const allFoldersWithSpace: FolderWithSpaceEnhanced[] = [];
 
       // Helper functions
+      const normalizeFolderPath = (path: string | null | undefined): string => {
+        if (!path) return '';
+        const trimmed = path.trim();
+
+        const looksWindowsLike =
+          /^[A-Za-z]:[\\/]/.test(trimmed) || trimmed.startsWith('\\\\');
+        const looksPosixLike = trimmed.startsWith('/');
+
+        if (looksWindowsLike) {
+          let normalized = trimmed.replaceAll('/', '\\');
+          while (
+            normalized.length > 1 &&
+            normalized.endsWith('\\') &&
+            !/^[A-Za-z]:\\$/.test(normalized)
+          ) {
+            normalized = normalized.slice(0, -1);
+          }
+          return normalized.toLowerCase();
+        }
+
+        if (looksPosixLike) {
+          let normalized = trimmed.replaceAll('\\', '/');
+          while (normalized.length > 1 && normalized.endsWith('/')) {
+            normalized = normalized.slice(0, -1);
+          }
+          return normalized;
+        }
+
+        let normalized = trimmed.replaceAll('\\', '/');
+        while (normalized.length > 1 && normalized.endsWith('/')) {
+          normalized = normalized.slice(0, -1);
+        }
+        return normalized.toLowerCase();
+      };
+
+      const isFolderPathSelected = (
+        folderPath: string | null | undefined,
+        selectedFolderSet: Set<string>,
+        selectedFoldersRaw: string[]
+      ): boolean => {
+        const normalizedFolderPath = normalizeFolderPath(folderPath);
+        if (!normalizedFolderPath) return false;
+        if (selectedFolderSet.has(normalizedFolderPath)) return true;
+
+        const folderLooksPosix = normalizedFolderPath.startsWith('/');
+        for (const rawSelected of selectedFoldersRaw) {
+          const normalizedSelected = normalizeFolderPath(rawSelected);
+          if (!normalizedSelected) continue;
+
+          if (normalizedFolderPath === normalizedSelected) return true;
+
+          if (
+            normalizedFolderPath.startsWith(normalizedSelected + '/') ||
+            normalizedSelected.startsWith(normalizedFolderPath + '/')
+          ) {
+            return true;
+          }
+
+          if (folderLooksPosix && /^\/[^/]+$/.test(normalizedSelected)) {
+            const selectedSegment = normalizedSelected.slice(1);
+            if (!selectedSegment) continue;
+            const folderSegments = normalizedFolderPath
+              .split('/')
+              .filter(Boolean);
+            if (folderSegments.includes(selectedSegment)) {
+              return true;
+            }
+          }
+        }
+
+        return false;
+      };
+
       const getDriveRoot = (path: string | null | undefined): string => {
         if (!path) return '/';
         if (path.match(/^[A-Za-z]:\\/)) {
@@ -39,13 +112,32 @@ export class FolderSpaceService {
         return path.startsWith('C:\\') || path === '/';
       };
 
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('📦 Folder space settings snapshot:', {
+          sonarrInstances: sonarrInstances.map((i) => ({
+            name: i.name,
+            enabled: i.enabled,
+            selectedFoldersCount: i.selectedFolders?.length ?? 0,
+            selectedFoldersSample: i.selectedFolders?.slice(0, 3) ?? [],
+          })),
+          radarrInstances: radarrInstances.map((i) => ({
+            name: i.name,
+            enabled: i.enabled,
+            selectedFoldersCount: i.selectedFolders?.length ?? 0,
+            selectedFoldersSample: i.selectedFolders?.slice(0, 3) ?? [],
+          })),
+        });
+      }
+
       // Process Sonarr instances with individual error handling
       const sonarrPromises = sonarrInstances.map(async (instance) => {
         try {
           return await this.processSonarrInstanceForEnhanced(
             instance,
             getDriveRoot,
-            isSystemDrive
+            isSystemDrive,
+            normalizeFolderPath,
+            isFolderPathSelected
           );
         } catch (error) {
           console.warn(
@@ -62,7 +154,9 @@ export class FolderSpaceService {
           return await this.processRadarrInstanceForEnhanced(
             instance,
             getDriveRoot,
-            isSystemDrive
+            isSystemDrive,
+            normalizeFolderPath,
+            isFolderPathSelected
           );
         } catch (error) {
           console.warn(
@@ -83,24 +177,60 @@ export class FolderSpaceService {
       sonarrResults.forEach((result) => allFoldersWithSpace.push(...result));
       radarrResults.forEach((result) => allFoldersWithSpace.push(...result));
 
+      const isFiniteNumber = (value: unknown): value is number =>
+        typeof value === 'number' && Number.isFinite(value);
+
+      const isDisplayableFolderWithSpace = (
+        folder: FolderWithSpaceEnhanced
+      ): folder is FolderWithSpaceEnhanced => {
+        if (!folder.path) return false;
+        if (!folder.isSelected) return false;
+
+        if (
+          !isFiniteNumber(folder.totalSpace) ||
+          !isFiniteNumber(folder.freeSpace) ||
+          !isFiniteNumber(folder.usedSpace) ||
+          !isFiniteNumber(folder.usedSpacePercent) ||
+          !isFiniteNumber(folder.freeSpacePercent)
+        ) {
+          return false;
+        }
+
+        if (folder.totalSpace <= 0) return false;
+        if (folder.freeSpace < 0 || folder.usedSpace < 0) return false;
+
+        if (folder.usedSpacePercent < 0 || folder.usedSpacePercent > 100)
+          return false;
+        if (folder.freeSpacePercent < 0 || folder.freeSpacePercent > 100)
+          return false;
+
+        return true;
+      };
+
+      const displayableSelectedFolders = allFoldersWithSpace.filter(
+        isDisplayableFolderWithSpace
+      );
+
       // Group folders by path to identify shared folders
       const pathToInstances = new Map<
         string,
         { instanceName: string; instanceType: string }[]
       >();
 
-      allFoldersWithSpace.forEach((folder) => {
-        const instances = pathToInstances.get(folder.path) || [];
+      displayableSelectedFolders.forEach((folder) => {
+        const key = normalizeFolderPath(folder.path);
+        const instances = pathToInstances.get(key) || [];
         instances.push({
           instanceName: folder.instanceName,
           instanceType: folder.instanceType,
         });
-        pathToInstances.set(folder.path, instances);
+        pathToInstances.set(key, instances);
       });
 
       // Update shared folder information
-      const result = allFoldersWithSpace.map((folder) => {
-        const instances = pathToInstances.get(folder.path) || [];
+      const result = displayableSelectedFolders.map((folder) => {
+        const key = normalizeFolderPath(folder.path);
+        const instances = pathToInstances.get(key) || [];
         const instanceCount = instances.length;
         const isShared = instanceCount > 1;
 
@@ -117,6 +247,17 @@ export class FolderSpaceService {
       console.log(
         `✅ Successfully retrieved ${result.length} folders with space data`
       );
+
+      if (process.env.NODE_ENV !== 'production') {
+        const selectedCount = result.filter((f) => f.isSelected).length;
+        const droppedCount = allFoldersWithSpace.length - result.length;
+        console.log('🧭 Folder space selection summary:', {
+          total: result.length,
+          selected: selectedCount,
+          droppedNotDisplayable: droppedCount,
+          sample: result.slice(0, 2),
+        });
+      }
       return result;
     } catch (error) {
       console.error('❌ Critical error in getAllFoldersWithSpace:', error);
@@ -127,9 +268,18 @@ export class FolderSpaceService {
   private async processSonarrInstanceForEnhanced(
     instance: ServiceSettings,
     getDriveRoot: (path: string | null | undefined) => string,
-    isSystemDrive: (path: string | null | undefined) => boolean
+    isSystemDrive: (path: string | null | undefined) => boolean,
+    normalizeFolderPath: (path: string | null | undefined) => string,
+    isFolderPathSelected: (
+      folderPath: string | null | undefined,
+      selectedFolderSet: Set<string>,
+      selectedFoldersRaw: string[]
+    ) => boolean
   ): Promise<FolderWithSpaceEnhanced[]> {
     const selectedFolders = instance.selectedFolders || [];
+    const selectedFolderSet = new Set(
+      selectedFolders.map((p) => normalizeFolderPath(p)).filter(Boolean)
+    );
 
     const [rootFolders, diskSpaceData] = await Promise.all([
       sonarrApiClient.getRootFolders(instance),
@@ -143,7 +293,11 @@ export class FolderSpaceService {
       const totalSpace = 0;
       const freeSpace = folder.freeSpace ?? 0;
       const usedSpace = totalSpace - freeSpace;
-      const isSelected = selectedFolders.includes(folder.path ?? '');
+      const isSelected = isFolderPathSelected(
+        folder.path ?? '',
+        selectedFolderSet,
+        selectedFolders
+      );
 
       const enhancedFolder: FolderWithSpaceEnhanced = {
         path: folder.path ?? '',
@@ -186,7 +340,11 @@ export class FolderSpaceService {
             100;
         }
       } else {
-        const isSelected = selectedFolders.includes(diskInfo.path ?? '');
+        const isSelected = isFolderPathSelected(
+          diskInfo.path ?? '',
+          selectedFolderSet,
+          selectedFolders
+        );
         const usedSpace =
           (diskInfo.totalSpace ?? 0) - (diskInfo.freeSpace ?? 0);
 
@@ -215,15 +373,38 @@ export class FolderSpaceService {
       }
     }
 
+    if (process.env.NODE_ENV !== 'production') {
+      const computed = Array.from(folderMap.values());
+      console.log('🧩 Sonarr folder space computed:', {
+        instance: instance.name,
+        selectedFoldersCount: selectedFolders.length,
+        rootFoldersCount: rootFolders.length,
+        diskSpaceCount: diskSpaceData.length,
+        computedCount: computed.length,
+        computedSelectedCount: computed.filter((f) => f.isSelected).length,
+        selectedFoldersSample: selectedFolders.slice(0, 3),
+        computedSample: computed.slice(0, 2),
+      });
+    }
+
     return Array.from(folderMap.values());
   }
 
   private async processRadarrInstanceForEnhanced(
     instance: ServiceSettings,
     getDriveRoot: (path: string | null | undefined) => string,
-    isSystemDrive: (path: string | null | undefined) => boolean
+    isSystemDrive: (path: string | null | undefined) => boolean,
+    normalizeFolderPath: (path: string | null | undefined) => string,
+    isFolderPathSelected: (
+      folderPath: string | null | undefined,
+      selectedFolderSet: Set<string>,
+      selectedFoldersRaw: string[]
+    ) => boolean
   ): Promise<FolderWithSpaceEnhanced[]> {
     const selectedFolders = instance.selectedFolders || [];
+    const selectedFolderSet = new Set(
+      selectedFolders.map((p) => normalizeFolderPath(p)).filter(Boolean)
+    );
 
     const [rootFolders, diskSpaceData] = await Promise.all([
       radarrApiClient.getRootFolders(instance),
@@ -237,7 +418,11 @@ export class FolderSpaceService {
       const totalSpace = 0;
       const freeSpace = folder.freeSpace ?? 0;
       const usedSpace = totalSpace - freeSpace;
-      const isSelected = selectedFolders.includes(folder.path ?? '');
+      const isSelected = isFolderPathSelected(
+        folder.path ?? '',
+        selectedFolderSet,
+        selectedFolders
+      );
 
       const enhancedFolder: FolderWithSpaceEnhanced = {
         path: folder.path ?? '',
@@ -284,7 +469,11 @@ export class FolderSpaceService {
             100;
         }
       } else {
-        const isSelected = selectedFolders.includes(diskInfo.path ?? '');
+        const isSelected = isFolderPathSelected(
+          diskInfo.path ?? '',
+          selectedFolderSet,
+          selectedFolders
+        );
         const usedSpace =
           (diskInfo.totalSpace ?? 0) - (diskInfo.freeSpace ?? 0);
 
@@ -312,6 +501,20 @@ export class FolderSpaceService {
 
         folderMap.set(diskInfo.path ?? '', enhancedFolder);
       }
+    }
+
+    if (process.env.NODE_ENV !== 'production') {
+      const computed = Array.from(folderMap.values());
+      console.log('🧩 Radarr folder space computed:', {
+        instance: instance.name,
+        selectedFoldersCount: selectedFolders.length,
+        rootFoldersCount: rootFolders.length,
+        diskSpaceCount: diskSpaceData.length,
+        computedCount: computed.length,
+        computedSelectedCount: computed.filter((f) => f.isSelected).length,
+        selectedFoldersSample: selectedFolders.slice(0, 3),
+        computedSample: computed.slice(0, 2),
+      });
     }
 
     return Array.from(folderMap.values());

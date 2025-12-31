@@ -14,46 +14,47 @@ function createFolderInfo(
   diskSpace: DiskSpaceInfo[],
   rootFolders: RootFolderInfo[]
 ): FolderInfo[] {
-  const folderMap = new Map<string, FolderInfo>();
+  const diskSpaceWithPaths = diskSpace.filter(
+    (ds): ds is DiskSpaceInfo & { path: string } => Boolean(ds.path)
+  );
 
-  // Process disk space entries first (most complete data)
-  diskSpace.forEach((ds) => {
-    if (!ds.path) return;
+  const findBestDiskSpaceMatch = (
+    folderPath: string
+  ): (DiskSpaceInfo & { path: string }) | undefined => {
+    const exact = diskSpaceWithPaths.find((ds) => ds.path === folderPath);
+    if (exact) return exact;
 
-    folderMap.set(ds.path, {
-      path: ds.path,
-      label: ds.label || ds.path,
-      freeSpace: ds.freeSpace || 0,
-      totalSpace: ds.totalSpace || 0,
-      diskSpaceData: {
-        hasEnhancedData: true,
-        isSystemDrive: ds.path === 'C:\\' || ds.path === '/',
-      },
-    });
-  });
+    const byPrefix = diskSpaceWithPaths.find((ds) => folderPath.startsWith(ds.path));
+    if (byPrefix) return byPrefix;
 
-  // Update with root folder data (may have different free space values)
-  rootFolders.forEach((rf) => {
-    if (!rf.path) return;
+    return diskSpaceWithPaths.find((ds) => ds.path.startsWith(folderPath));
+  };
 
-    const existing = folderMap.get(rf.path);
-    if (existing) {
-      // Update free space if available from root folder
-      if (rf.freeSpace !== undefined && rf.freeSpace !== null) {
-        existing.freeSpace = rf.freeSpace;
-      }
-    } else {
-      // Add new entry if not found in disk space
-      folderMap.set(rf.path, {
+  return rootFolders
+    .filter((rf): rf is RootFolderInfo & { path: string } => Boolean(rf.path))
+    .map((rf) => {
+      const matchingDiskSpace = findBestDiskSpaceMatch(rf.path);
+      const freeSpace =
+        rf.freeSpace !== undefined && rf.freeSpace !== null
+          ? rf.freeSpace
+          : matchingDiskSpace?.freeSpace || 0;
+
+      const totalSpace = matchingDiskSpace?.totalSpace || 0;
+
+      return {
         path: rf.path,
         label: rf.path,
-        freeSpace: rf.freeSpace || 0,
-        totalSpace: 0, // Root folders don't provide total space
-      });
-    }
-  });
-
-  return Array.from(folderMap.values());
+        freeSpace,
+        totalSpace,
+        diskSpaceData: matchingDiskSpace?.path
+          ? {
+              hasEnhancedData: true,
+              isSystemDrive:
+                matchingDiskSpace.path === 'C:\\' || matchingDiskSpace.path === '/',
+            }
+          : undefined,
+      };
+    });
 }
 
 export async function fetchFolders(

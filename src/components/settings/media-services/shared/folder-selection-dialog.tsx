@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useTransition } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -43,7 +43,7 @@ export function FolderSelectionDialog({
   );
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isSaving, startTransition] = useTransition();
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -82,11 +82,14 @@ export function FolderSelectionDialog({
     );
   };
 
-  const handleSave = () => {
-    startTransition(() => {
-      onSave(selectedFolders);
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await onSave(selectedFolders);
       onOpenChange(false);
-    });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const formatBytes = (bytes: number, decimals = 2) => {

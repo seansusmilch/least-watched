@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -34,6 +35,15 @@ export function FolderSpaceWidget({
 
   // Group selected folders by drive
   const groupedFolders = groupFoldersByDrive(selectedFolders);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'production') return;
+    console.log('🧩 FolderSpaceWidget received:', {
+      total: initialData.length,
+      selected: selectedFolders.length,
+      sample: initialData.slice(0, 2),
+    });
+  }, [initialData, selectedFolders.length]);
 
   if (selectedFolders.length === 0) {
     return (

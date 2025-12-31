@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useOptimistic } from 'react';
+import React, { useState, useOptimistic, useTransition } from 'react';
 import { toast } from 'sonner';
 import { Plus, Monitor, Globe } from 'lucide-react';
 
@@ -53,6 +53,8 @@ export function ServiceSettings({
   deleteSetting,
   testConnection,
 }: ServiceSettingsProps) {
+  const [, startTransition] = useTransition();
+
   const [optimisticSettings, setOptimisticSettings] = useOptimistic<
     ServiceSettings[],
     OptimisticAction
@@ -117,17 +119,21 @@ export function ServiceSettings({
       if (editingId) {
         result = await updateSetting(editingId, formDataObj);
         if (result.success && result.data) {
-          setOptimisticSettings({
-            type: 'update',
-            payload: result.data as ServiceSettings,
+          startTransition(() => {
+            setOptimisticSettings({
+              type: 'update',
+              payload: result.data as ServiceSettings,
+            });
           });
         }
       } else {
         result = await createSetting(formDataObj);
         if (result.success && result.data) {
-          setOptimisticSettings({
-            type: 'add',
-            payload: result.data as ServiceSettings,
+          startTransition(() => {
+            setOptimisticSettings({
+              type: 'add',
+              payload: result.data as ServiceSettings,
+            });
           });
         }
       }
@@ -148,9 +154,11 @@ export function ServiceSettings({
     try {
       const result = await deleteSetting(id);
       if (result.success) {
-        setOptimisticSettings({ type: 'delete', payload: id });
-        setIsDeleteDialogOpen(false);
-        setSettingToDelete(null);
+        startTransition(() => {
+          setOptimisticSettings({ type: 'delete', payload: id });
+          setIsDeleteDialogOpen(false);
+          setSettingToDelete(null);
+        });
         toast.success(result.message || 'Settings deleted successfully');
       } else {
         toast.error(result.message || 'Failed to delete settings');
@@ -168,12 +176,14 @@ export function ServiceSettings({
         selectedFolders,
       });
       if (result.success && result.data) {
-        setOptimisticSettings({
-          type: 'update',
-          payload: { id: currentSettingId, selectedFolders },
+        startTransition(() => {
+          setOptimisticSettings({
+            type: 'update',
+            payload: { id: currentSettingId, selectedFolders },
+          });
+          setFolderDialogOpen(false);
+          setCurrentSettingId(null);
         });
-        setFolderDialogOpen(false);
-        setCurrentSettingId(null);
         toast.success('Folders updated successfully');
       } else {
         toast.error(result.message || 'Failed to update folders');

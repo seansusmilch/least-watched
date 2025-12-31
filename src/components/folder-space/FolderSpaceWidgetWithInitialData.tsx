@@ -5,6 +5,14 @@ export async function FolderSpaceWidgetWithInitialData() {
   try {
     const allFoldersWithSpace =
       await folderSpaceService.getAllFoldersWithSpace();
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('🧱 FolderSpaceWidgetWithInitialData payload:', {
+        total: allFoldersWithSpace.length,
+        selected: allFoldersWithSpace.filter((f) => f.isSelected).length,
+        sample: allFoldersWithSpace.slice(0, 2),
+      });
+    }
     return <FolderSpaceWidget initialData={allFoldersWithSpace} />;
   } catch (error) {
     console.warn(
