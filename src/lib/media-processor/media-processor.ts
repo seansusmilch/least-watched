@@ -2,7 +2,7 @@ import { sonarrSettingsService, radarrSettingsService } from '@/lib/database';
 import { type DeletionScoreSettings } from '@/lib/actions/settings/types';
 import { folderSpaceService } from '@/lib/services/folder-space-service';
 import { ProgressStore } from './progress-store';
-import { TESTING_LIMIT } from './constants';
+import { MEDIA_PROCESSOR_ITEM_LIMIT } from './constants';
 import { MediaStorage } from './storage';
 import { type MediaProcessingProgress, type ProcessedMediaItem } from './types';
 import { getDeletionScoreSettings } from '@/lib/actions/settings';
@@ -102,10 +102,9 @@ export class MediaProcessor {
       pageSize: 500,
     });
 
-    const totalItems = Math.min(
-      embyItems.length,
-      TESTING_LIMIT || embyItems.length
-    );
+    const totalItems = MEDIA_PROCESSOR_ITEM_LIMIT
+      ? Math.min(embyItems.length, MEDIA_PROCESSOR_ITEM_LIMIT)
+      : embyItems.length;
     await this.updateProgress(
       'Enumerating Emby',
       0,

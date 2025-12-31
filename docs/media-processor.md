@@ -31,7 +31,7 @@ High-signal notes for future work on the media processing pipeline that ingests 
 1. Load enabled Sonarr/Radarr instances, date preference, and the single enabled Emby instance.
 2. Early exit if no Emby instance is enabled.
 3. Fetch all Sonarr Series and Radarr Movies; build matching maps by tvdb/tmdb/imdb for join enrichment.
-4. Enumerate Emby library items (Movies, Series) with optional library filtering and paging (pageSize 500). Current run is limited by `TESTING_LIMIT`.
+4. Enumerate Emby library items (Movies, Series) with optional library filtering and paging (pageSize 500). Current run can be limited by `MEDIA_PROCESSOR_ITEM_LIMIT` environment variable (optional).
 5. For each Emby item:
    - Create a base `ProcessedMediaItem` with ids, title, paths, year, and `embyId`.
    - Enrich from Sonarr (Series) or Radarr (Movies) via provider id maps to populate path, size, TV stats, monitored, and added date from Arr.
@@ -92,7 +92,7 @@ High-signal notes for future work on the media processing pipeline that ingests 
 
 ### Configuration knobs and current limitations
 
-- **TESTING_LIMIT**: Hard cap on processed Emby items (default 10) for safety during development.
+- **TESTING_LIMIT**: Optional limit on processed Emby items, controlled by `MEDIA_PROCESSOR_ITEM_LIMIT` environment variable. If not set, there is no limit.
 - **Series-only ingestion**: Current filter restricts to `Type === 'Series'` with a TODO to add movies.
 - **In-memory progress**: Not multiprocess-safe; no persistence or deduping across runs.
 - **Quality scoring**: `constants.getQualityScore()` exists, but `qualityScore` is not computed in `media-processor.ts` yet.
@@ -104,7 +104,7 @@ High-signal notes for future work on the media processing pipeline that ingests 
 - **Add movie ingestion**: Remove the `Type === 'Series'` filter and implement movie enrichment parity, including `runtime` and `sizePerHour` if available.
 - **Compute quality score**: Populate `quality` and `qualityScore` using Arr media file quality and `getQualityScore()`.
 - **Improve folder space accuracy**: Consider persisting enhanced disk space info and normalizing paths across OSes; handle UNC and mount points.
-- **Make TESTING_LIMIT configurable**: Read from an app setting or env var; set `undefined` for full runs.
+- ~~**Make TESTING_LIMIT configurable**: Read from an app setting or env var; set `undefined` for full runs.~~ ✅ **Completed**: `TESTING_LIMIT` is now controlled by `MEDIA_PROCESSOR_ITEM_LIMIT` environment variable.
 - **Persist progress**: Store progress in the DB or KV for resilience; add run IDs and timestamps.
 - **Batching and backpressure**: Process Emby items in chunks to control memory; await DB upserts in controlled concurrency.
 - **Multi-Emby support**: Current design assumes a single Emby instance; abstract to support multiple if needed.

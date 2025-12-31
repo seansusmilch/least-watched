@@ -1,5 +1,8 @@
 // Configuration constants
-export const TESTING_LIMIT = 1000000; // Limit number of items processed per instance for testing
+export const MEDIA_PROCESSOR_ITEM_LIMIT: number | undefined = process.env
+  .MEDIA_PROCESSOR_ITEM_LIMIT
+  ? Number.parseInt(process.env.MEDIA_PROCESSOR_ITEM_LIMIT, 10)
+  : undefined;
 
 // Quality mapping for scoring
 export const QUALITY_SCORE_MAP: Record<string, number> = {

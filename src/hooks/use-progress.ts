@@ -14,16 +14,24 @@ export function useProgress() {
       console.log(progress);
       return progress;
     },
-    refetchInterval: ({ state }) => {
-      switch (state.data?.state) {
-        case 'none':
+    refetchInterval: (query) => {
+      try {
+        const state = query.state?.data?.state;
+        if (!state) {
           return 10000;
-        case 'live':
-          return 500;
-        case 'completed':
-          return 10000;
-        default:
-          return 10000;
+        }
+        switch (state) {
+          case 'none':
+            return 10000;
+          case 'live':
+            return 500;
+          case 'completed':
+            return 10000;
+          default:
+            return 10000;
+        }
+      } catch {
+        return 10000;
       }
     },
     staleTime: 0,
