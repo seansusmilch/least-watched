@@ -13,7 +13,7 @@ export type {
 } from './types';
 
 // Constants and utilities
-export { TESTING_LIMIT, getQualityScore } from './constants';
+export { MEDIA_PROCESSOR_ITEM_LIMIT, getQualityScore } from './constants';
 
 // Individual processors (if needed for specific use cases)
 export { MediaStorage } from './storage';
