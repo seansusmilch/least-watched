@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { AppSidebar } from '@/components/app-sidebar';
+import { AlertsDropdown } from '@/components/alerts/AlertsDropdown';
 import {
   SidebarProvider,
   SidebarTrigger,
@@ -45,6 +46,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         <header className='flex h-16 shrink-0 items-center gap-2 border-b px-4'>
           <SidebarTrigger className='-ml-1' />
           <div className='flex-1' />
+          <AlertsDropdown />
           <ThemeToggle />
         </header>
 
