@@ -121,32 +121,38 @@ export class MediaProcessor {
       pageSize: 500,
     });
 
-    const totalItems = MEDIA_PROCESSOR_ITEM_LIMIT
-      ? Math.min(embyItems.length, MEDIA_PROCESSOR_ITEM_LIMIT)
-      : embyItems.length;
+    const seriesItems = embyItems.filter((item) => item.Type === 'Series');
+    const movieItems = embyItems.filter((item) => item.Type === 'Movie');
+
+    const limitedSeries = MEDIA_PROCESSOR_ITEM_LIMIT
+      ? seriesItems.slice(0, MEDIA_PROCESSOR_ITEM_LIMIT)
+      : seriesItems;
+    const limitedMovies = MEDIA_PROCESSOR_ITEM_LIMIT
+      ? movieItems.slice(0, MEDIA_PROCESSOR_ITEM_LIMIT)
+      : movieItems;
+
+    const limited = [...limitedSeries, ...limitedMovies];
+    const totalItems = limited.length;
+
     await this.updateProgress(
       'Enumerating Emby',
       0,
       totalItems,
-      `Found ${totalItems} items`
+      `Found ${limitedSeries.length} series and ${limitedMovies.length} movies`
     );
 
     const deletionScoreSettings: DeletionScoreSettings =
       await getDeletionScoreSettings();
     const folderSpaceData = await folderSpaceService.getFolderSpaceData();
 
-    const limited = embyItems
-      .filter((item) => item.Type === 'Series') // TODO: Add movie support
-      .slice(0, totalItems);
-
-    runStats.embyItemsFetched = limited.length;
+    runStats.embyItemsFetched = totalItems;
 
     for (let i = 0; i < limited.length; i++) {
       const item = limited[i] as Emby.BaseItem;
       const name: string = item.Name || item.OriginalTitle || 'Unknown';
       const itemStartTime = performance.now();
 
-      console.log(`Started processing ${name}`);
+      console.log(`⏱️ Started processing ${name}`);
 
       await this.updateProgress(
         'Processing Emby Items',
@@ -290,7 +296,7 @@ export class MediaProcessor {
 
         const itemTimeMs = Math.round(performance.now() - itemStartTime);
         console.log(
-          `Finished processing ${name} in ${itemTimeMs}ms | arr: ${arrMatch} | playback: ${
+          `✅ Finished processing ${name} in ${itemTimeMs}ms | arr: ${arrMatch} | playback: ${
             playbackFound ? 'found' : 'none'
           } | score: ${deletionScore}`
         );
@@ -329,7 +335,10 @@ export class MediaProcessor {
       `Arr matches: ${runStats.itemsWithArrMatch}/${runStats.itemsProcessed} | Playback data: ${runStats.itemsWithPlayback}/${runStats.itemsProcessed}`
     );
     console.log(
-      `Pre-fetch: ${runStats.sonarrSeriesFetched} Sonarr series, ${runStats.radarrMoviesFetched} Radarr movies, ${runStats.embyItemsFetched} Emby items`
+      `Pre-fetch: ${runStats.sonarrSeriesFetched} Sonarr series, ${runStats.radarrMoviesFetched} Radarr movies`
+    );
+    console.log(
+      `Emby items: ${limitedSeries.length} series, ${limitedMovies.length} movies (${runStats.embyItemsFetched} total)`
     );
 
     return allProcessedItems;
