@@ -175,7 +175,7 @@ function applyWatchStateFilter(
 ): boolean {
   if (watchStates.size === 0) return true;
 
-  const isWatched = item.watchCount > 0 || item.lastWatched !== undefined;
+  const isWatched = item.watchCount > 0 || item.lastWatched != null;
   const isPartial =
     item.type === 'tv' &&
     !!item.completionPercentage &&

@@ -5,13 +5,14 @@ import { flexRender, Table as TanStackTable } from '@tanstack/react-table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Film, SortAsc, SortDesc, Search, Filter } from 'lucide-react';
 import { MediaFiltersClient } from '../filters/MediaFiltersClient';
 import { MediaItem } from '@/lib/types/media';
@@ -151,20 +152,13 @@ export function MediaTableBase({
                 className='h-8 w-[200px] pl-8'
               />
             </div>
-            <Dialog>
-              <DialogTrigger asChild>
-                <button
-                  type='button'
-                  className='inline-flex h-8 items-center rounded-md border px-2 text-sm hover:bg-muted'
-                  aria-label='Open filters'
-                >
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant='outline' size='sm' aria-label='Open filters'>
                   <Filter className='h-4 w-4 mr-2' /> Filters
-                </button>
-              </DialogTrigger>
-              <DialogContent className='w-[90vw] sm:max-w-[1000px] p-0 max-h-[80vh] overflow-auto'>
-                <DialogHeader className='sr-only'>
-                  <DialogTitle>Filters</DialogTitle>
-                </DialogHeader>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-full sm:max-w-md p-0">
                 <MediaFiltersClient
                   availableGenres={availableGenres}
                   availableQualities={availableQualities}
@@ -172,8 +166,8 @@ export function MediaTableBase({
                   availableFolders={availableFolders}
                   totalItems={totalItems}
                 />
-              </DialogContent>
-            </Dialog>
+              </SheetContent>
+            </Sheet>
             {selectedRows.length > 0 && (
               <Badge variant='secondary'>
                 {selectedRows.length} selected ({formatFileSize(selectedSize)})
