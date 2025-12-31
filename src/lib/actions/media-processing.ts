@@ -20,14 +20,17 @@ import {
 } from '@/lib/database';
 import { getProgress } from './progress';
 import { ProgressStore } from '@/lib/media-processor/progress-store';
-import { MediaItem, getEffectiveDateAdded } from '@/lib/types/media';
+import {
+  MediaItem,
+  getEffectiveDateAdded,
+  type DatePreference,
+} from '@/lib/types/media';
 import { calculateUnwatchedDays } from '@/lib/utils/formatters';
+import { convertMediaItemToScoringFormat } from '@/lib/utils/media-scoring';
 import { getDatePreference } from './settings/app-settings';
 import { getDeletionScoreSettings } from '@/lib/actions/settings';
-import {
-  deletionScoreCalculator,
-  type MediaItemForScoring,
-} from '@/lib/deletion-score-calculator';
+import type { DeletionScoreSettings } from '@/lib/actions/settings/types';
+import { deletionScoreCalculator } from '@/lib/deletion-score-calculator';
 
 // ============================================================================
 // Media Processing Functions
@@ -92,58 +95,54 @@ export async function getMediaItems() {
   }
 }
 
+function processMediaItem(
+  item: Awaited<ReturnType<typeof getMediaItems>>[0],
+  datePreference: DatePreference,
+  deletionScoreSettings: DeletionScoreSettings
+): MediaItem {
+  const tempItem = {
+    ...item,
+    unwatchedDays: 0,
+  } as MediaItem;
+
+  const effectiveDateAdded = getEffectiveDateAdded(tempItem, datePreference);
+  const unwatchedDays = calculateUnwatchedDays(
+    item.lastWatched,
+    effectiveDateAdded
+  );
+
+  const itemForScoring = convertMediaItemToScoringFormat(
+    item,
+    datePreference,
+    null
+  );
+
+  const computedDeletionScore = deletionScoreSettings.enabled
+    ? deletionScoreCalculator.calculateScore(
+        itemForScoring,
+        deletionScoreSettings
+      )
+    : item.deletionScore ?? null;
+
+  return {
+    ...item,
+    effectiveDateAdded,
+    unwatchedDays,
+    deletionScore: computedDeletionScore,
+  } as unknown as MediaItem;
+}
+
 export async function getProcessedMediaItems() {
   try {
-    const [rawItems, datePreference, deletionScoreSettings] = await Promise.all(
-      [getMediaItems(), getDatePreference(), getDeletionScoreSettings()]
+    const [rawItems, datePreference, deletionScoreSettings] = await Promise.all([
+      getMediaItems(),
+      getDatePreference(),
+      getDeletionScoreSettings(),
+    ]);
+
+    const processedItems = rawItems.map((item) =>
+      processMediaItem(item, datePreference, deletionScoreSettings)
     );
-
-    const processedItems = rawItems.map((item) => {
-      // Create a temporary object with required properties for getEffectiveDateAdded
-      const tempItem = {
-        ...item,
-        unwatchedDays: 0, // Temporary value
-      } as MediaItem;
-
-      const effectiveDateAdded = getEffectiveDateAdded(
-        tempItem,
-        datePreference
-      );
-
-      const unwatchedDays = calculateUnwatchedDays(
-        item.lastWatched,
-        effectiveDateAdded
-      );
-
-      const itemForScoring: MediaItemForScoring = {
-        id: item.id,
-        sizeOnDisk:
-          item.sizeOnDisk === null || item.sizeOnDisk === undefined
-            ? null
-            : typeof item.sizeOnDisk === 'bigint'
-            ? item.sizeOnDisk
-            : BigInt(item.sizeOnDisk),
-        dateAddedEmby: item.dateAddedEmby ? new Date(item.dateAddedEmby) : null,
-        dateAddedArr: item.dateAddedArr ? new Date(item.dateAddedArr) : null,
-        datePreference,
-        lastWatched: item.lastWatched ? new Date(item.lastWatched) : null,
-        folderRemainingSpacePercent: null,
-      };
-
-      const computedDeletionScore = deletionScoreSettings.enabled
-        ? deletionScoreCalculator.calculateScore(
-            itemForScoring,
-            deletionScoreSettings
-          )
-        : item.deletionScore;
-
-      return {
-        ...item,
-        effectiveDateAdded,
-        unwatchedDays,
-        deletionScore: computedDeletionScore,
-      } as MediaItem;
-    });
 
     return processedItems;
   } catch (error) {

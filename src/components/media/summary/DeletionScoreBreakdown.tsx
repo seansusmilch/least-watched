@@ -26,12 +26,12 @@ import {
   type DatePreference,
 } from '@/lib/types/media';
 import { formatDate, formatFileSize } from '@/lib/utils/formatters';
+import { convertMediaItemToScoringFormat } from '@/lib/utils/media-scoring';
 import { getDeletionScoreSettings } from '@/lib/actions/settings';
 import { getDatePreference } from '@/lib/actions/settings/app-settings';
 import {
   deletionScoreCalculator,
   type ScoreBreakdownData,
-  type MediaItemForScoring,
 } from '@/lib/deletion-score-calculator';
 
 interface DeletionScoreBreakdownProps {
@@ -65,16 +65,11 @@ export function DeletionScoreBreakdown({
 
       setDatePreference(fetchedDatePreference);
 
-      // Convert MediaItem to MediaItemForScoring format
-      const itemForScoring: MediaItemForScoring = {
-        id: item.id,
-        sizeOnDisk: item.sizeOnDisk ? BigInt(item.sizeOnDisk) : null,
-        dateAddedEmby: item.dateAddedEmby ? new Date(item.dateAddedEmby) : null,
-        dateAddedArr: item.dateAddedArr ? new Date(item.dateAddedArr) : null,
-        datePreference: fetchedDatePreference,
-        lastWatched: item.lastWatched ? new Date(item.lastWatched) : null,
-        folderRemainingSpacePercent: item.folderRemainingSpacePercent ?? null,
-      };
+      const itemForScoring = convertMediaItemToScoringFormat(
+        item,
+        fetchedDatePreference,
+        item.folderRemainingSpacePercent
+      );
 
       const breakdownData = deletionScoreCalculator.calculateScoreBreakdown(
         itemForScoring,
