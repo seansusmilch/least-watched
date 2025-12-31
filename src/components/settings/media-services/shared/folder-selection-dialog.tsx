@@ -241,28 +241,14 @@ export function FolderSelectionDialog({
                           {folder.label}
                         </span>
                       </div>
-                      <p
-                        className='text-xs font-mono truncate text-muted-foreground'
-                        title={folder.path}
-                      >
-                        {folder.path}
-                      </p>
                       {folder.totalSpace > 0 && (
-                        <div className='mt-2 text-xs space-y-1'>
-                          <div className='flex justify-between'>
-                            <span>
-                              Free:{' '}
-                              <span className='font-medium'>
-                                {formatBytes(folder.freeSpace)}
-                              </span>
+                        <div className='mt-2 text-xs'>
+                          <span>
+                            Free:{' '}
+                            <span className='font-medium'>
+                              {formatBytes(folder.freeSpace)}
                             </span>
-                            <span>
-                              Total:{' '}
-                              <span className='font-medium'>
-                                {formatBytes(folder.totalSpace)}
-                              </span>
-                            </span>
-                          </div>
+                          </span>
                         </div>
                       )}
                     </div>
