@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -17,6 +17,10 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { fetchFolders, type FolderInfo } from '@/lib/actions/settings';
+import {
+  normalizeFolderPath,
+  uniqueNormalizedFolderPaths,
+} from '@/lib/utils/selected-paths';
 
 interface FolderSelectionDialogProps {
   open: boolean;
@@ -38,8 +42,8 @@ export function FolderSelectionDialog({
   onSave,
 }: FolderSelectionDialogProps) {
   const [folders, setFolders] = useState<FolderInfo[]>([]);
-  const [selectedFolders, setSelectedFolders] = useState<string[]>(
-    currentSelectedFolders
+  const [selectedFolders, setSelectedFolders] = useState<string[]>(() =>
+    uniqueNormalizedFolderPaths(currentSelectedFolders)
   );
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -71,21 +75,82 @@ export function FolderSelectionDialog({
   }, [open, instanceId, instanceType]);
 
   useEffect(() => {
-    setSelectedFolders(currentSelectedFolders);
+    setSelectedFolders(uniqueNormalizedFolderPaths(currentSelectedFolders));
   }, [currentSelectedFolders]);
 
-  const handleToggleFolder = (folderPath: string) => {
+  const availableFolderKeySet = useMemo(() => {
+    const keys = new Set<string>();
+    for (const folder of folders) {
+      const key = normalizeFolderPath(folder.path);
+      if (!key) continue;
+      keys.add(key);
+    }
+    return keys;
+  }, [folders]);
+
+  const selectedFolderKeySet = useMemo(() => {
+    const keys = new Set<string>();
+    for (const raw of selectedFolders) {
+      const key = normalizeFolderPath(raw);
+      if (!key) continue;
+      keys.add(key);
+    }
+    return keys;
+  }, [selectedFolders]);
+
+  const selectedValidFolderKeySet = useMemo(() => {
+    if (availableFolderKeySet.size === 0) return new Set<string>();
+    const valid = new Set<string>();
+    for (const key of selectedFolderKeySet) {
+      if (availableFolderKeySet.has(key)) valid.add(key);
+    }
+    return valid;
+  }, [availableFolderKeySet, selectedFolderKeySet]);
+
+  useEffect(() => {
+    if (availableFolderKeySet.size === 0) return;
     setSelectedFolders((prev) =>
-      prev.includes(folderPath)
-        ? prev.filter((f) => f !== folderPath)
-        : [...prev, folderPath]
+      prev.filter((p) => {
+        const key = normalizeFolderPath(p);
+        if (!key) return false;
+        return availableFolderKeySet.has(key);
+      })
     );
+  }, [availableFolderKeySet]);
+
+  const isFolderSelected = (folderPath: string): boolean => {
+    const key = normalizeFolderPath(folderPath);
+    if (!key) return false;
+    return selectedFolderKeySet.has(key);
+  };
+
+  const handleToggleFolder = (folderPath: string) => {
+    const toggledKey = normalizeFolderPath(folderPath);
+    if (!toggledKey) return;
+
+    setSelectedFolders((prev) => {
+      const alreadySelected = prev.some(
+        (p) => normalizeFolderPath(p) === toggledKey
+      );
+
+      if (alreadySelected) {
+        return prev.filter((p) => normalizeFolderPath(p) !== toggledKey);
+      }
+
+      return [...prev, folderPath];
+    });
   };
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await onSave(selectedFolders);
+      const normalized = uniqueNormalizedFolderPaths(selectedFolders);
+      const valid = normalized.filter((p) => {
+        const key = normalizeFolderPath(p);
+        if (!key) return false;
+        return availableFolderKeySet.has(key);
+      });
+      await onSave(valid);
       onOpenChange(false);
     } finally {
       setIsSaving(false);
@@ -142,7 +207,8 @@ export function FolderSelectionDialog({
             <div className='flex justify-between items-center mb-4 px-1'>
               <h3 className='text-lg font-medium'>Available Folders</h3>
               <Badge variant='secondary'>
-                {selectedFolders.length} / {folders.length} selected
+                {selectedValidFolderKeySet.size} / {availableFolderKeySet.size}{' '}
+                selected
               </Badge>
             </div>
             <ScrollArea className='h-[50vh] w-full rounded-md border'>
@@ -156,14 +222,14 @@ export function FolderSelectionDialog({
                       transition-all cursor-pointer
                       hover:bg-accent hover:text-accent-foreground
                       ${
-                        selectedFolders.includes(folder.path)
+                        isFolderSelected(folder.path)
                           ? 'bg-accent/60 border-primary ring-2 ring-primary'
                           : 'bg-transparent'
                       }
                     `}
                   >
                     <Checkbox
-                      checked={selectedFolders.includes(folder.path)}
+                      checked={isFolderSelected(folder.path)}
                       onCheckedChange={() => handleToggleFolder(folder.path)}
                       aria-label={`Select folder ${folder.path}`}
                       className='mt-1'

@@ -18,6 +18,10 @@ import {
   Play,
 } from 'lucide-react';
 import type { ServiceSettings } from '@/lib/utils/prefixed-settings';
+import {
+  countUniqueNonEmptyStrings,
+  countUniqueNormalizedFolderPaths,
+} from '@/lib/utils/selected-paths';
 
 type ConnectionStatus = 'idle' | 'testing' | 'success' | 'error';
 
@@ -57,6 +61,11 @@ export function ServiceInstanceCard({
     if (serviceType === 'radarr') return 'bg-yellow-500';
     return 'bg-green-500';
   };
+
+  const selectedCount =
+    serviceType === 'emby'
+      ? countUniqueNonEmptyStrings(setting.selectedFolders)
+      : countUniqueNormalizedFolderPaths(setting.selectedFolders);
 
   return (
     <Card>
@@ -109,8 +118,8 @@ export function ServiceInstanceCard({
                 : 'Selected Folders'}
             </span>
             <p className='text-sm text-muted-foreground'>
-              {setting.selectedFolders && setting.selectedFolders.length > 0
-                ? `${setting.selectedFolders.length} ${
+              {selectedCount > 0
+                ? `${selectedCount} ${
                     serviceType === 'emby' ? 'library' : 'folder'
                   }(s) selected`
                 : serviceType === 'emby'

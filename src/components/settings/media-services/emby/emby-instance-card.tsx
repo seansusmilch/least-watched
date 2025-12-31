@@ -26,7 +26,9 @@ function convertEmbyToServiceSettings(
     apiKey: embySettings.apiKey,
     enabled: embySettings.enabled,
     selectedFolders:
-      embySettings.selectedLibraries ?? embySettings.selectedFolders,
+      embySettings.selectedLibraries && embySettings.selectedLibraries.length > 0
+        ? embySettings.selectedLibraries
+        : embySettings.selectedFolders,
     createdAt: embySettings.createdAt || new Date(),
     updatedAt: embySettings.updatedAt || new Date(),
   };

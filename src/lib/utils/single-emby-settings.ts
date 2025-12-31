@@ -77,7 +77,10 @@ export const singleEmbySettingsService = {
         url,
         apiKey,
         enabled: enabled === 'true',
-        selectedLibraries: parsedSelectedLibraries ?? parsedSelectedFolders,
+        selectedLibraries:
+          parsedSelectedLibraries && parsedSelectedLibraries.length > 0
+            ? parsedSelectedLibraries
+            : parsedSelectedFolders,
         selectedFolders: parsedSelectedFolders,
       };
     } catch (error) {

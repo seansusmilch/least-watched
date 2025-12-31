@@ -3,6 +3,7 @@
 import React, { useState, useOptimistic, useTransition } from 'react';
 import { toast } from 'sonner';
 import { Plus, Monitor, Globe } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -54,6 +55,7 @@ export function ServiceSettings({
   testConnection,
 }: ServiceSettingsProps) {
   const [, startTransition] = useTransition();
+  const queryClient = useQueryClient();
 
   const [optimisticSettings, setOptimisticSettings] = useOptimistic<
     ServiceSettings[],
@@ -171,24 +173,184 @@ export function ServiceSettings({
   const handleFolderSave = async (selectedFolders: string[]): Promise<void> => {
     if (!currentSettingId) return;
 
+    const settingId = currentSettingId;
+    const previousSelectedFolders = currentSetting?.selectedFolders;
+
+    startTransition(() => {
+      setOptimisticSettings({
+        type: 'update',
+        payload: { id: settingId, selectedFolders },
+      });
+      setFolderDialogOpen(false);
+      setCurrentSettingId(null);
+    });
+
     try {
-      const result: FormState = await updateSetting(currentSettingId, {
+      queryClient.setQueryData(
+        ['settings'],
+        (
+          prev:
+            | {
+                sonarr: ServiceSettings[];
+                radarr: ServiceSettings[];
+                emby: unknown;
+              }
+            | undefined
+        ) => {
+          if (!prev || typeof prev !== 'object') return prev;
+          const data = prev;
+
+          if (serviceType === 'sonarr') {
+            return {
+              ...data,
+              sonarr: data.sonarr.map((s) =>
+                s.id === settingId ? { ...s, selectedFolders } : s
+              ),
+            };
+          }
+
+          return {
+            ...data,
+            radarr: data.radarr.map((s) =>
+              s.id === settingId ? { ...s, selectedFolders } : s
+            ),
+          };
+        }
+      );
+
+      const result: FormState = await updateSetting(settingId, {
         selectedFolders,
       });
       if (result.success && result.data) {
+        const updated = result.data as ServiceSettings;
         startTransition(() => {
           setOptimisticSettings({
             type: 'update',
-            payload: { id: currentSettingId, selectedFolders },
+            payload: updated,
           });
-          setFolderDialogOpen(false);
-          setCurrentSettingId(null);
         });
+        queryClient.setQueryData(
+          ['settings'],
+          (
+            prev:
+              | {
+                  sonarr: ServiceSettings[];
+                  radarr: ServiceSettings[];
+                  emby: unknown;
+                }
+              | undefined
+          ) => {
+            if (!prev || typeof prev !== 'object') return prev;
+            const data = prev;
+
+            if (serviceType === 'sonarr') {
+              return {
+                ...data,
+                sonarr: data.sonarr.map((s) =>
+                  s.id === updated.id ? updated : s
+                ),
+              };
+            }
+
+            return {
+              ...data,
+              radarr: data.radarr.map((s) =>
+                s.id === updated.id ? updated : s
+              ),
+            };
+          }
+        );
+        await queryClient.invalidateQueries({ queryKey: ['settings'] });
         toast.success('Folders updated successfully');
       } else {
+        startTransition(() => {
+          setOptimisticSettings({
+            type: 'update',
+            payload: {
+              id: settingId,
+              selectedFolders: previousSelectedFolders,
+            },
+          });
+        });
+        queryClient.setQueryData(
+          ['settings'],
+          (
+            prev:
+              | {
+                  sonarr: ServiceSettings[];
+                  radarr: ServiceSettings[];
+                  emby: unknown;
+                }
+              | undefined
+          ) => {
+            if (!prev || typeof prev !== 'object') return prev;
+            const data = prev;
+
+            if (serviceType === 'sonarr') {
+              return {
+                ...data,
+                sonarr: data.sonarr.map((s) =>
+                  s.id === settingId
+                    ? { ...s, selectedFolders: previousSelectedFolders }
+                    : s
+                ),
+              };
+            }
+
+            return {
+              ...data,
+              radarr: data.radarr.map((s) =>
+                s.id === settingId
+                  ? { ...s, selectedFolders: previousSelectedFolders }
+                  : s
+              ),
+            };
+          }
+        );
         toast.error(result.message || 'Failed to update folders');
       }
     } catch {
+      startTransition(() => {
+        setOptimisticSettings({
+          type: 'update',
+          payload: { id: settingId, selectedFolders: previousSelectedFolders },
+        });
+      });
+      queryClient.setQueryData(
+        ['settings'],
+        (
+          prev:
+            | {
+                sonarr: ServiceSettings[];
+                radarr: ServiceSettings[];
+                emby: unknown;
+              }
+            | undefined
+        ) => {
+          if (!prev || typeof prev !== 'object') return prev;
+          const data = prev;
+
+          if (serviceType === 'sonarr') {
+            return {
+              ...data,
+              sonarr: data.sonarr.map((s) =>
+                s.id === settingId
+                  ? { ...s, selectedFolders: previousSelectedFolders }
+                  : s
+              ),
+            };
+          }
+
+          return {
+            ...data,
+            radarr: data.radarr.map((s) =>
+              s.id === settingId
+                ? { ...s, selectedFolders: previousSelectedFolders }
+                : s
+            ),
+          };
+        }
+      );
       toast.error('Failed to update folders');
     }
   };

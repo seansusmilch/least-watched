@@ -8,6 +8,7 @@ import type {
   DiskSpaceInfo,
   RootFolderInfo,
 } from '@/lib/services/shared/arr-types';
+import { normalizeFolderPath } from '@/lib/utils/selected-paths';
 
 // Helper function to create FolderInfo from disk space and root folder data
 function createFolderInfo(
@@ -30,8 +31,17 @@ function createFolderInfo(
     return diskSpaceWithPaths.find((ds) => ds.path.startsWith(folderPath));
   };
 
+  const seenRootFolderKeys = new Set<string>();
+
   return rootFolders
     .filter((rf): rf is RootFolderInfo & { path: string } => Boolean(rf.path))
+    .filter((rf) => {
+      const key = normalizeFolderPath(rf.path);
+      if (!key) return false;
+      if (seenRootFolderKeys.has(key)) return false;
+      seenRootFolderKeys.add(key);
+      return true;
+    })
     .map((rf) => {
       const matchingDiskSpace = findBestDiskSpaceMatch(rf.path);
       const freeSpace =

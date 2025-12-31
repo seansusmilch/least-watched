@@ -1,4 +1,5 @@
 import { kvSettingsStore } from '@/lib/utils/kv-settings';
+import { uniqueNormalizedFolderPaths } from '@/lib/utils/selected-paths';
 
 export type ServiceType = 'sonarr' | 'radarr' | 'emby';
 
@@ -217,10 +218,15 @@ export const prefixedSettingsService = {
       },
     ];
 
-    if (data.selectedFolders && data.selectedFolders.length > 0) {
+    const selectedFoldersToStore: string[] =
+      serviceType === 'emby'
+        ? (data.selectedFolders ?? [])
+        : uniqueNormalizedFolderPaths(data.selectedFolders);
+
+    if (selectedFoldersToStore.length > 0) {
       settingsToCreate.push({
         key: `${prefix}selectedFolders`,
-        value: JSON.stringify(data.selectedFolders),
+        value: JSON.stringify(selectedFoldersToStore),
         description: `${serviceType} selected folders`,
       });
     }
@@ -246,7 +252,8 @@ export const prefixedSettingsService = {
       url: data.url,
       apiKey: data.apiKey,
       enabled: data.enabled ?? true,
-      selectedFolders: data.selectedFolders,
+      selectedFolders:
+        selectedFoldersToStore.length > 0 ? selectedFoldersToStore : undefined,
       preferEmbyDateAdded: data.preferEmbyDateAdded,
       createdAt: now,
       updatedAt: now,
@@ -304,11 +311,16 @@ export const prefixedSettingsService = {
     }
 
     if (data.selectedFolders !== undefined) {
-      if (data.selectedFolders && data.selectedFolders.length > 0) {
+      const selectedFoldersToStore =
+        serviceType === 'emby'
+          ? data.selectedFolders ?? []
+          : uniqueNormalizedFolderPaths(data.selectedFolders);
+
+      if (selectedFoldersToStore.length > 0) {
         updates.push(
           kvSettingsStore.set(
             `${prefix}selectedFolders`,
-            JSON.stringify(data.selectedFolders),
+            JSON.stringify(selectedFoldersToStore),
             `${serviceType} selected folders`
           )
         );
