@@ -51,7 +51,7 @@ export function FolderSpaceWidget({
         <CardHeader>
           <CardTitle className='flex items-center space-x-2'>
             <FolderOpen className='h-5 w-5' />
-            <span>Selected Folders Space</span>
+            <span>Disk Space Usage</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -83,7 +83,7 @@ export function FolderSpaceWidget({
       <CardHeader>
         <CardTitle className='flex items-center space-x-2'>
           <FolderOpen className='h-5 w-5' />
-          <span>Selected Folders Space</span>
+          <span>Disk Space Usage</span>
         </CardTitle>
       </CardHeader>
 
