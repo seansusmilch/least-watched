@@ -15,6 +15,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "tsc --noEmit && next lint",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:codegen": "playwright codegen http://localhost:3000",
     "openapi-ts": "openapi-ts",
     "gen-api:radarr": "openapi-ts -f ./openapi/openapi-ts.radarr.ts",
     "gen-api:sonarr": "openapi-ts -f ./openapi/openapi-ts.sonarr.ts",
@@ -61,6 +64,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@hey-api/openapi-ts": "^0.80.2",
+    "@playwright/test": "^1.57.0",
     "@tailwindcss/postcss": "^4",
     "@tanstack/react-query-devtools": "^5.83.0",
     "@types/luxon": "^3.6.2",

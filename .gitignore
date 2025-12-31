@@ -123,3 +123,6 @@ seed-config.json
 # Generated API clients
 src/generated/sonarr
 src/generated/radarr
+
+playwright-report/
+test-results/
