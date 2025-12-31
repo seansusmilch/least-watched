@@ -6,14 +6,11 @@ import {
   Database,
   TrendingDown,
   Settings,
-  Clock,
-  HardDrive,
 } from 'lucide-react';
 
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -70,33 +67,6 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-
-      <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              size='sm'
-              className='group-data-[collapsible=icon]:hidden'
-            >
-              <div className='flex items-center space-x-2 text-xs text-muted-foreground'>
-                <Clock className='h-3 w-3' />
-                <span>Last scan: 2 hours ago</span>
-              </div>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              size='sm'
-              className='group-data-[collapsible=icon]:hidden'
-            >
-              <div className='flex items-center space-x-2 text-xs text-muted-foreground'>
-                <HardDrive className='h-3 w-3' />
-                <span>Storage: 2.4TB</span>
-              </div>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
     </Sidebar>
   );
 }
