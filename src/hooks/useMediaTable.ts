@@ -25,6 +25,11 @@ export function useMediaTable(data: MediaItem[] = []) {
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [globalFilter, setGlobalFilter] = useState('');
 
+  const globalSearchColumnIds = useMemo(
+    () => new Set<string>(['title', 'type', 'source', 'folder']),
+    []
+  );
+
   // Save column visibility changes to localStorage
   useEffect(() => {
     saveColumnVisibility(columnVisibility);
@@ -66,20 +71,15 @@ export function useMediaTable(data: MediaItem[] = []) {
     },
     // Global filter function
     globalFilterFn: (row, columnId, filterValue) => {
-      const search = filterValue.toLowerCase();
+      if (!globalSearchColumnIds.has(columnId)) return false;
 
-      // Search in title, type, source, and folder
-      const title = row.getValue('title') as string;
-      const type = row.getValue('type') as string;
-      const source = row.getValue('source') as string;
-      const folder = row.getValue('parentFolder') as string;
+      const search = String(filterValue ?? '').toLowerCase();
+      if (!search) return true;
 
-      return (
-        title?.toLowerCase().includes(search) ||
-        type?.toLowerCase().includes(search) ||
-        source?.toLowerCase().includes(search) ||
-        folder?.toLowerCase().includes(search)
-      );
+      const value = row.getValue(columnId);
+      if (value === null || value === undefined) return false;
+
+      return String(value).toLowerCase().includes(search);
     },
   });
 

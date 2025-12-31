@@ -4,7 +4,13 @@ import { useState, useEffect, useRef } from 'react';
 import { flexRender, Table as TanStackTable } from '@tanstack/react-table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Film, SortAsc, SortDesc, Search, Filter } from 'lucide-react';
 import { MediaFiltersClient } from '../filters/MediaFiltersClient';
@@ -156,6 +162,9 @@ export function MediaTableBase({
                 </button>
               </DialogTrigger>
               <DialogContent className='w-[90vw] sm:max-w-[1000px] p-0 max-h-[80vh] overflow-auto'>
+                <DialogHeader className='sr-only'>
+                  <DialogTitle>Filters</DialogTitle>
+                </DialogHeader>
                 <MediaFiltersClient
                   availableGenres={availableGenres}
                   availableQualities={availableQualities}
