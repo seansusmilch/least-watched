@@ -1,125 +1,407 @@
-## Media Processor
+# Media Processor Requirements
 
-High-signal notes for future work on the media processing pipeline that ingests Emby library items, enriches them with Sonarr/Radarr data and playback info, computes a deletion score, and upserts to the database.
+This document specifies the requirements and expected behaviors of the media processing pipeline. It serves as a reliable guide for preserving functionality during refactors.
 
-### Purpose and responsibilities
+---
 
-- **Ingest**: Fetch Emby items (Movies, Series) from a single configured Emby instance.
-- **Enrich**: Join with Sonarr/Radarr data using provider IDs (tvdb/tmdb/imdb) to populate file path, size, monitored, and TV stats.
-- **Playback**: Aggregate last watched and watch count via Emby `user_usage_stats` plugin.
-- **Score**: Compute a deletion score with user-configurable factors (days unwatched, never watched, size, age, folder space).
-- **Persist**: Upsert processed records to `MediaItem` keyed by `embyId`.
-- **Progress**: Expose coarse-grained progress phases for UI feedback.
+## 1. Media Processing Trigger
 
-### Key modules (src/lib/media-processor)
+### 1.1 Starting Processing
 
-- `media-processor.ts`: Orchestrates the full pipeline (enumerate Emby → enrich → playback aggregation → store → progress updates).
-- `storage.ts`: Converts `ProcessedMediaItem` into Prisma upsert payload and computes the deletion score using settings (and folder space).
-- `constants.ts`: Config constants, quality score map helper, and folder space utility.
-- `types.ts`: Shared types for processed items, progress, Sonarr/Radarr type aliases.
-- `progress-store.ts`: In-memory progress holder used by actions/UI.
-- `index.ts`: Export surface.
+- The user can initiate media processing from the UI via a "Process Media" button.
+- Processing starts in the background and returns immediately to the UI without blocking.
+- Only one processing run should be active at a time (determined by progress state).
 
-### Entry points and invocation flow
+### 1.2 Prerequisites
 
-- UI action button calls `startMediaProcessing` (`src/lib/actions/media-processing.ts`), which starts a background task and immediately returns.
-- Background task constructs `new MediaProcessor()` and calls `processAllMedia()`.
-- Progress is written into `ProgressStore`; UI reads via `getProgress()` (`src/lib/actions/progress.ts`) and `useProgress()`.
+- At least one Emby instance must be enabled for processing to proceed.
+- If no Emby instance is enabled, processing exits immediately with no items processed.
 
-### High-level processing sequence
+---
 
-1. Load enabled Sonarr/Radarr instances, date preference, and the single enabled Emby instance.
-2. Early exit if no Emby instance is enabled.
-3. Fetch all Sonarr Series and Radarr Movies; build matching maps by tvdb/tmdb/imdb for join enrichment.
-4. Enumerate Emby library items (Movies, Series) with optional library filtering and paging (pageSize 500). Current run can be limited by `MEDIA_PROCESSOR_ITEM_LIMIT` environment variable (optional).
-5. For each Emby item:
-   - Create a base `ProcessedMediaItem` with ids, title, paths, year, and `embyId`.
-   - Enrich from Sonarr (Series) or Radarr (Movies) via provider id maps to populate path, size, TV stats, monitored, and added date from Arr.
-   - Aggregate playback (`lastWatched`, `watchCount`) via `EmbyService.getAggregatedPlaybackInfo()`.
-   - Call `MediaStorage.storeProcessedItem()` → computes deletion score and upserts to DB.
-6. Mark progress complete.
+## 2. Media Ingestion
 
-### External services and settings
+### 2.1 Source System
 
-- Emby
-  - Single-instance settings via `single-emby-settings` (KV): `name`, `url`, `apiKey`, `enabled`, `selectedLibraries` (preferred) or legacy `selectedFolders`.
-  - Listing: `EmbyService.listLibraryItems()` pages through items with fields `DateCreated, ProviderIds, Path, ProductionYear, MediaSources`.
-  - Playback aggregation requires the Emby `user_usage_stats` plugin; custom SQL endpoint computes `LastWatched` and `WatchCount` using a single-statement (no CTEs, no semicolons).
-  - Strict paths: TV aggregates by ItemName pattern `[title] - s%`; Movies aggregate by concrete `ItemId`. No fallbacks and no episode listing.
-- Sonarr/Radarr
-  - Multiple instances supported; fetched in parallel. Used for enrichment and folder space data.
-  - Clients live in `src/lib/services/{sonarr,radarr}-service.ts` with resilient `safeApiCall` wrappers.
-- Folder space
-  - `folderSpaceService.getFolderSpaceData()` gathers space per selected root folders from Sonarr/Radarr.
-  - `calculateFolderRemainingSpacePercent(parentFolder, folderSpaceData)` assigns a remaining percent for scoring.
-- Deletion score settings
-  - Stored in flattened keys (KV `AppSettings`), fetched via `getDeletionScoreSettings()`.
-  - Factors: days unwatched, never watched bonus, size on disk, age since added, folder space. Total max points must equal 100 when enabled.
-  - Date preference (`arr` | `emby` | `oldest`) comes from `getDatePreference()` and affects age calculations.
+- Media items are fetched exclusively from the configured Emby instance.
+- The system supports a single Emby instance at a time.
 
-### Data model and upsert details
+### 2.2 Item Types
 
-- Prisma model `MediaItem` (`prisma/schema.prisma`)
-  - Unique key: `embyId` (string). Upsert uses this as the identifier.
-  - Indexed ids: `tmdbId`, `imdbId`, `tvdbId` for cross-service joins.
-  - `sizeOnDisk` is stored as `BigInt`. Ensure values are non-negative; code safely converts from number to BigInt.
-  - `deletionScore` is `Float` and always present (set to `-1` when scoring disabled during ingest).
+- **Current**: Only TV Series items (`Type === 'Series'`) are processed.
+- Movies are not currently ingested despite Movie data being available from Emby.
 
-### Identity matching and enrichment rules
+### 2.3 Library Filtering
 
-- Type detection: Emby `Type === 'Series'` → `tv`, else `movie`.
-- Matching order:
-  - TV: tvdb → tmdb → imdb (case-insensitive for imdb).
-  - Movie: tmdb → imdb.
-- Enrichment fields populated when a match exists:
-  - Path and `parentFolder`, `sizeOnDisk`.
-  - TV stats: `episodesOnDisk`, `totalEpisodes`, `seasonCount`, `completionPercentage`.
-  - Common: `monitored`, `dateAddedArr`, and Arr numeric IDs.
+- If `selectedLibraries` is configured on the Emby instance, only items from those libraries are processed.
+- If no libraries are selected, all libraries are scanned.
 
-### Playback aggregation specifics
+### 2.4 Item Limit
 
-- Implemented in `src/lib/services/emby-service.ts`.
-- Uses custom SQL via the Emby plugin for batch aggregation with timeouts and defensive parsing. Queries are submitted as a single `SELECT` with a subquery; no CTEs or semicolons.
-- Series: title-based aggregation using ItemName convention `[title] - s%` (avoids enumerating episodes). Requires `title`; if missing, returns null and logs an error.
-- Movies: aggregation strictly by `embyId` (ItemId). Requires `embyId`; if missing, returns null and logs an error.
-- Unknown or missing `type` returns null and logs an error. No fallback behavior.
+- An optional environment variable `MEDIA_PROCESSOR_ITEM_LIMIT` can restrict the number of items processed per run.
+- When unset, all matching items are processed without limit.
 
-### Progress reporting
+### 2.5 Pagination
 
-- `ProgressStore` is in-memory only (non-persistent). Server restarts clear progress.
-- Phases used today: Initializing → Enumerating Emby → Processing Emby Items → Complete.
-- UI polls `getProgress()`; completed state set with `isComplete: true`.
+- Emby items are fetched with pagination using a page size of 500 items.
+- Pagination continues until all matching items are retrieved.
 
-### Configuration knobs and current limitations
+---
 
-- **TESTING_LIMIT**: Optional limit on processed Emby items, controlled by `MEDIA_PROCESSOR_ITEM_LIMIT` environment variable. If not set, there is no limit.
-- **Series-only ingestion**: Current filter restricts to `Type === 'Series'` with a TODO to add movies.
-- **In-memory progress**: Not multiprocess-safe; no persistence or deduping across runs.
-- **Quality scoring**: `constants.getQualityScore()` exists, but `qualityScore` is not computed in `media-processor.ts` yet.
-- **Selected scope**: Emby item enumeration can be limited by `selectedLibraries`. If unset, all libraries are scanned.
-- **Logging**: Verbose console logging is present throughout; consider gating behind an env flag for production.
+## 3. Data Enrichment
 
-### Extension points and recommended next steps
+### 3.1 Enrichment Sources
 
-- **Add movie ingestion**: Remove the `Type === 'Series'` filter and implement movie enrichment parity, including `runtime` and `sizePerHour` if available.
-- **Compute quality score**: Populate `quality` and `qualityScore` using Arr media file quality and `getQualityScore()`.
-- **Improve folder space accuracy**: Consider persisting enhanced disk space info and normalizing paths across OSes; handle UNC and mount points.
-- ~~**Make TESTING_LIMIT configurable**: Read from an app setting or env var; set `undefined` for full runs.~~ ✅ **Completed**: `TESTING_LIMIT` is now controlled by `MEDIA_PROCESSOR_ITEM_LIMIT` environment variable.
-- **Persist progress**: Store progress in the DB or KV for resilience; add run IDs and timestamps.
-- **Batching and backpressure**: Process Emby items in chunks to control memory; await DB upserts in controlled concurrency.
-- **Multi-Emby support**: Current design assumes a single Emby instance; abstract to support multiple if needed.
-- **Robust matching**: Add fuzzy title matching as a last resort; log unmatched items for review.
-- **Observability**: Add metrics and structured logs; expose run summaries and error counts in UI.
+Media items are enriched from two sources:
 
-### How to run during development
+1. **Sonarr** — for TV series
+2. **Radarr** — for movies
 
-- Start the app: `bun dev`.
-- In the UI Media page, click “Process Media” to trigger background processing.
-- Alternatively, call `startMediaProcessing()` from a server action (it returns immediately while work continues in background).
+### 3.2 Matching Strategy
 
-### Gotchas
+Items are matched between Emby and Sonarr/Radarr using provider IDs:
 
-- Ensure the Emby `user_usage_stats` plugin is installed and reachable; without it, playback aggregation will be empty for series.
-- The upsert key is `embyId`. If Emby items are removed and recreated, downstream dedupe relies on this ID’s stability.
-- `datePreference` impacts scoring; if you change it, a recalculation is triggered elsewhere, but it won’t re-scan media—only scores.
-- Importing settings via Backup & Restore triggers a deletion score recalculation for existing media (no re-scan), provided scoring is enabled.
+| Media Type | Match Priority Order |
+| ---------- | -------------------- |
+| TV Series  | TVDB → TMDB → IMDB   |
+| Movies     | TMDB → IMDB          |
+
+- IMDB matching is case-insensitive.
+- The first successful match is used; no fallback to title-based matching.
+
+### 3.3 Enriched Data from Arr Systems
+
+When a match is found, the following fields are populated:
+
+**Common fields:**
+
+- `mediaPath` — file system path
+- `parentFolder` — parent directory of the media
+- `sizeOnDisk` — total size in bytes
+- `monitored` — whether the item is monitored in Sonarr/Radarr
+- `dateAddedArr` — date the item was added to Sonarr/Radarr
+- Sonarr or Radarr internal ID
+
+**TV-specific fields:**
+
+- `episodesOnDisk` — number of episode files present
+- `totalEpisodes` — total episode count for the series
+- `seasonCount` — number of seasons
+- `completionPercentage` — percentage of episodes on disk
+
+**Movie-specific fields:**
+
+- `quality` — quality profile name from Radarr
+
+### 3.4 Unmatched Items
+
+- Items without a match in Sonarr/Radarr retain only Emby-sourced data.
+- No error is raised for unmatched items; they are stored with available data.
+
+---
+
+## 4. Playback Data Aggregation
+
+### 4.1 Data Source
+
+- Playback data is retrieved from Emby's `user_usage_stats` plugin via custom SQL queries.
+- The plugin must be installed and accessible for playback data to be available.
+
+### 4.2 Aggregated Fields
+
+- `lastWatched` — most recent playback date
+- `watchCount` — number of completed playbacks
+
+### 4.3 Watch Count Criteria
+
+A playback is counted as a "watch" when:
+
+- Play duration is greater than 300 seconds (5 minutes) AND
+- Play duration is less than 28,800 seconds (8 hours)
+
+### 4.4 Aggregation Strategy by Type
+
+| Type      | Strategy                     | Identifier Required |
+| --------- | ---------------------------- | ------------------- |
+| TV Series | Title-based pattern matching | `title`             |
+| Movies    | Direct item ID lookup        | `embyId`            |
+
+**TV Series Aggregation:**
+
+- Uses pattern `[title] - s%` to match episode playback records by series title.
+- Aggregates all episode playbacks for the series.
+
+**Movie Aggregation:**
+
+- Looks up playback records by the exact Emby item ID.
+
+### 4.5 Error Handling
+
+- Missing required identifiers (title for series, embyId for movies) result in null playback data with an error logged.
+- Unknown or missing media type results in null playback data with an error logged.
+- No fallback strategies are attempted.
+
+---
+
+## 5. Deletion Score Calculation
+
+### 5.1 Scoring Overview
+
+- Each media item receives a deletion score between 0 and 100.
+- Higher scores indicate higher priority for deletion.
+- When scoring is disabled, items receive a score of `-1`.
+
+### 5.2 Scoring Factors
+
+The deletion score is composed of five configurable factors:
+
+| Factor              | Description                                                               |
+| ------------------- | ------------------------------------------------------------------------- |
+| Days Unwatched      | Points based on time since last watched (or since added if never watched) |
+| Never Watched Bonus | Flat bonus points if item has never been played                           |
+| Size on Disk        | Points based on file size in GB                                           |
+| Age Since Added     | Points based on how long the item has been in the library                 |
+| Folder Space        | Points based on remaining disk space percentage                           |
+
+### 5.3 Factor Configuration
+
+Each factor (except Never Watched) uses breakpoints:
+
+- Breakpoints define value thresholds and corresponding percentage of max points.
+- Values exceeding a breakpoint's value earn that breakpoint's percentage of max points.
+- Breakpoints are evaluated from highest to lowest value.
+- If no breakpoint is exceeded, zero points are earned.
+
+### 5.4 Date Preference
+
+The "date added" value used for scoring can be configured:
+
+- `arr` — Prefer Sonarr/Radarr date, fall back to Emby date
+- `emby` — Prefer Emby date, fall back to Arr date
+- `oldest` — Use whichever date is earlier
+
+### 5.5 Days Unwatched Reference Date
+
+- If the item has been watched, uses `lastWatched` date.
+- If the item has never been watched, uses the effective "date added" (per date preference).
+
+### 5.6 Folder Space Calculation
+
+- Matches the item's parent folder to configured Sonarr/Radarr root folders.
+- Calculates remaining space as a percentage of total disk space.
+- If no matching folder is found, folder space factor is not applied.
+
+### 5.7 Score Validation
+
+- Scores are clamped to the range 0–100.
+- Invalid calculations (NaN, Infinity) result in a score of 0.
+
+---
+
+## 6. Data Persistence
+
+### 6.1 Storage Model
+
+- Media items are stored in the `MediaItem` database table.
+- The unique key for upsert operations is `embyId`.
+
+### 6.2 Upsert Behavior
+
+- Existing items (matching `embyId`) are updated with new data.
+- New items are created.
+- No items are deleted during processing.
+
+### 6.3 Size Handling
+
+- `sizeOnDisk` is stored as `BigInt`.
+- Negative values are converted to 0.
+- Null/undefined values are stored as null.
+
+### 6.4 Stored Fields
+
+All processed data is persisted, including:
+
+- Identifiers (title, embyId, tmdbId, imdbId, tvdbId, sonarrId, radarrId)
+- Metadata (year, type, quality, overview, genres)
+- File information (mediaPath, parentFolder, sizeOnDisk)
+- Playback data (lastWatched, watchCount)
+- TV stats (episodesOnDisk, totalEpisodes, seasonCount, completionPercentage)
+- Dates (dateAddedEmby, dateAddedArr)
+- Status (monitored)
+- Calculated score (deletionScore)
+
+---
+
+## 7. Progress Reporting
+
+### 7.1 Progress Phases
+
+Processing reports progress through the following phases in order:
+
+1. **Initializing** — Setup and configuration loading
+2. **Enumerating Emby** — Fetching items from Emby
+3. **Processing Emby Items** — Enriching and storing each item
+4. **Complete** — All items processed
+
+### 7.2 Progress Data
+
+Each progress update includes:
+
+- `phase` — Current phase name
+- `current` — Number of items processed
+- `total` — Total items to process
+- `currentItem` — Name of the item currently being processed
+- `percentage` — Completion percentage (0–100)
+- `isComplete` — Boolean indicating processing is finished
+
+### 7.3 Progress Storage
+
+- Progress is stored in memory only.
+- Progress is not persisted across server restarts.
+- Progress can be polled by the UI via `getProgress()`.
+
+### 7.4 Progress States
+
+The UI can observe three states:
+
+- `none` — No processing has occurred or progress was cleared
+- `live` — Processing is currently in progress
+- `completed` — Processing finished successfully
+
+---
+
+## 8. Folder Space Monitoring
+
+### 8.1 Data Sources
+
+Folder space data is gathered from:
+
+- Sonarr instances — root folders and disk space endpoints
+- Radarr instances — root folders and disk space endpoints
+
+### 8.2 Folder Selection
+
+- Each Sonarr/Radarr instance can have `selectedFolders` configured.
+- Only selected folders are included in space monitoring.
+- If no folders are selected, all root folders are included.
+
+### 8.3 Space Metrics
+
+For each folder, the following is tracked:
+
+- `totalSpace` — Total disk capacity
+- `freeSpace` — Available space
+- `usedSpace` — Space currently in use
+- Percentages for free and used space
+
+### 8.4 Path Normalization
+
+- Folder paths are normalized for consistent matching.
+- Windows paths use backslashes and are lowercased.
+- POSIX paths use forward slashes.
+- Trailing slashes are stripped (except for root directories).
+
+### 8.5 Shared Folder Detection
+
+- Folders appearing in multiple instances are flagged as shared.
+- Shared folder information includes which instances share the folder.
+
+---
+
+## 9. External Service Connectivity
+
+### 9.1 Supported Instances
+
+| Service | Multiple Instances | Purpose                        |
+| ------- | ------------------ | ------------------------------ |
+| Emby    | Single only        | Media source, playback data    |
+| Sonarr  | Multiple           | TV enrichment, folder space    |
+| Radarr  | Multiple           | Movie enrichment, folder space |
+
+### 9.2 Instance Requirements
+
+Each service instance requires:
+
+- `name` — Display name
+- `url` — Base URL for API access
+- `apiKey` — Authentication key
+- `enabled` — Whether the instance is active
+
+### 9.3 Emby-Specific Configuration
+
+- `selectedLibraries` — List of library IDs to scan (optional)
+
+### 9.4 Sonarr/Radarr-Specific Configuration
+
+- `selectedFolders` — List of root folder paths to monitor (optional)
+
+### 9.5 Connection Timeouts
+
+- Emby connections use a 10-second timeout.
+- Arr API calls use resilient wrappers with error handling.
+
+---
+
+## 10. Edge Cases and Constraints
+
+### 10.1 Items Without Emby ID
+
+- Items lacking an `Id` from Emby are skipped with a warning logged.
+
+### 10.2 Processing Errors
+
+- Errors processing individual items are logged but do not halt the overall run.
+- Other items continue to be processed after an error.
+
+### 10.3 Missing Playback Plugin
+
+- If the Emby `user_usage_stats` plugin is not installed, playback aggregation returns empty results.
+- Items are still processed but without playback data.
+
+### 10.4 Provider ID Normalization
+
+- All provider IDs from Emby are normalized to lowercase keys.
+- IMDB IDs are matched case-insensitively.
+
+### 10.5 Empty Libraries
+
+- If no items match the configured filters, processing completes with zero items.
+
+### 10.6 Deleted and Recreated Items
+
+- If an Emby item is deleted and recreated with a new ID, it becomes a new record.
+- The old record remains in the database until manually cleared.
+
+---
+
+## 11. Database Management
+
+### 11.1 Clearing Media Items
+
+- Users can clear all media items from the database.
+- This action deletes all `MediaItem` records.
+- Processing must be re-run to repopulate data.
+
+### 11.2 Score Recalculation
+
+- Changing deletion score settings triggers a recalculation for existing items.
+- Recalculation does not re-fetch data from external services.
+- Only the score is recomputed using stored item data.
+
+### 11.3 Settings Import
+
+- Importing settings via Backup & Restore triggers deletion score recalculation.
+- This applies only when scoring is enabled.
+
+---
+
+## 12. Current Limitations
+
+The following are known limitations of the current implementation:
+
+1. **TV Series only** — Movies are not processed despite available data pathways.
+2. **Single Emby instance** — Only one Emby server can be configured.
+3. **In-memory progress** — Progress is lost on server restart.
+4. **No quality score computation** — Quality data is stored but not used in scoring.
+5. **No title-based fallback matching** — Unmatched items remain unmatched.
+6. **Sequential item processing** — Items are processed one at a time, not in batches.

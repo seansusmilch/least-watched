@@ -93,3 +93,22 @@ export interface EmbyPlaybackInfo {
 import Emby from 'emby-sdk-stainless';
 
 export type EmbyMetadata = Emby.BaseItem;
+
+export interface ItemProcessingStats {
+  timeMs: number;
+  arrMatch: 'sonarr' | 'radarr' | 'none';
+  playbackFound: boolean;
+  deletionScore: number;
+  sizeOnDisk: number;
+}
+
+export interface ProcessingRunStats {
+  totalTimeMs: number;
+  itemsProcessed: number;
+  itemsWithArrMatch: number;
+  itemsWithPlayback: number;
+  avgTimePerItemMs: number;
+  embyItemsFetched: number;
+  sonarrSeriesFetched: number;
+  radarrMoviesFetched: number;
+}

@@ -4,7 +4,11 @@ import { folderSpaceService } from '@/lib/services/folder-space-service';
 import { ProgressStore } from './progress-store';
 import { MEDIA_PROCESSOR_ITEM_LIMIT } from './constants';
 import { MediaStorage } from './storage';
-import { type MediaProcessingProgress, type ProcessedMediaItem } from './types';
+import {
+  type MediaProcessingProgress,
+  type ProcessedMediaItem,
+  type ProcessingRunStats,
+} from './types';
 import { getDeletionScoreSettings } from '@/lib/actions/settings';
 import { getDatePreference } from '@/lib/actions/settings/app-settings';
 import { sonarrApiClient } from '@/lib/services/sonarr-service';
@@ -46,6 +50,18 @@ export class MediaProcessor {
 
   async processAllMedia(): Promise<ProcessedMediaItem[]> {
     const allProcessedItems: ProcessedMediaItem[] = [];
+    const runStartTime = performance.now();
+
+    const runStats: ProcessingRunStats = {
+      totalTimeMs: 0,
+      itemsProcessed: 0,
+      itemsWithArrMatch: 0,
+      itemsWithPlayback: 0,
+      avgTimePerItemMs: 0,
+      embyItemsFetched: 0,
+      sonarrSeriesFetched: 0,
+      radarrMoviesFetched: 0,
+    };
 
     await this.updateProgress(
       'Initializing',
@@ -76,6 +92,9 @@ export class MediaProcessor {
         radarrInstances.map((i) => radarrApiClient.getMovies(i))
       ).then((list) => list.flat()),
     ]);
+
+    runStats.sonarrSeriesFetched = allSeries.length;
+    runStats.radarrMoviesFetched = allMovies.length;
 
     const tvMapByTvdb = new Map<number, import('./types').SonarrSeries>();
     const tvMapByTmdb = new Map<number, import('./types').SonarrSeries>();
@@ -119,19 +138,16 @@ export class MediaProcessor {
     const limited = embyItems
       .filter((item) => item.Type === 'Series') // TODO: Add movie support
       .slice(0, totalItems);
-    console.log(
-      `     🔎 Emby listLibraryItems returned ${limited.length} items`
-    );
-    // For each item, fetch and log its title
-    for (const item of limited) {
-      if (item && item.Name) {
-        console.log(`     📄 Emby item title: ${item.Id} ${item.Name}`);
-      }
-    }
+
+    runStats.embyItemsFetched = limited.length;
 
     for (let i = 0; i < limited.length; i++) {
       const item = limited[i] as Emby.BaseItem;
       const name: string = item.Name || item.OriginalTitle || 'Unknown';
+      const itemStartTime = performance.now();
+
+      console.log(`Started processing ${name}`);
+
       await this.updateProgress(
         'Processing Emby Items',
         i + 1,
@@ -139,9 +155,13 @@ export class MediaProcessor {
         name
       );
 
+      let arrMatch: 'sonarr' | 'radarr' | 'none' = 'none';
+      let playbackFound = false;
+      let deletionScore = -1;
+
       try {
         if (!item?.Id) {
-          console.log(`     ⚠️ Skipping Emby item without Id: ${name}`);
+          console.log(`⚠️ Skipping Emby item without Id: ${name}`);
           continue;
         }
         const providerIds: Record<string, string> = Object.fromEntries(
@@ -183,6 +203,7 @@ export class MediaProcessor {
             match = movieMapByImdb.get(processed.imdbId.toLowerCase());
           }
           if (match) {
+            arrMatch = 'radarr';
             processed.mediaPath = match.path || processed.mediaPath;
             processed.parentFolder = match.path
               ? path.dirname(match.path)
@@ -209,6 +230,7 @@ export class MediaProcessor {
             match = tvMapByImdb.get(processed.imdbId.toLowerCase());
           }
           if (match) {
+            arrMatch = 'sonarr';
             processed.mediaPath = match.path || processed.mediaPath;
             processed.parentFolder = match.path
               ? path.dirname(match.path)
@@ -236,30 +258,50 @@ export class MediaProcessor {
         }
 
         // Playback enrichment via EmbyService abstraction
-        {
-          const playback = await EmbyService.getAggregatedPlaybackInfo(
-            {
-              title: name,
-              type,
-              embyId: String(item.Id),
-            },
-            embyInstance
-          );
-          if (playback) {
-            processed.lastWatched = playback.lastWatched;
-            processed.watchCount = playback.watchCount || 0;
-          }
+        const playback = await EmbyService.getAggregatedPlaybackInfo(
+          {
+            title: name,
+            type,
+            embyId: String(item.Id),
+          },
+          embyInstance
+        );
+        if (playback) {
+          playbackFound = true;
+          processed.lastWatched = playback.lastWatched;
+          processed.watchCount = playback.watchCount || 0;
         }
 
-        await MediaStorage.storeProcessedItem(
+        deletionScore = await MediaStorage.storeProcessedItem(
           processed,
           deletionScoreSettings,
           folderSpaceData,
           datePreference
         );
         allProcessedItems.push(processed);
+
+        if (arrMatch !== 'none') {
+          runStats.itemsWithArrMatch++;
+        }
+        if (playbackFound) {
+          runStats.itemsWithPlayback++;
+        }
+        runStats.itemsProcessed++;
+
+        const itemTimeMs = Math.round(performance.now() - itemStartTime);
+        console.log(
+          `Finished processing ${name} in ${itemTimeMs}ms | arr: ${arrMatch} | playback: ${
+            playbackFound ? 'found' : 'none'
+          } | score: ${deletionScore}`
+        );
       } catch (err) {
-        console.error(`Error processing Emby item ${name}:`, err);
+        const itemTimeMs = Math.round(performance.now() - itemStartTime);
+        console.error(
+          `Error processing ${name} in ${itemTimeMs}ms | arr: ${arrMatch} | playback: ${
+            playbackFound ? 'found' : 'none'
+          }:`,
+          err
+        );
       }
     }
 
@@ -271,6 +313,24 @@ export class MediaProcessor {
       percentage: 100,
       isComplete: true,
     });
+
+    runStats.totalTimeMs = Math.round(performance.now() - runStartTime);
+    runStats.avgTimePerItemMs =
+      runStats.itemsProcessed > 0
+        ? Math.round(runStats.totalTimeMs / runStats.itemsProcessed)
+        : 0;
+
+    const totalTimeSec = (runStats.totalTimeMs / 1000).toFixed(1);
+    console.log('\n--- Processing Complete ---');
+    console.log(
+      `Total time: ${totalTimeSec}s | Items: ${runStats.itemsProcessed} | Avg: ${runStats.avgTimePerItemMs}ms/item`
+    );
+    console.log(
+      `Arr matches: ${runStats.itemsWithArrMatch}/${runStats.itemsProcessed} | Playback data: ${runStats.itemsWithPlayback}/${runStats.itemsProcessed}`
+    );
+    console.log(
+      `Pre-fetch: ${runStats.sonarrSeriesFetched} Sonarr series, ${runStats.radarrMoviesFetched} Radarr movies, ${runStats.embyItemsFetched} Emby items`
+    );
 
     return allProcessedItems;
   }

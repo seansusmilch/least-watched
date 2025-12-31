@@ -14,9 +14,8 @@ export class MediaStorage {
     deletionScoreSettings: DeletionScoreSettings,
     folderSpaceData: FolderSpaceData[],
     datePreference: DatePreference = 'arr'
-  ): Promise<void> {
+  ): Promise<number> {
     try {
-      console.log(`📦 Storing item: ${item.title}`);
 
       // Safely convert sizeOnDisk to BigInt
       const sizeOnDisk = item.sizeOnDisk
@@ -98,16 +97,17 @@ export class MediaStorage {
         deletionScore: deletionScore,
       };
 
-      const result = await prisma.mediaItem.upsert({
+      await prisma.mediaItem.upsert({
         where: { embyId: item.embyId },
         update: itemData,
         create: itemData,
       });
 
-      console.log(`✅ Upserted item: ${item.title} (ID: ${result.id})`);
+      return deletionScore;
     } catch (error) {
       console.error(`❌ Error storing item ${item.title}:`, error);
       console.error(`   Item data:`, JSON.stringify(item, null, 2));
+      return -1;
     }
   }
 }
