@@ -574,7 +574,6 @@ export function MediaFiltersClient({
                 <div className='space-y-2'>
                   <Label>Media Types</Label>
                   <MultiSelect
-                    key={JSON.stringify(setToArray(filters.mediaTypes))}
                     options={[
                       { label: 'Movies', value: 'movie' },
                       { label: 'TV Shows', value: 'tv' },
@@ -593,7 +592,6 @@ export function MediaFiltersClient({
                 <div className='space-y-2'>
                   <Label>Sources</Label>
                   <MultiSelect
-                    key={JSON.stringify(setToArray(filters.sources))}
                     options={availableSources.map((source) => ({
                       label: source,
                       value: source,
@@ -610,7 +608,6 @@ export function MediaFiltersClient({
                 <div className='space-y-2'>
                   <Label>Root Folders</Label>
                   <MultiSelect
-                    key={JSON.stringify(setToArray(filters.folders))}
                     options={availableFolders.map((folder) => ({
                       label: folder,
                       value: folder,
@@ -638,7 +635,6 @@ export function MediaFiltersClient({
                 <div className='space-y-2'>
                   <Label>State</Label>
                   <MultiSelect
-                    key={JSON.stringify(setToArray(filters.watchStates))}
                     options={[
                       { label: 'Watched', value: 'watched' },
                       { label: 'Unwatched', value: 'unwatched' },
@@ -682,7 +678,6 @@ export function MediaFiltersClient({
                 <div className='space-y-2'>
                   <Label>Qualities</Label>
                   <MultiSelect
-                    key={JSON.stringify(setToArray(filters.qualities))}
                     options={availableQualities.map((quality) => ({
                       label: quality,
                       value: quality,
@@ -732,7 +727,6 @@ export function MediaFiltersClient({
                 <div className='space-y-2'>
                   <Label>Genres</Label>
                   <MultiSelect
-                    key={JSON.stringify(setToArray(filters.genres))}
                     options={availableGenres.map((genre) => ({
                       label: genre,
                       value: genre,
