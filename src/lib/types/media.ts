@@ -55,6 +55,9 @@ export const MediaItemSchema = z.object({
 
   // Computed metadata
   effectiveDateAdded: z.union([z.date(), z.string()]).optional().nullable(),
+
+  // Emby identifier for image URLs
+  embyId: z.string().optional().nullable(),
 });
 
 export type MediaItem = z.infer<typeof MediaItemSchema>;

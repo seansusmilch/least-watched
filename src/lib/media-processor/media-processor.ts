@@ -15,8 +15,11 @@ import { sonarrApiClient } from '@/lib/services/sonarr-service';
 import { radarrApiClient } from '@/lib/services/radarr-service';
 import { EmbyService } from '@/lib/services/emby-service';
 import { singleEmbySettingsService } from '@/lib/utils/single-emby-settings';
+import { createBaseProcessedItem } from './emby-item-processor';
+import { findRadarrMatch, findSonarrMatch } from './arr-matching';
+import { enrichFromRadarr, enrichFromSonarr } from './arr-enrichment';
+import { buildArrMaps } from './arr-maps';
 import type Emby from 'emby-sdk-stainless';
-import path from 'path';
 
 export class MediaProcessor {
   private onProgress?: (progress: MediaProcessingProgress) => void;
@@ -96,21 +99,7 @@ export class MediaProcessor {
     runStats.sonarrSeriesFetched = allSeries.length;
     runStats.radarrMoviesFetched = allMovies.length;
 
-    const tvMapByTvdb = new Map<number, import('./types').SonarrSeries>();
-    const tvMapByTmdb = new Map<number, import('./types').SonarrSeries>();
-    const tvMapByImdb = new Map<string, import('./types').SonarrSeries>();
-    for (const s of allSeries) {
-      if (s.tvdbId) tvMapByTvdb.set(s.tvdbId, s);
-      if (s.tmdbId) tvMapByTmdb.set(s.tmdbId, s);
-      if (s.imdbId) tvMapByImdb.set(String(s.imdbId).toLowerCase(), s);
-    }
-
-    const movieMapByTmdb = new Map<number, import('./types').RadarrMovie>();
-    const movieMapByImdb = new Map<string, import('./types').RadarrMovie>();
-    for (const m of allMovies) {
-      if (m.tmdbId) movieMapByTmdb.set(m.tmdbId, m);
-      if (m.imdbId) movieMapByImdb.set(String(m.imdbId).toLowerCase(), m);
-    }
+    const arrMaps = buildArrMaps(allSeries, allMovies);
 
     // Get selected libraries (fallback to all)
     const selectedLibraryIds = embyInstance.selectedLibraries || [];
@@ -170,96 +159,33 @@ export class MediaProcessor {
           console.log(`⚠️ Skipping Emby item without Id: ${name}`);
           continue;
         }
-        const providerIds: Record<string, string> = Object.fromEntries(
-          Object.entries(
-            ((item as unknown as { ProviderIds?: Record<string, string> })
-              .ProviderIds || {}) as Record<string, string>
-          ).map(([k, v]) => [k.toLowerCase(), String(v)])
-        );
 
         const type = item.Type === 'Series' ? 'tv' : 'movie';
+        const processed = createBaseProcessedItem(item);
 
-        // Base processed item from Emby
-        const processed: ProcessedMediaItem = {
-          title: name,
-          type,
-          tmdbId: providerIds['tmdb'] ? Number(providerIds['tmdb']) : undefined,
-          imdbId: providerIds['imdb'] || providerIds['imdbid'],
-          tvdbId: providerIds['tvdb'] ? Number(providerIds['tvdb']) : undefined,
-          year: item.ProductionYear ?? undefined,
-          mediaPath: item.Path || '',
-          parentFolder: item.Path ? path.dirname(item.Path) : '',
-          sizeOnDisk: 0,
-          dateAddedEmby: item.DateCreated
-            ? new Date(item.DateCreated)
-            : undefined,
-          source: 'Emby',
-          embyId: String(item.Id),
-        };
-
-        // Enrich from Arr maps
         if (type === 'movie') {
-          let match: import('./types').RadarrMovie | undefined = undefined;
-          if (processed.tmdbId && movieMapByTmdb.has(processed.tmdbId)) {
-            match = movieMapByTmdb.get(processed.tmdbId);
-          } else if (
-            processed.imdbId &&
-            movieMapByImdb.has(processed.imdbId.toLowerCase())
-          ) {
-            match = movieMapByImdb.get(processed.imdbId.toLowerCase());
-          }
+          const match = findRadarrMatch(
+            processed.tmdbId ?? undefined,
+            processed.imdbId ?? undefined,
+            arrMaps.movieMapByTmdb,
+            arrMaps.movieMapByImdb
+          );
           if (match) {
             arrMatch = 'radarr';
-            processed.mediaPath = match.path || processed.mediaPath;
-            processed.parentFolder = match.path
-              ? path.dirname(match.path)
-              : processed.parentFolder;
-            processed.sizeOnDisk = match.sizeOnDisk || processed.sizeOnDisk;
-            processed.quality =
-              match.movieFile?.quality?.quality?.name ?? undefined;
-            processed.monitored = match.monitored;
-            processed.dateAddedArr = match.added
-              ? new Date(match.added)
-              : undefined;
-            processed.radarrId = match.id;
+            enrichFromRadarr(processed, match);
           }
         } else {
-          let match: import('./types').SonarrSeries | undefined = undefined;
-          if (processed.tvdbId && tvMapByTvdb.has(processed.tvdbId)) {
-            match = tvMapByTvdb.get(processed.tvdbId);
-          } else if (processed.tmdbId && tvMapByTmdb.has(processed.tmdbId)) {
-            match = tvMapByTmdb.get(processed.tmdbId);
-          } else if (
-            processed.imdbId &&
-            tvMapByImdb.has(processed.imdbId.toLowerCase())
-          ) {
-            match = tvMapByImdb.get(processed.imdbId.toLowerCase());
-          }
+          const match = findSonarrMatch(
+            processed.tvdbId ?? undefined,
+            processed.tmdbId ?? undefined,
+            processed.imdbId ?? undefined,
+            arrMaps.tvMapByTvdb,
+            arrMaps.tvMapByTmdb,
+            arrMaps.tvMapByImdb
+          );
           if (match) {
             arrMatch = 'sonarr';
-            processed.mediaPath = match.path || processed.mediaPath;
-            processed.parentFolder = match.path
-              ? path.dirname(match.path)
-              : processed.parentFolder;
-            processed.sizeOnDisk =
-              match.statistics?.sizeOnDisk || processed.sizeOnDisk;
-            processed.episodesOnDisk =
-              match.statistics?.episodeFileCount || undefined;
-            processed.totalEpisodes =
-              match.statistics?.totalEpisodeCount || undefined;
-            processed.seasonCount = match.statistics?.seasonCount || undefined;
-            processed.completionPercentage = match.statistics?.totalEpisodeCount
-              ? Math.round(
-                  ((match.statistics?.episodeFileCount || 0) /
-                    match.statistics?.totalEpisodeCount) *
-                    100
-                )
-              : undefined;
-            processed.monitored = match.monitored;
-            processed.dateAddedArr = match.added
-              ? new Date(match.added)
-              : undefined;
-            processed.sonarrId = match.id;
+            enrichFromSonarr(processed, match);
           }
         }
 

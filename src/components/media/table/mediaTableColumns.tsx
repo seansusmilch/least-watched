@@ -5,10 +5,14 @@ import { Progress } from '@/components/ui/progress';
 import { MediaItem } from '@/lib/types/media';
 import { formatDate, formatFileSize } from '@/lib/utils/formatters';
 import { Film, Tv, Eye, Clock } from 'lucide-react';
+import { MediaTitleHoverCard } from './MediaTitleHoverCard';
 
 const columnHelper = createColumnHelper<MediaItem>();
 
-export const createMediaTableColumns = () => [
+export const createMediaTableColumns = (
+  embyUrl?: string | null,
+  embyApiKey?: string | null
+) => [
   // Selection column
   columnHelper.display({
     id: 'select',
@@ -37,7 +41,13 @@ export const createMediaTableColumns = () => [
   // Title column
   columnHelper.accessor('title', {
     header: 'Title',
-    cell: ({ getValue }) => <div className='truncate'>{getValue()}</div>,
+    cell: ({ row }) => (
+      <MediaTitleHoverCard
+        item={row.original}
+        embyUrl={embyUrl}
+        embyApiKey={embyApiKey}
+      />
+    ),
     enableSorting: true,
     enableColumnFilter: true,
     filterFn: 'includesString',

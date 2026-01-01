@@ -85,7 +85,7 @@ export class EmbyService {
         Recursive: true,
         IncludeItemTypes: types.join(','),
         Fields:
-          'DateCreated,ProviderIds,Path,ProductionYear,RunTimeTicks,MediaSources',
+          'DateCreated,ProviderIds,Path,ProductionYear,RunTimeTicks,MediaSources,Overview',
         StartIndex: startIndex,
         Limit: pageSize,
       };

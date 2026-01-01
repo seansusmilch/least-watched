@@ -14,6 +14,8 @@ interface MediaTableWithFiltersProps {
   availableSources: string[];
   availableFolders: string[];
   totalItems: number;
+  embyUrl?: string | null;
+  embyApiKey?: string | null;
 }
 
 export function MediaTableWithFilters({
@@ -23,6 +25,8 @@ export function MediaTableWithFilters({
   availableSources,
   availableFolders,
   totalItems,
+  embyUrl,
+  embyApiKey,
 }: MediaTableWithFiltersProps) {
   const { filters, sortCriteria } = useMediaFilterContext();
 
@@ -32,7 +36,7 @@ export function MediaTableWithFilters({
   }, [items, filters, sortCriteria]);
 
   // Initialize TanStack Table with pre-filtered data
-  const { table } = useMediaTable(filteredAndSortedItems);
+  const { table } = useMediaTable(filteredAndSortedItems, embyUrl, embyApiKey);
 
   return (
     <MediaTableBase

@@ -10,6 +10,8 @@ interface MediaPageContentProps {
   availableQualities: string[];
   availableSources: string[];
   availableFolders: string[];
+  embyUrl?: string | null;
+  embyApiKey?: string | null;
 }
 
 export function MediaPageContent({
@@ -18,6 +20,8 @@ export function MediaPageContent({
   availableQualities,
   availableSources,
   availableFolders,
+  embyUrl,
+  embyApiKey,
 }: MediaPageContentProps) {
   return (
     <MediaFilterProvider>
@@ -30,6 +34,8 @@ export function MediaPageContent({
           availableSources={availableSources}
           availableFolders={availableFolders}
           totalItems={items.length}
+          embyUrl={embyUrl}
+          embyApiKey={embyApiKey}
         />
       </div>
     </MediaFilterProvider>
