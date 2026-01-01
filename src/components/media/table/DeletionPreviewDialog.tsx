@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -47,6 +47,7 @@ export function DeletionPreviewDialog({
     new Map()
   );
   const [breakdownItem, setBreakdownItem] = useState<MediaItem | null>(null);
+  const cancelledRef = useRef(false);
 
   const totalSize = useMemo(
     () => items.reduce((sum, item) => sum + (Number(item.sizeOnDisk) || 0), 0),
@@ -55,17 +56,27 @@ export function DeletionPreviewDialog({
 
   useEffect(() => {
     if (open && items.length > 0) {
+      cancelledRef.current = false;
+      setLoading(true);
+
       const calculateScores = async () => {
-        setLoading(true);
         try {
           const [settings, datePreference] = await Promise.all([
             getDeletionScoreSettings(),
             getDatePreference(),
           ]);
 
+          if (cancelledRef.current) {
+            return;
+          }
+
           const newScores = new Map<string, ScoreBreakdownData>();
 
           for (const item of items) {
+            if (cancelledRef.current) {
+              return;
+            }
+
             const itemForScoring = convertMediaItemToScoringFormat(
               item,
               datePreference,
@@ -78,15 +89,25 @@ export function DeletionPreviewDialog({
             newScores.set(item.id, scoreData);
           }
 
-          setScores(newScores);
+          if (!cancelledRef.current) {
+            setScores(newScores);
+            setLoading(false);
+          }
         } catch (error) {
-          console.error('Error calculating scores:', error);
-        } finally {
-          setLoading(false);
+          if (!cancelledRef.current) {
+            console.error('Error calculating scores:', error);
+            setLoading(false);
+          }
         }
       };
 
       calculateScores();
+
+      return () => {
+        cancelledRef.current = true;
+      };
+    } else {
+      setLoading(false);
     }
   }, [open, items]);
 
