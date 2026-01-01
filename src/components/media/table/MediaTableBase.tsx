@@ -140,6 +140,11 @@ export function MediaTableBase({
             <span>Media Items</span>
           </CardTitle>
           <div className='flex items-center space-x-2'>
+            {selectedRows.length > 0 && (
+              <Badge variant='default'>
+                {selectedRows.length} selected ({formatFileSize(selectedSize)})
+              </Badge>
+            )}
             <div className='relative'>
               <Search className='absolute left-2 top-2.5 h-4 w-4 text-muted-foreground' />
               <Input
@@ -166,11 +171,6 @@ export function MediaTableBase({
                 />
               </SheetContent>
             </Sheet>
-            {selectedRows.length > 0 && (
-              <Badge variant='secondary'>
-                {selectedRows.length} selected ({formatFileSize(selectedSize)})
-              </Badge>
-            )}
             <ColumnVisibilityDropdown
               table={table}
               open={columnPopoverOpen}
