@@ -6,6 +6,7 @@ import {
   getApiV3Series as getSonarrSeries,
   getApiV3SeriesById as getSonarrSeriesById,
   getApiV3SystemStatus as getSonarrSystemStatus,
+  deleteApiV3SeriesById as deleteSonarrShowById,
 } from '@/generated/sonarr/sdk.gen';
 import type {
   RootFolderResource as SonarrRootFolderResource,
@@ -84,6 +85,27 @@ export class SonarrApiClient {
       console.error(`Sonarr ${instance.name} connection test failed:`, error);
       return false;
     }
+  }
+
+  async deleteSeries(
+    instance: ServiceSettings,
+    id: number,
+    {
+      deleteFiles = false,
+      addImportListExclusion = false,
+    }: { deleteFiles?: boolean; addImportListExclusion?: boolean }
+  ) {
+    this.configureClient(instance);
+    return safeApiCall(
+      () =>
+        deleteSonarrShowById({
+          client: sonarrClientRaw,
+          path: { id },
+          query: { deleteFiles, addImportListExclusion },
+        }),
+      undefined,
+      `Sonarr ${instance.name} series by ID ${id}`
+    );
   }
 }
 

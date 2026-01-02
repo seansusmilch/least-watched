@@ -6,6 +6,7 @@ import {
   getApiV3Movie as getRadarrMovie,
   getApiV3MovieById as getRadarrMovieById,
   getApiV3SystemStatus as getRadarrSystemStatus,
+  deleteApiV3MovieById as deleteRadarrMovieById,
 } from '@/generated/radarr/sdk.gen';
 import type {
   RootFolderResource as RadarrRootFolderResource,
@@ -84,6 +85,27 @@ export class RadarrApiClient {
       console.error(`Radarr ${instance.name} connection test failed:`, error);
       return false;
     }
+  }
+
+  async deleteMovie(
+    instance: ServiceSettings,
+    id: number,
+    {
+      deleteFiles = false,
+      addImportExclusion = false,
+    }: { deleteFiles?: boolean; addImportExclusion?: boolean }
+  ) {
+    this.configureClient(instance);
+    return safeApiCall(
+      () =>
+        deleteRadarrMovieById({
+          client: radarrClientRaw,
+          path: { id },
+          query: { deleteFiles, addImportExclusion },
+        }),
+      undefined,
+      `Radarr ${instance.name} movie by ID ${id}`
+    );
   }
 }
 
