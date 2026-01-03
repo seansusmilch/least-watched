@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { flexRender, Table as TanStackTable } from '@tanstack/react-table';
+import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -17,6 +18,7 @@ import { ColumnVisibilityDropdown } from './ColumnVisibilityDropdown';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { cn } from '@/lib/utils';
 import { DeletionPreviewDialog } from './DeletionPreviewDialog';
+import { deleteMediaItems } from '@/lib/actions/media-items';
 
 interface MediaTableBaseProps {
   table: TanStackTable<MediaItem>;
@@ -39,14 +41,15 @@ export function MediaTableBase({
   embyUrl,
   embyApiKey,
 }: MediaTableBaseProps) {
+  const queryClient = useQueryClient();
   const [breakdownItem, setBreakdownItem] = useState<MediaItem | null>(null);
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [columnPopoverOpen, setColumnPopoverOpen] = useState(false);
 
-  const selectedRows = table.getSelectedRowModel().rows;
-  const selectedItems = selectedRows.map((row) => row.original);
-  const selectedSize = selectedRows.reduce(
+  const selectedTableRows = table.getSelectedRowModel().rows;
+  const selectedMediaItems = selectedTableRows.map((row) => row.original);
+  const selectedSize = selectedTableRows.reduce(
     (sum, row) => sum + (Number(row.original.sizeOnDisk) || 0),
     0
   );
@@ -130,13 +133,34 @@ export function MediaTableBase({
     setShowDeleteDialog(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     setShowDeleteDialog(false);
-    const count = selectedRows.length;
-    toast.error(`DELETE ACTION: Would delete ${count} items`, {
-      description: 'Delete functionality is not yet implemented.',
-      duration: 5000,
-    });
+
+    const { sonarrCount, radarrCount, failedCount } = await deleteMediaItems(
+      selectedMediaItems
+    );
+    const successCount = sonarrCount + radarrCount;
+
+    if (successCount) {
+      queryClient.invalidateQueries({ queryKey: ['media-items'] });
+      queryClient.invalidateQueries({ queryKey: ['processed-media-items'] });
+      queryClient.invalidateQueries({ queryKey: ['media-summary'] });
+      queryClient.refetchQueries({ queryKey: ['media-items'], type: 'active' });
+
+      table.resetRowSelection();
+
+      if (failedCount > 0) {
+        toast.warning(
+          `Deleted ${successCount} items (${sonarrCount} Sonarr, ${radarrCount} Radarr), but ${failedCount} failed`
+        );
+      } else {
+        toast.success(
+          `Successfully deleted ${successCount} items (${sonarrCount} Sonarr, ${radarrCount} Radarr)`
+        );
+      }
+    } else {
+      toast.error(`Failed to delete ${failedCount} items`);
+    }
   };
 
   const getSortIcon = (isSorted: false | 'asc' | 'desc') => {
@@ -157,11 +181,11 @@ export function MediaTableBase({
             <span>Media Items</span>
           </CardTitle>
           <div className='flex flex-col gap-3 lg:flex-row lg:items-center'>
-            {selectedRows.length > 0 && (
+            {selectedTableRows.length > 0 && (
               <div className='flex items-center justify-between md:justify-start gap-2 p-1 md:p-0'>
                 <Badge variant='secondary' className='whitespace-nowrap'>
-                  {selectedRows.length} selected ({formatFileSize(selectedSize)}
-                  )
+                  {selectedTableRows.length} selected (
+                  {formatFileSize(selectedSize)})
                 </Badge>
                 <Button
                   variant='destructive'
@@ -341,7 +365,7 @@ export function MediaTableBase({
       <DeletionPreviewDialog
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}
-        items={selectedItems}
+        items={selectedMediaItems}
         onConfirm={handleConfirmDelete}
         embyUrl={embyUrl}
         embyApiKey={embyApiKey}
