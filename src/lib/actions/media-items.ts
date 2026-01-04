@@ -11,6 +11,14 @@ import { revalidatePath } from 'next/cache';
 
 export async function deleteRadarrMediaItem(id: number): Promise<boolean> {
   const radarrSettings = await radarrSettingsService.getAll();
+
+  const mediaItem = await prisma.mediaItem.findFirst({
+    where: { radarrId: id },
+    select: { title: true },
+  });
+
+  const titleText = mediaItem?.title ? ` "${mediaItem.title}"` : '';
+
   try {
     const deletionPromises = radarrSettings.map((setting) =>
       radarrApiClient.deleteMovie(setting, id, {
@@ -25,14 +33,14 @@ export async function deleteRadarrMediaItem(id: number): Promise<boolean> {
 
     await eventsService.logInfo(
       'user-action',
-      `Deleted Radarr movie (ID: ${id})`
+      `Deleted Radarr movie${titleText} (ID: ${id})`
     );
     return true;
   } catch (error) {
     console.error(`Failed to delete Radarr item (${id})`, error);
     await eventsService.logError(
       'user-action',
-      `Failed to delete Radarr movie (ID: ${id}): ${error}`
+      `Failed to delete Radarr movie${titleText} (ID: ${id}): ${error}`
     );
     return false;
   }
@@ -40,6 +48,14 @@ export async function deleteRadarrMediaItem(id: number): Promise<boolean> {
 
 export async function deleteSonarrMediaItem(id: number): Promise<boolean> {
   const sonarrSettings = await sonarrSettingsService.getAll();
+
+  const mediaItem = await prisma.mediaItem.findFirst({
+    where: { sonarrId: id },
+    select: { title: true },
+  });
+
+  const titleText = mediaItem?.title ? ` "${mediaItem.title}"` : '';
+
   try {
     const deletionPromises = sonarrSettings.map((setting) =>
       sonarrApiClient.deleteSeries(setting, id, { deleteFiles: true })
@@ -52,14 +68,14 @@ export async function deleteSonarrMediaItem(id: number): Promise<boolean> {
 
     await eventsService.logInfo(
       'user-action',
-      `Deleted Sonarr series (ID: ${id})`
+      `Deleted Sonarr series${titleText} (ID: ${id})`
     );
     return true;
   } catch (error) {
     console.error(`Failed to delete Sonarr series (${id})`, error);
     await eventsService.logError(
       'user-action',
-      `Failed to delete Sonarr series (ID: ${id}): ${error}`
+      `Failed to delete Sonarr series${titleText} (ID: ${id}): ${error}`
     );
     return false;
   }
