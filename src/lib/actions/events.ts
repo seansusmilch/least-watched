@@ -36,7 +36,14 @@ export async function getEventsList(
       pageSize: EVENTS_PAGE_SIZE,
     };
   } catch (error) {
-    console.error('Failed to get events list:', error);
+    try {
+      await eventsService.logError(
+        'system',
+        `Failed to get events list: ${error instanceof Error ? error.message : String(error)}`
+      );
+    } catch {
+      // Silently fail to prevent infinite loop if events service is down
+    }
     return {
       events: [],
       totalCount: 0,
@@ -51,7 +58,14 @@ export async function getEventsCount(filters: EventFilters = {}): Promise<number
   try {
     return await eventsService.getEventCount(filters);
   } catch (error) {
-    console.error('Failed to get events count:', error);
+    try {
+      await eventsService.logError(
+        'system',
+        `Failed to get events count: ${error instanceof Error ? error.message : String(error)}`
+      );
+    } catch {
+      // Silently fail to prevent infinite loop if events service is down
+    }
     return 0;
   }
 }
@@ -60,7 +74,14 @@ export async function getUniqueComponents(): Promise<string[]> {
   try {
     return await eventsService.getUniqueComponents();
   } catch (error) {
-    console.error('Failed to get unique components:', error);
+    try {
+      await eventsService.logError(
+        'system',
+        `Failed to get unique components: ${error instanceof Error ? error.message : String(error)}`
+      );
+    } catch {
+      // Silently fail to prevent infinite loop if events service is down
+    }
     return [];
   }
 }
@@ -71,7 +92,14 @@ export async function clearAllEvents(): Promise<{ success: boolean; count: numbe
     revalidatePath('/events');
     return { success: true, count };
   } catch (error) {
-    console.error('Failed to clear events:', error);
+    try {
+      await eventsService.logError(
+        'system',
+        `Failed to clear events: ${error instanceof Error ? error.message : String(error)}`
+      );
+    } catch {
+      // Silently fail to prevent infinite loop if events service is down
+    }
     return { success: false, count: 0 };
   }
 }
@@ -85,7 +113,14 @@ export async function logEvent(
     await eventsService.logEvent(level, component, message);
     return true;
   } catch (error) {
-    console.error('Failed to log event:', error);
+    try {
+      await eventsService.logError(
+        'system',
+        `Failed to log event: ${error instanceof Error ? error.message : String(error)}`
+      );
+    } catch {
+      // Silently fail to prevent infinite loop if events service is down
+    }
     return false;
   }
 }

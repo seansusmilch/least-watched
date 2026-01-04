@@ -18,6 +18,7 @@ import {
   DEFAULT_TIMEOUT,
   createFetchWithTimeout,
 } from './shared/api-utils';
+import { eventsService } from './events-service';
 
 export type SonarrSeries = SonarrSeriesResource;
 export type SonarrRootFolder = SonarrRootFolderResource;
@@ -82,7 +83,10 @@ export class SonarrApiClient {
       // If we get any result without error, the connection is working
       return result !== null && result !== undefined;
     } catch (error) {
-      console.error(`Sonarr ${instance.name} connection test failed:`, error);
+      await eventsService.logError(
+        'sonarr-api',
+        `Sonarr ${instance.name} connection test failed: ${error instanceof Error ? error.message : String(error)}`
+      );
       return false;
     }
   }

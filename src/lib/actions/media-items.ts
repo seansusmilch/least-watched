@@ -37,10 +37,9 @@ export async function deleteRadarrMediaItem(id: number): Promise<boolean> {
     );
     return true;
   } catch (error) {
-    console.error(`Failed to delete Radarr item (${id})`, error);
     await eventsService.logError(
       'user-action',
-      `Failed to delete Radarr movie${titleText} (ID: ${id}): ${error}`
+      `Failed to delete Radarr movie${titleText} (ID: ${id}): ${error instanceof Error ? error.message : String(error)}`
     );
     return false;
   }
@@ -72,10 +71,9 @@ export async function deleteSonarrMediaItem(id: number): Promise<boolean> {
     );
     return true;
   } catch (error) {
-    console.error(`Failed to delete Sonarr series (${id})`, error);
     await eventsService.logError(
       'user-action',
-      `Failed to delete Sonarr series${titleText} (ID: ${id}): ${error}`
+      `Failed to delete Sonarr series${titleText} (ID: ${id}): ${error instanceof Error ? error.message : String(error)}`
     );
     return false;
   }
@@ -87,7 +85,10 @@ export async function deleteMediaItems(mediaItems: MediaItem[]) {
   const results = await Promise.all(
     mediaItems.map(async (item): Promise<DeleteResult> => {
       if (!item.sonarrId && !item.radarrId) {
-        console.error(`Failed to delete media item (${item.title})`, item);
+        await eventsService.logError(
+          'user-action',
+          `Failed to delete media item "${item.title}": No Sonarr or Radarr ID found`
+        );
         return 'failed';
       }
 

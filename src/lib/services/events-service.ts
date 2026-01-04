@@ -37,6 +37,20 @@ class EventsService {
     component: EventComponent | string,
     message: string
   ): Promise<EventData> {
+    const logMessage = `[${component}] ${message}`;
+
+    switch (level) {
+      case 'info':
+        console.log(logMessage);
+        break;
+      case 'warning':
+        console.warn(logMessage);
+        break;
+      case 'error':
+        console.error(logMessage);
+        break;
+    }
+
     const event = await prisma.event.create({
       data: {
         level,

@@ -5,6 +5,7 @@ import { type FolderSpaceData } from '../types/media-processing';
 import { deletionScoreCalculator } from '../deletion-score-calculator';
 import { calculateFolderRemainingSpacePercent } from './constants';
 import { type DatePreference } from '@/lib/types/media';
+import { eventsService } from '../services/events-service';
 
 const prisma = new PrismaClient();
 
@@ -105,8 +106,10 @@ export class MediaStorage {
 
       return deletionScore;
     } catch (error) {
-      console.error(`❌ Error storing item ${item.title}:`, error);
-      console.error(`   Item data:`, JSON.stringify(item, null, 2));
+      await eventsService.logError(
+        'media-processor',
+        `Error storing item ${item.title}: ${error instanceof Error ? error.message : String(error)}`
+      );
       return -1;
     }
   }

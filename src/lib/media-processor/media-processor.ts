@@ -67,8 +67,6 @@ export class MediaProcessor {
       radarrMoviesFetched: 0,
     };
 
-    await eventsService.logInfo('media-processor', 'Media processing started');
-
     await this.updateProgress(
       'Initializing',
       0,
@@ -85,10 +83,29 @@ export class MediaProcessor {
       ]);
 
     if (!embyInstance) {
-      console.log('ℹ️ No enabled Emby instance. Skipping processing.');
-      await eventsService.logWarning('media-processor', 'No enabled Emby instance found. Skipping processing.');
+      await eventsService.logWarning(
+        'media-processor',
+        'No enabled Emby instance found. Skipping processing.'
+      );
       return [];
     }
+
+    const selectedLibraryIds = embyInstance.selectedLibraries || [];
+    const libraryInfo =
+      selectedLibraryIds.length > 0
+        ? `${selectedLibraryIds.length} selected library${
+            selectedLibraryIds.length > 1 ? 'ies' : 'y'
+          }`
+        : 'all libraries';
+    const itemLimitInfo = MEDIA_PROCESSOR_ITEM_LIMIT
+      ? `item limit: ${MEDIA_PROCESSOR_ITEM_LIMIT} per type`
+      : 'no item limit';
+    const configMessage = `Media processing started (date preference: ${datePreference}, ${libraryInfo}, ${itemLimitInfo}, ${
+      sonarrInstances.length
+    } Sonarr instance${sonarrInstances.length !== 1 ? 's' : ''}, ${
+      radarrInstances.length
+    } Radarr instance${radarrInstances.length !== 1 ? 's' : ''})`;
+    await eventsService.logInfo('media-processor', configMessage);
 
     // Build Arr enrichment maps
     const [allSeries, allMovies] = await Promise.all([
@@ -105,8 +122,6 @@ export class MediaProcessor {
 
     const arrMaps = buildArrMaps(allSeries, allMovies);
 
-    // Get selected libraries (fallback to all)
-    const selectedLibraryIds = embyInstance.selectedLibraries || [];
     const embyItems = await EmbyService.listLibraryItems({
       embyInstance,
       libraryIds: selectedLibraryIds,
@@ -145,7 +160,10 @@ export class MediaProcessor {
       const name: string = item.Name || item.OriginalTitle || 'Unknown';
       const itemStartTime = performance.now();
 
-      console.log(`⏱️ Started processing ${name}`);
+      await eventsService.logInfo(
+        'media-processor',
+        `Started processing ${name}`
+      );
 
       await this.updateProgress(
         'Processing Emby Items',
@@ -160,7 +178,10 @@ export class MediaProcessor {
 
       try {
         if (!item?.Id) {
-          console.log(`⚠️ Skipping Emby item without Id: ${name}`);
+          await eventsService.logWarning(
+            'media-processor',
+            `Skipping Emby item without Id: ${name}`
+          );
           continue;
         }
 
@@ -225,22 +246,19 @@ export class MediaProcessor {
         runStats.itemsProcessed++;
 
         const itemTimeMs = Math.round(performance.now() - itemStartTime);
-        console.log(
-          `✅ Finished processing ${name} in ${itemTimeMs}ms | arr: ${arrMatch} | playback: ${
+        await eventsService.logInfo(
+          'media-processor',
+          `Finished processing ${name} in ${itemTimeMs}ms | arr: ${arrMatch} | playback: ${
             playbackFound ? 'found' : 'none'
           } | score: ${deletionScore}`
         );
       } catch (err) {
         const itemTimeMs = Math.round(performance.now() - itemStartTime);
-        console.error(
-          `Error processing ${name} in ${itemTimeMs}ms | arr: ${arrMatch} | playback: ${
-            playbackFound ? 'found' : 'none'
-          }:`,
-          err
-        );
         await eventsService.logError(
           'media-processor',
-          `Error processing "${name}": ${err instanceof Error ? err.message : String(err)}`
+          `Error processing "${name}": ${
+            err instanceof Error ? err.message : String(err)
+          }`
         );
       }
     }
@@ -261,23 +279,9 @@ export class MediaProcessor {
         : 0;
 
     const totalTimeSec = (runStats.totalTimeMs / 1000).toFixed(1);
-    console.log('\n--- Processing Complete ---');
-    console.log(
-      `Total time: ${totalTimeSec}s | Items: ${runStats.itemsProcessed} | Avg: ${runStats.avgTimePerItemMs}ms/item`
-    );
-    console.log(
-      `Arr matches: ${runStats.itemsWithArrMatch}/${runStats.itemsProcessed} | Playback data: ${runStats.itemsWithPlayback}/${runStats.itemsProcessed}`
-    );
-    console.log(
-      `Pre-fetch: ${runStats.sonarrSeriesFetched} Sonarr series, ${runStats.radarrMoviesFetched} Radarr movies`
-    );
-    console.log(
-      `Emby items: ${limitedSeries.length} series, ${limitedMovies.length} movies (${runStats.embyItemsFetched} total)`
-    );
-
     await eventsService.logInfo(
       'media-processor',
-      `Processing complete: ${runStats.itemsProcessed} items in ${totalTimeSec}s (${runStats.itemsWithArrMatch} arr matches, ${runStats.itemsWithPlayback} with playback)`
+      `Processing complete: ${runStats.itemsProcessed} items in ${totalTimeSec}s (${runStats.itemsWithArrMatch} arr matches, ${runStats.itemsWithPlayback} with playback) | Avg: ${runStats.avgTimePerItemMs}ms/item | Pre-fetch: ${runStats.sonarrSeriesFetched} Sonarr series, ${runStats.radarrMoviesFetched} Radarr movies | Emby items: ${limitedSeries.length} series, ${limitedMovies.length} movies (${runStats.embyItemsFetched} total)`
     );
 
     return allProcessedItems;
