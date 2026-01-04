@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import {
   HoverCard,
   HoverCardContent,
@@ -44,10 +45,13 @@ export function MediaTitleHoverCard({
         <div className='flex flex-col gap-3'>
           {posterUrl && !imageError && (
             <div className='flex justify-center'>
-              <img
+              <Image
                 src={posterUrl}
                 alt={`${item.title} poster`}
+                width={320}
+                height={240}
                 className='rounded-md max-h-60 object-cover'
+                unoptimized
                 onError={() => setImageError(true)}
               />
             </div>

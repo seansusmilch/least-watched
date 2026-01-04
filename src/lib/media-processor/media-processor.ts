@@ -256,7 +256,7 @@ export class MediaProcessor {
         const itemTimeMs = Math.round(performance.now() - itemStartTime);
         await eventsService.logError(
           'media-processor',
-          `Error processing "${name}": ${
+          `Error processing "${name}" after ${itemTimeMs}ms: ${
             err instanceof Error ? err.message : String(err)
           }`
         );

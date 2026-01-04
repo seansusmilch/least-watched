@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
+import Image from 'next/image';
 import {
   Dialog,
   DialogContent,
@@ -14,7 +15,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { MediaItem } from '@/lib/types/media';
 import { formatFileSize } from '@/lib/utils/formatters';
 import { Loader2, AlertTriangle, ImageOff, Trash2 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import {
   deletionScoreCalculator,
   ScoreBreakdownData,
@@ -209,10 +209,13 @@ export function DeletionPreviewDialog({
                         <div className='flex gap-3 sm:gap-4 flex-1'>
                           <div className='flex-shrink-0 w-20 h-28 sm:w-24 sm:h-36 bg-muted rounded overflow-hidden flex items-center justify-center'>
                             {posterUrl ? (
-                              <img
+                              <Image
                                 src={posterUrl}
                                 alt={item.title}
+                                width={96}
+                                height={144}
                                 className='w-full h-full object-cover'
+                                unoptimized
                                 onError={(e) => {
                                   e.currentTarget.style.display = 'none';
                                 }}
