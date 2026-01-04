@@ -46,6 +46,8 @@ export function MediaTableWithFilters({
       availableSources={availableSources}
       availableFolders={availableFolders}
       totalItems={totalItems}
+      embyUrl={embyUrl}
+      embyApiKey={embyApiKey}
     />
   );
 }

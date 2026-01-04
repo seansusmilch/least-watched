@@ -2,16 +2,14 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { flexRender, Table as TanStackTable } from '@tanstack/react-table';
+import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-} from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Film, SortAsc, SortDesc, Search, Filter } from 'lucide-react';
+import { Film, SortAsc, SortDesc, Search, Filter, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { MediaFiltersClient } from '../filters/MediaFiltersClient';
 import { MediaItem } from '@/lib/types/media';
 import { formatFileSize } from '@/lib/utils/formatters';
@@ -19,6 +17,8 @@ import { DeletionScoreBreakdown } from '../summary/DeletionScoreBreakdown';
 import { ColumnVisibilityDropdown } from './ColumnVisibilityDropdown';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { cn } from '@/lib/utils';
+import { DeletionPreviewDialog } from './DeletionPreviewDialog';
+import { deleteMediaItems } from '@/lib/actions/media-items';
 
 interface MediaTableBaseProps {
   table: TanStackTable<MediaItem>;
@@ -27,6 +27,8 @@ interface MediaTableBaseProps {
   availableSources: string[];
   availableFolders: string[];
   totalItems: number;
+  embyUrl?: string | null;
+  embyApiKey?: string | null;
 }
 
 export function MediaTableBase({
@@ -36,13 +38,18 @@ export function MediaTableBase({
   availableSources,
   availableFolders,
   totalItems,
+  embyUrl,
+  embyApiKey,
 }: MediaTableBaseProps) {
+  const queryClient = useQueryClient();
   const [breakdownItem, setBreakdownItem] = useState<MediaItem | null>(null);
   const [showBreakdown, setShowBreakdown] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [columnPopoverOpen, setColumnPopoverOpen] = useState(false);
 
-  const selectedRows = table.getSelectedRowModel().rows;
-  const selectedSize = selectedRows.reduce(
+  const selectedTableRows = table.getSelectedRowModel().rows;
+  const selectedMediaItems = selectedTableRows.map((row) => row.original);
+  const selectedSize = selectedTableRows.reduce(
     (sum, row) => sum + (Number(row.original.sizeOnDisk) || 0),
     0
   );
@@ -122,6 +129,40 @@ export function MediaTableBase({
     setBreakdownItem(null);
   };
 
+  const handleDeleteClick = () => {
+    setShowDeleteDialog(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    setShowDeleteDialog(false);
+
+    const { sonarrCount, radarrCount, failedCount } = await deleteMediaItems(
+      selectedMediaItems
+    );
+    const successCount = sonarrCount + radarrCount;
+
+    if (successCount) {
+      queryClient.invalidateQueries({ queryKey: ['media-items'] });
+      queryClient.invalidateQueries({ queryKey: ['processed-media-items'] });
+      queryClient.invalidateQueries({ queryKey: ['media-summary'] });
+      queryClient.refetchQueries({ queryKey: ['media-items'], type: 'active' });
+
+      table.resetRowSelection();
+
+      if (failedCount > 0) {
+        toast.warning(
+          `Deleted ${successCount} items (${sonarrCount} Sonarr, ${radarrCount} Radarr), but ${failedCount} failed`
+        );
+      } else {
+        toast.success(
+          `Successfully deleted ${successCount} items (${sonarrCount} Sonarr, ${radarrCount} Radarr)`
+        );
+      }
+    } else {
+      toast.error(`Failed to delete ${failedCount} items`);
+    }
+  };
+
   const getSortIcon = (isSorted: false | 'asc' | 'desc') => {
     if (isSorted === 'asc') {
       return <SortAsc className='h-4 w-4 ml-1' />;
@@ -134,48 +175,62 @@ export function MediaTableBase({
   return (
     <Card>
       <CardHeader>
-        <div className='flex items-center justify-between'>
+        <div className='flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between'>
           <CardTitle className='flex items-center space-x-2'>
             <Film className='h-5 w-5' />
             <span>Media Items</span>
           </CardTitle>
-          <div className='flex items-center space-x-2'>
-            {selectedRows.length > 0 && (
-              <Badge variant='default'>
-                {selectedRows.length} selected ({formatFileSize(selectedSize)})
-              </Badge>
+          <div className='flex flex-col gap-3 lg:flex-row lg:items-center'>
+            {selectedTableRows.length > 0 && (
+              <div className='flex items-center justify-between md:justify-start gap-2 p-1 md:p-0'>
+                <Badge variant='secondary' className='whitespace-nowrap'>
+                  {selectedTableRows.length} selected (
+                  {formatFileSize(selectedSize)})
+                </Badge>
+                <Button
+                  variant='destructive'
+                  size='sm'
+                  onClick={handleDeleteClick}
+                  className='h-7'
+                >
+                  <Trash2 className='h-3 w-3 mr-1' />
+                  Delete
+                </Button>
+              </div>
             )}
-            <div className='relative'>
-              <Search className='absolute left-2 top-2.5 h-4 w-4 text-muted-foreground' />
-              <Input
-                aria-label='Search media'
-                placeholder='Search...'
-                value={(table.getState().globalFilter as string) ?? ''}
-                onChange={(e) => table.setGlobalFilter(e.target.value)}
-                className='h-8 w-[200px] pl-8'
+            <div className='flex items-center gap-2 w-full md:w-auto'>
+              <div className='relative flex-1 md:flex-none'>
+                <Search className='absolute left-2 top-2.5 h-4 w-4 text-muted-foreground' />
+                <Input
+                  aria-label='Search media'
+                  placeholder='Search...'
+                  value={(table.getState().globalFilter as string) ?? ''}
+                  onChange={(e) => table.setGlobalFilter(e.target.value)}
+                  className='h-8 w-full md:w-[200px] pl-8'
+                />
+              </div>
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant='outline' size='sm' aria-label='Open filters'>
+                    <Filter className='h-4 w-4 mr-2' /> Filters
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side='right' className='w-full md:max-w-md p-0'>
+                  <MediaFiltersClient
+                    availableGenres={availableGenres}
+                    availableQualities={availableQualities}
+                    availableSources={availableSources}
+                    availableFolders={availableFolders}
+                    totalItems={totalItems}
+                  />
+                </SheetContent>
+              </Sheet>
+              <ColumnVisibilityDropdown
+                table={table}
+                open={columnPopoverOpen}
+                onOpenChange={setColumnPopoverOpen}
               />
             </div>
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant='outline' size='sm' aria-label='Open filters'>
-                  <Filter className='h-4 w-4 mr-2' /> Filters
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-full sm:max-w-md p-0">
-                <MediaFiltersClient
-                  availableGenres={availableGenres}
-                  availableQualities={availableQualities}
-                  availableSources={availableSources}
-                  availableFolders={availableFolders}
-                  totalItems={totalItems}
-                />
-              </SheetContent>
-            </Sheet>
-            <ColumnVisibilityDropdown
-              table={table}
-              open={columnPopoverOpen}
-              onOpenChange={setColumnPopoverOpen}
-            />
           </div>
         </div>
       </CardHeader>
@@ -306,6 +361,15 @@ export function MediaTableBase({
           onClose={handleCloseBreakdown}
         />
       )}
+
+      <DeletionPreviewDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        items={selectedMediaItems}
+        onConfirm={handleConfirmDelete}
+        embyUrl={embyUrl}
+        embyApiKey={embyApiKey}
+      />
     </Card>
   );
 }

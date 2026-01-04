@@ -58,6 +58,10 @@ export const MediaItemSchema = z.object({
 
   // Emby identifier for image URLs
   embyId: z.string().optional().nullable(),
+
+  // Arr identifiers
+  sonarrId: z.number().optional().nullable(),
+  radarrId: z.number().optional().nullable(),
 });
 
 export type MediaItem = z.infer<typeof MediaItemSchema>;

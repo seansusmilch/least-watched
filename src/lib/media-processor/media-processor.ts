@@ -1,6 +1,7 @@
 import { sonarrSettingsService, radarrSettingsService } from '@/lib/database';
 import { type DeletionScoreSettings } from '@/lib/actions/settings/types';
 import { folderSpaceService } from '@/lib/services/folder-space-service';
+import { eventsService } from '@/lib/services/events-service';
 import { ProgressStore } from './progress-store';
 import { MEDIA_PROCESSOR_ITEM_LIMIT } from './constants';
 import { MediaStorage } from './storage';
@@ -66,6 +67,8 @@ export class MediaProcessor {
       radarrMoviesFetched: 0,
     };
 
+    await eventsService.logInfo('media-processor', 'Media processing started');
+
     await this.updateProgress(
       'Initializing',
       0,
@@ -83,6 +86,7 @@ export class MediaProcessor {
 
     if (!embyInstance) {
       console.log('ℹ️ No enabled Emby instance. Skipping processing.');
+      await eventsService.logWarning('media-processor', 'No enabled Emby instance found. Skipping processing.');
       return [];
     }
 
@@ -234,6 +238,10 @@ export class MediaProcessor {
           }:`,
           err
         );
+        await eventsService.logError(
+          'media-processor',
+          `Error processing "${name}": ${err instanceof Error ? err.message : String(err)}`
+        );
       }
     }
 
@@ -265,6 +273,11 @@ export class MediaProcessor {
     );
     console.log(
       `Emby items: ${limitedSeries.length} series, ${limitedMovies.length} movies (${runStats.embyItemsFetched} total)`
+    );
+
+    await eventsService.logInfo(
+      'media-processor',
+      `Processing complete: ${runStats.itemsProcessed} items in ${totalTimeSec}s (${runStats.itemsWithArrMatch} arr matches, ${runStats.itemsWithPlayback} with playback)`
     );
 
     return allProcessedItems;
