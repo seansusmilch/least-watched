@@ -48,9 +48,9 @@ export function MediaTitleHoverCard({
               <Image
                 src={posterUrl}
                 alt={`${item.title} poster`}
-                width={320}
-                height={240}
-                className='rounded-md max-h-60 object-cover'
+                width={240}
+                height={360}
+                className='rounded-md w-full max-w-[240px] aspect-[2/3] object-cover'
                 unoptimized
                 onError={() => setImageError(true)}
               />
