@@ -4,6 +4,10 @@ export const MEDIA_PROCESSOR_ITEM_LIMIT: number | undefined = process.env
   ? Number.parseInt(process.env.MEDIA_PROCESSOR_ITEM_LIMIT, 10)
   : undefined;
 
+// Events configuration
+export const EVENTS_PAGE_SIZE = 100;
+export const EVENTS_MAX_COUNT = 10000;
+
 // Quality mapping for scoring
 export const QUALITY_SCORE_MAP: Record<string, number> = {
   'Bluray-2160p': 100,

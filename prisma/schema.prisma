@@ -62,3 +62,16 @@ model MediaItem {
   @@index([imdbId])
   @@index([tvdbId])
 }
+
+model Event {
+  id        String   @id @default(cuid())
+  timestamp DateTime @default(now())
+  level     String
+  component String
+  message   String
+
+  @@map("events")
+  @@index([timestamp])
+  @@index([component])
+  @@index([level])
+}

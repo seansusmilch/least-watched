@@ -6,7 +6,7 @@ import {
   sonarrSettingsService,
   prisma,
 } from '../database';
-import { sonarrApiClient, radarrApiClient } from '../services';
+import { sonarrApiClient, radarrApiClient, eventsService } from '../services';
 import { revalidatePath } from 'next/cache';
 
 export async function deleteRadarrMediaItem(id: number): Promise<boolean> {
@@ -23,9 +23,17 @@ export async function deleteRadarrMediaItem(id: number): Promise<boolean> {
       where: { radarrId: id },
     });
 
+    await eventsService.logInfo(
+      'user-action',
+      `Deleted Radarr movie (ID: ${id})`
+    );
     return true;
   } catch (error) {
     console.error(`Failed to delete Radarr item (${id})`, error);
+    await eventsService.logError(
+      'user-action',
+      `Failed to delete Radarr movie (ID: ${id}): ${error}`
+    );
     return false;
   }
 }
@@ -42,47 +50,61 @@ export async function deleteSonarrMediaItem(id: number): Promise<boolean> {
       where: { sonarrId: id },
     });
 
+    await eventsService.logInfo(
+      'user-action',
+      `Deleted Sonarr series (ID: ${id})`
+    );
     return true;
   } catch (error) {
     console.error(`Failed to delete Sonarr series (${id})`, error);
+    await eventsService.logError(
+      'user-action',
+      `Failed to delete Sonarr series (ID: ${id}): ${error}`
+    );
     return false;
   }
 }
 
+type DeleteResult = 'sonarr' | 'radarr' | 'failed';
+
 export async function deleteMediaItems(mediaItems: MediaItem[]) {
-  let sonarrCount = 0;
-  let radarrCount = 0;
-  let failedCount = 0;
-
-  await Promise.all(
-    mediaItems.map(async (item) => {
+  const results = await Promise.all(
+    mediaItems.map(async (item): Promise<DeleteResult> => {
       if (!item.sonarrId && !item.radarrId) {
-        failedCount++;
         console.error(`Failed to delete media item (${item.title})`, item);
-        return;
+        return 'failed';
       }
 
-      if (!!item.sonarrId) {
+      if (item.sonarrId) {
         const success = await deleteSonarrMediaItem(item.sonarrId);
-        if (success) {
-          sonarrCount++;
-        } else {
-          failedCount++;
-        }
-      } else if (!!item.radarrId) {
-        const success = await deleteRadarrMediaItem(item.radarrId);
-        if (success) {
-          radarrCount++;
-        } else {
-          failedCount++;
-        }
+        return success ? 'sonarr' : 'failed';
       }
+
+      if (item.radarrId) {
+        const success = await deleteRadarrMediaItem(item.radarrId);
+        return success ? 'radarr' : 'failed';
+      }
+
+      return 'failed';
     })
   );
+
+  const sonarrCount = results.filter((r) => r === 'sonarr').length;
+  const radarrCount = results.filter((r) => r === 'radarr').length;
+  const failedCount = results.filter((r) => r === 'failed').length;
 
   // If any items were successfully deleted, revalidate
   if (sonarrCount || radarrCount) {
     revalidatePath('/');
+    await eventsService.logInfo(
+      'user-action',
+      `Bulk delete completed: ${sonarrCount} Sonarr, ${radarrCount} Radarr, ${failedCount} failed`
+    );
+  } else if (failedCount > 0) {
+    await eventsService.logWarning(
+      'user-action',
+      `Bulk delete failed: ${failedCount} items could not be deleted`
+    );
   }
 
   return {

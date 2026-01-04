@@ -6,6 +6,7 @@ import {
   Database,
   TrendingDown,
   Settings,
+  ScrollText,
 } from 'lucide-react';
 
 import {
@@ -22,6 +23,7 @@ import {
 
 const navigation = [
   { name: 'Least Watched', href: '/', icon: TrendingDown },
+  { name: 'Events', href: '/events', icon: ScrollText },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
