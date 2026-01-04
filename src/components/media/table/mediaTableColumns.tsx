@@ -6,6 +6,7 @@ import { MediaItem } from '@/lib/types/media';
 import { formatDate, formatFileSize } from '@/lib/utils/formatters';
 import { Film, Tv, Eye, Clock } from 'lucide-react';
 import { MediaTitleHoverCard } from './MediaTitleHoverCard';
+import { DeletionScoreBadge } from '../DeletionScoreBadge';
 
 const columnHelper = createColumnHelper<MediaItem>();
 
@@ -269,37 +270,17 @@ export const createMediaTableColumns = (
     header: 'Deletion Score',
     cell: ({ getValue, row }) => {
       const score = getValue();
-      if (score !== undefined && score !== null) {
-        return (
-          <div className='flex items-center gap-2'>
-            <Badge
-              variant={
-                score > 70
-                  ? 'destructive'
-                  : score > 40
-                  ? 'secondary'
-                  : 'outline'
-              }
-              className='cursor-pointer hover:opacity-80 transition-opacity'
-              onClick={() => {
-                // This will be handled by the parent component
-                const event = new CustomEvent('openDeletionBreakdown', {
-                  detail: { item: row.original },
-                });
-                window.dispatchEvent(event);
-              }}
-            >
-              {score}
-            </Badge>
-            {score > 70 && (
-              <span className='text-xs text-destructive font-medium'>
-                High Priority
-              </span>
-            )}
-          </div>
-        );
-      }
-      return <span className='text-muted-foreground'>N/A</span>;
+      return (
+        <DeletionScoreBadge
+          score={score}
+          onClick={() => {
+            const event = new CustomEvent('openDeletionBreakdown', {
+              detail: { item: row.original },
+            });
+            window.dispatchEvent(event);
+          }}
+        />
+      );
     },
     enableSorting: true,
     enableColumnFilter: true,

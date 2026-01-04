@@ -31,6 +31,7 @@ import { getDatePreference } from './settings/app-settings';
 import { getDeletionScoreSettings } from '@/lib/actions/settings';
 import type { DeletionScoreSettings } from '@/lib/actions/settings/types';
 import { deletionScoreCalculator } from '@/lib/deletion-score-calculator';
+import { eventsService } from '@/lib/services/events-service';
 
 // ============================================================================
 // Media Processing Functions
@@ -42,8 +43,13 @@ export async function startMediaProcessing(
 ): Promise<FormState<MediaProcessingResult>> {
   try {
     // Start processing in background (don't await)
-    processMediaInBackground().catch((error) => {
-      console.error('Background processing failed:', error);
+    processMediaInBackground().catch(async (error) => {
+      await eventsService.logError(
+        'media-processor',
+        `Background processing failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
     });
 
     const result: MediaProcessingResult = {
@@ -75,9 +81,17 @@ async function processMediaInBackground(): Promise<void> {
     const processor = new MediaProcessor(undefined);
     await processor.processAllMedia();
 
-    console.log('✅ Background media processing completed successfully');
+    await eventsService.logInfo(
+      'media-processor',
+      'Background media processing completed successfully'
+    );
   } catch (error) {
-    console.error('Background media processing failed:', error);
+    await eventsService.logError(
+      'media-processor',
+      `Background media processing failed: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
     throw error;
   }
 }
@@ -90,7 +104,12 @@ export async function getMediaItems() {
 
     return mediaItems;
   } catch (error) {
-    console.error('Failed to get media items:', error);
+    await eventsService.logError(
+      'media-processor',
+      `Failed to get media items: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
     return [];
   }
 }
@@ -134,11 +153,9 @@ function processMediaItem(
 
 export async function getProcessedMediaItems() {
   try {
-    const [rawItems, datePreference, deletionScoreSettings] = await Promise.all([
-      getMediaItems(),
-      getDatePreference(),
-      getDeletionScoreSettings(),
-    ]);
+    const [rawItems, datePreference, deletionScoreSettings] = await Promise.all(
+      [getMediaItems(), getDatePreference(), getDeletionScoreSettings()]
+    );
 
     const processedItems = rawItems.map((item) =>
       processMediaItem(item, datePreference, deletionScoreSettings)
@@ -146,7 +163,12 @@ export async function getProcessedMediaItems() {
 
     return processedItems;
   } catch (error) {
-    console.error('Failed to get processed media items:', error);
+    await eventsService.logError(
+      'media-processor',
+      `Failed to get processed media items: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
     return [];
   }
 }
@@ -198,7 +220,12 @@ export async function getSelectedFoldersFromDatabase(): Promise<SelectedFoldersF
 
     return { sonarrFolders, radarrFolders };
   } catch (error) {
-    console.error('❌ Error getting selected folders from database:', error);
+    await eventsService.logError(
+      'media-processor',
+      `Error getting selected folders from database: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
     return { sonarrFolders: [], radarrFolders: [] };
   }
 }
@@ -225,7 +252,12 @@ export async function clearMediaItems(): Promise<{
       message,
     };
   } catch (error) {
-    console.error('Failed to clear media items:', error);
+    await eventsService.logError(
+      'media-processor',
+      `Failed to clear media items: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
     return {
       success: false,
       error: 'Failed to clear media items from the database',
@@ -243,7 +275,12 @@ export async function checkProcessingComplete(): Promise<boolean> {
 
     return false;
   } catch (error) {
-    console.error('Failed to check processing completion:', error);
+    await eventsService.logError(
+      'media-processor',
+      `Failed to check processing completion: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
     return false;
   }
 }
@@ -252,6 +289,11 @@ export async function revalidateAfterProcessing(): Promise<void> {
   try {
     revalidatePath('/');
   } catch (error) {
-    console.error('Failed to revalidate after processing:', error);
+    await eventsService.logError(
+      'media-processor',
+      `Failed to revalidate after processing: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
   }
 }

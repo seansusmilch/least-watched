@@ -6,6 +6,7 @@ import {
   getApiV3Series as getSonarrSeries,
   getApiV3SeriesById as getSonarrSeriesById,
   getApiV3SystemStatus as getSonarrSystemStatus,
+  deleteApiV3SeriesById as deleteSonarrShowById,
 } from '@/generated/sonarr/sdk.gen';
 import type {
   RootFolderResource as SonarrRootFolderResource,
@@ -17,6 +18,7 @@ import {
   DEFAULT_TIMEOUT,
   createFetchWithTimeout,
 } from './shared/api-utils';
+import { eventsService } from './events-service';
 
 export type SonarrSeries = SonarrSeriesResource;
 export type SonarrRootFolder = SonarrRootFolderResource;
@@ -81,9 +83,33 @@ export class SonarrApiClient {
       // If we get any result without error, the connection is working
       return result !== null && result !== undefined;
     } catch (error) {
-      console.error(`Sonarr ${instance.name} connection test failed:`, error);
+      await eventsService.logError(
+        'sonarr-api',
+        `Sonarr ${instance.name} connection test failed: ${error instanceof Error ? error.message : String(error)}`
+      );
       return false;
     }
+  }
+
+  async deleteSeries(
+    instance: ServiceSettings,
+    id: number,
+    {
+      deleteFiles = false,
+      addImportListExclusion = false,
+    }: { deleteFiles?: boolean; addImportListExclusion?: boolean }
+  ) {
+    this.configureClient(instance);
+    return safeApiCall(
+      () =>
+        deleteSonarrShowById({
+          client: sonarrClientRaw,
+          path: { id },
+          query: { deleteFiles, addImportListExclusion },
+        }),
+      undefined,
+      `Sonarr ${instance.name} series by ID ${id}`
+    );
   }
 }
 

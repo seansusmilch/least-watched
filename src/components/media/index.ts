@@ -10,8 +10,7 @@ export { MediaSummaryCardsServer } from './summary/MediaSummaryCardsServer';
 export { MediaSummaryCardsClient } from './summary/MediaSummaryCardsClient';
 export { MediaSummaryCardsSkeleton } from './summary/MediaSummaryCardsSkeleton';
 export { DeletionScoreBreakdown } from './summary/DeletionScoreBreakdown';
-
-// Filter components
+export { DeletionScoreBadge } from './DeletionScoreBadge';
 export { MediaFilterProvider } from './filters/MediaFilterProvider';
 export { MediaFiltersClient } from './filters/MediaFiltersClient';
 export { MediaFiltersServer } from './filters/MediaFiltersServer';

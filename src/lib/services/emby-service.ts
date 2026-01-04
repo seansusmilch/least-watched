@@ -4,6 +4,7 @@ import {
   type EmbyPlaybackInfo,
   type EmbyMetadata,
 } from '@/lib/media-processor/types';
+import { eventsService } from './events-service';
 
 const DEFAULT_TIMEOUT = 10000; // 10 seconds
 
@@ -54,7 +55,10 @@ export class EmbyService {
         name: lib.Name || 'Unknown',
       }));
     } catch (e) {
-      console.error('Failed to list Emby libraries', e);
+      await eventsService.logError(
+        'emby-api',
+        `Failed to list Emby libraries: ${e instanceof Error ? e.message : String(e)}`
+      );
       return [];
     }
   }
@@ -149,10 +153,9 @@ export class EmbyService {
         let items: Emby.QueryResultBaseItem = await embyClient.items.list(
           targetedParams as Record<string, unknown>
         );
-        console.log(
-          `     🔎 Emby targeted provider-id search (${entry.key}:${
-            entry.value
-          }) returned ${items.Items?.length ?? 0} items (types=${includeTypes})`
+        await eventsService.logInfo(
+          'emby-api',
+          `Emby targeted provider-id search (${entry.key}:${entry.value}) returned ${items.Items?.length ?? 0} items (types=${includeTypes})`
         );
 
         if (!items.Items || items.Items.length === 0) {
@@ -167,12 +170,9 @@ export class EmbyService {
           items = await embyClient.items.list(
             broadParams as Record<string, unknown>
           );
-          console.log(
-            `     🔎 Emby broad provider-id scan (${entry.key}:${
-              entry.value
-            }) returned ${
-              items.Items?.length ?? 0
-            } items (types=${includeTypes})`
+          await eventsService.logInfo(
+            'emby-api',
+            `Emby broad provider-id scan (${entry.key}:${entry.value}) returned ${items.Items?.length ?? 0} items (types=${includeTypes})`
           );
         }
 
@@ -223,17 +223,16 @@ export class EmbyService {
         });
 
         if (match) {
-          console.log(
-            `     ✅ Emby match by ${entry.key.toUpperCase()} id ${
-              entry.value
-            }: ${match.Name}`
+          await eventsService.logInfo(
+            'emby-api',
+            `Emby match by ${entry.key.toUpperCase()} id ${entry.value}: ${match.Name}`
           );
           return match as Emby.BaseItem;
         }
       } catch (err) {
-        console.log(
-          `     ⚠️ Emby provider-id lookup failed for ${entry.key}:${entry.value}`,
-          err
+        await eventsService.logWarning(
+          'emby-api',
+          `Emby provider-id lookup failed for ${entry.key}:${entry.value}: ${err instanceof Error ? err.message : String(err)}`
         );
       }
     }
@@ -249,11 +248,11 @@ export class EmbyService {
     embyInstance: EmbySettings | null
   ): Promise<EmbyMetadata | null> {
     if (!embyInstance) {
-      console.log('     ℹ️ No Emby instance available');
+      await eventsService.logInfo('emby-api', 'No Emby instance available');
       return null;
     }
 
-    console.log(`     🔍 Fetching metadata for "${title}" from Emby`);
+    await eventsService.logInfo('emby-api', `Fetching metadata for "${title}" from Emby`);
 
     try {
       const embyClient = this.createClient(embyInstance);
@@ -266,7 +265,7 @@ export class EmbyService {
       });
 
       if (!itemsData || !itemsData.Items) {
-        console.log(`     ❌ No items found for "${title}" in Emby`);
+        await eventsService.logWarning('emby-api', `No items found for "${title}" in Emby`);
         return null;
       }
 
@@ -275,28 +274,25 @@ export class EmbyService {
       );
 
       if (!itemData) {
-        console.log(`     ❌ No item found for "${title}" in Emby`);
+        await eventsService.logWarning('emby-api', `No item found for "${title}" in Emby`);
         return null;
       }
 
-      console.log(
-        `     ✅ Successfully fetched metadata for item: ${
-          itemData.Name || itemData.OriginalTitle || 'Unknown'
-        }`
-      );
-      console.log(`     📋 Type: ${itemData.Type || 'Unknown'}`);
-      console.log(
-        `     ⏱️ Runtime: ${
+      await eventsService.logInfo(
+        'emby-api',
+        `Successfully fetched metadata for item: ${itemData.Name || itemData.OriginalTitle || 'Unknown'} | Type: ${itemData.Type || 'Unknown'} | Runtime: ${
           itemData.RunTimeTicks
-            ? Math.round(Number(itemData.RunTimeTicks) / 10000000 / 60) +
-              ' minutes'
+            ? Math.round(Number(itemData.RunTimeTicks) / 10000000 / 60) + ' minutes'
             : 'Unknown'
         }`
       );
 
       return itemData;
     } catch (error) {
-      console.error(`     ❌ Error fetching metadata from Emby:`, error);
+      await eventsService.logError(
+        'emby-api',
+        `Error fetching metadata from Emby: ${error instanceof Error ? error.message : String(error)}`
+      );
       return null;
     }
   }
@@ -387,8 +383,9 @@ export class EmbyService {
     // Series: prefer title-based aggregation to avoid gigantic episode-id queries
     if (type === 'tv') {
       if (!title) {
-        console.error(
-          '     ❌ Unable to aggregate series playback without title. Provide title for series aggregation.'
+        await eventsService.logError(
+          'emby-api',
+          'Unable to aggregate series playback without title. Provide title for series aggregation.'
         );
         return null;
       }
@@ -396,29 +393,31 @@ export class EmbyService {
         title,
         embyInstance as EmbySettings
       );
-      return { ...agg, embyId: embyId ?? '' };
-    }
-
-    // Movies: require a concrete item id
-    if (type === 'movie') {
-      if (embyId) {
-        const agg = await this.getAggregatedPlaybackForItemIds(
-          [embyId],
-          embyInstance
-        );
-        return { ...agg, embyId };
+        return { ...agg, embyId: embyId ?? '' };
       }
-      console.error(
-        '     ❌ Unable to aggregate movie playback without embyId.'
+
+      // Movies: require a concrete item id
+      if (type === 'movie') {
+        if (embyId) {
+          const agg = await this.getAggregatedPlaybackForItemIds(
+            [embyId],
+            embyInstance
+          );
+          return { ...agg, embyId };
+        }
+        await eventsService.logError(
+          'emby-api',
+          'Unable to aggregate movie playback without embyId.'
+        );
+        return null;
+      }
+
+      // Unknown type: require explicit type, no fallbacks
+      await eventsService.logError(
+        'emby-api',
+        'Unable to aggregate playback: unknown or missing type.'
       );
       return null;
-    }
-
-    // Unknown type: require explicit type, no fallbacks
-    console.error(
-      '     ❌ Unable to aggregate playback: unknown or missing type.'
-    );
-    return null;
   }
 
   /** Aggregate playback info for a series using the user_usage_stats ItemName convention "[title] - s%" */
@@ -452,13 +451,16 @@ export class EmbyService {
       const systemInfo = await embyClient.system.info;
 
       if (systemInfo) {
-        console.log(`     ✅ Successfully connected to Emby server`);
+        await eventsService.logInfo('emby-api', 'Successfully connected to Emby server');
         return true;
       }
 
       return false;
     } catch (error) {
-      console.error(`     ❌ Failed to connect to Emby:`, error);
+      await eventsService.logError(
+        'emby-api',
+        `Failed to connect to Emby: ${error instanceof Error ? error.message : String(error)}`
+      );
       return false;
     }
   }
@@ -488,14 +490,15 @@ export class EmbyService {
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        console.log(
-          `     ❌ Emby custom query failed: ${response.status} ${response.statusText}`
+        await eventsService.logError(
+          'emby-api',
+          `Emby custom query failed: ${response.status} ${response.statusText}`
         );
         return null;
       }
       const data = await response.json();
       if (data.message) {
-        console.error(`     ❌ Emby custom query failed: ${data.message}`);
+        await eventsService.logError('emby-api', `Emby custom query failed: ${data.message}`);
         return null;
       }
 
@@ -503,11 +506,15 @@ export class EmbyService {
     } catch (error) {
       clearTimeout(timeoutId);
       if (error instanceof Error && error.name === 'AbortError') {
-        console.log(
-          `     ⏰ Emby request timed out after ${DEFAULT_TIMEOUT}ms`
+        await eventsService.logWarning(
+          'emby-api',
+          `Emby request timed out after ${DEFAULT_TIMEOUT}ms`
         );
       } else {
-        console.error(`     ❌ Error making custom query request:`, error);
+        await eventsService.logError(
+          'emby-api',
+          `Error making custom query request: ${error instanceof Error ? error.message : String(error)}`
+        );
       }
       return null;
     }

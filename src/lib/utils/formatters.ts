@@ -66,3 +66,16 @@ export const calculateUnwatchedDays = (
   const diffDays = Math.abs(now.diff(referenceLuxonDate, 'days').days);
   return Math.ceil(diffDays);
 };
+
+export const formatRelativeTime = (date?: Date | string | null): string => {
+  if (!date) return 'N/A';
+
+  const luxonDate =
+    typeof date === 'string'
+      ? DateTime.fromISO(date)
+      : DateTime.fromJSDate(date);
+
+  if (!luxonDate.isValid) return 'N/A';
+
+  return luxonDate.toRelative() || 'N/A';
+};

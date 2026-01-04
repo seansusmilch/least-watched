@@ -6,6 +6,7 @@ import {
   getApiV3Movie as getRadarrMovie,
   getApiV3MovieById as getRadarrMovieById,
   getApiV3SystemStatus as getRadarrSystemStatus,
+  deleteApiV3MovieById as deleteRadarrMovieById,
 } from '@/generated/radarr/sdk.gen';
 import type {
   RootFolderResource as RadarrRootFolderResource,
@@ -17,6 +18,7 @@ import {
   DEFAULT_TIMEOUT,
   createFetchWithTimeout,
 } from './shared/api-utils';
+import { eventsService } from './events-service';
 
 export type RadarrMovie = RadarrMovieResource;
 export type RadarrRootFolder = RadarrRootFolderResource;
@@ -81,9 +83,33 @@ export class RadarrApiClient {
       // If we get any result without error, the connection is working
       return result !== null && result !== undefined;
     } catch (error) {
-      console.error(`Radarr ${instance.name} connection test failed:`, error);
+      await eventsService.logError(
+        'radarr-api',
+        `Radarr ${instance.name} connection test failed: ${error instanceof Error ? error.message : String(error)}`
+      );
       return false;
     }
+  }
+
+  async deleteMovie(
+    instance: ServiceSettings,
+    id: number,
+    {
+      deleteFiles = false,
+      addImportExclusion = false,
+    }: { deleteFiles?: boolean; addImportExclusion?: boolean }
+  ) {
+    this.configureClient(instance);
+    return safeApiCall(
+      () =>
+        deleteRadarrMovieById({
+          client: radarrClientRaw,
+          path: { id },
+          query: { deleteFiles, addImportExclusion },
+        }),
+      undefined,
+      `Radarr ${instance.name} movie by ID ${id}`
+    );
   }
 }
 
