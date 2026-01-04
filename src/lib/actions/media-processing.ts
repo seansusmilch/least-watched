@@ -46,7 +46,9 @@ export async function startMediaProcessing(
     processMediaInBackground().catch(async (error) => {
       await eventsService.logError(
         'media-processor',
-        `Background processing failed: ${error instanceof Error ? error.message : String(error)}`
+        `Background processing failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`
       );
     });
 
@@ -79,11 +81,16 @@ async function processMediaInBackground(): Promise<void> {
     const processor = new MediaProcessor(undefined);
     await processor.processAllMedia();
 
-    await eventsService.logInfo('media-processor', 'Background media processing completed successfully');
+    await eventsService.logInfo(
+      'media-processor',
+      'Background media processing completed successfully'
+    );
   } catch (error) {
     await eventsService.logError(
       'media-processor',
-      `Background media processing failed: ${error instanceof Error ? error.message : String(error)}`
+      `Background media processing failed: ${
+        error instanceof Error ? error.message : String(error)
+      }`
     );
     throw error;
   }
@@ -99,7 +106,9 @@ export async function getMediaItems() {
   } catch (error) {
     await eventsService.logError(
       'media-processor',
-      `Failed to get media items: ${error instanceof Error ? error.message : String(error)}`
+      `Failed to get media items: ${
+        error instanceof Error ? error.message : String(error)
+      }`
     );
     return [];
   }
@@ -144,11 +153,9 @@ function processMediaItem(
 
 export async function getProcessedMediaItems() {
   try {
-    const [rawItems, datePreference, deletionScoreSettings] = await Promise.all([
-      getMediaItems(),
-      getDatePreference(),
-      getDeletionScoreSettings(),
-    ]);
+    const [rawItems, datePreference, deletionScoreSettings] = await Promise.all(
+      [getMediaItems(), getDatePreference(), getDeletionScoreSettings()]
+    );
 
     const processedItems = rawItems.map((item) =>
       processMediaItem(item, datePreference, deletionScoreSettings)
@@ -158,7 +165,9 @@ export async function getProcessedMediaItems() {
   } catch (error) {
     await eventsService.logError(
       'media-processor',
-      `Failed to get processed media items: ${error instanceof Error ? error.message : String(error)}`
+      `Failed to get processed media items: ${
+        error instanceof Error ? error.message : String(error)
+      }`
     );
     return [];
   }
@@ -213,7 +222,9 @@ export async function getSelectedFoldersFromDatabase(): Promise<SelectedFoldersF
   } catch (error) {
     await eventsService.logError(
       'media-processor',
-      `Error getting selected folders from database: ${error instanceof Error ? error.message : String(error)}`
+      `Error getting selected folders from database: ${
+        error instanceof Error ? error.message : String(error)
+      }`
     );
     return { sonarrFolders: [], radarrFolders: [] };
   }
@@ -243,7 +254,9 @@ export async function clearMediaItems(): Promise<{
   } catch (error) {
     await eventsService.logError(
       'media-processor',
-      `Failed to clear media items: ${error instanceof Error ? error.message : String(error)}`
+      `Failed to clear media items: ${
+        error instanceof Error ? error.message : String(error)
+      }`
     );
     return {
       success: false,
@@ -264,7 +277,9 @@ export async function checkProcessingComplete(): Promise<boolean> {
   } catch (error) {
     await eventsService.logError(
       'media-processor',
-      `Failed to check processing completion: ${error instanceof Error ? error.message : String(error)}`
+      `Failed to check processing completion: ${
+        error instanceof Error ? error.message : String(error)
+      }`
     );
     return false;
   }
@@ -276,7 +291,9 @@ export async function revalidateAfterProcessing(): Promise<void> {
   } catch (error) {
     await eventsService.logError(
       'media-processor',
-      `Failed to revalidate after processing: ${error instanceof Error ? error.message : String(error)}`
+      `Failed to revalidate after processing: ${
+        error instanceof Error ? error.message : String(error)
+      }`
     );
   }
 }
