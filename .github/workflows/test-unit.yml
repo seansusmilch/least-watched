@@ -26,6 +26,9 @@ jobs:
       - name: Generate Prisma client
         run: bun run db:generate
 
+      - name: Generate API clients
+        run: bun run gen-api:all
+
       - name: Run unit tests
         run: bun run test:unit
 
