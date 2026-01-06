@@ -1,11 +1,11 @@
-import { PrismaClient, Prisma } from '../../generated/prisma';
-import { type ProcessedMediaItem } from './types';
-import { type DeletionScoreSettings } from '../actions/settings/types';
-import { type FolderSpaceData } from '../types/media-processing';
-import { deletionScoreCalculator } from '../deletion-score-calculator';
-import { calculateFolderRemainingSpacePercent } from './constants';
+import { PrismaClient, Prisma } from '@/generated/prisma';
+import { type ProcessedMediaItem } from '@/lib/types/media';
+import { type DeletionScoreSettings } from '@/lib/types/settings';
+import { type FolderSpaceData } from '@/lib/types/media-processing';
+import { deletionScoreCalculator } from '@/lib/deletion-score-calculator';
+import { calculateFolderRemainingSpacePercent } from './utils';
 import { type DatePreference } from '@/lib/types/media';
-import { eventsService } from '../services/events-service';
+import { eventsService } from '@/lib/services/events-service';
 
 const prisma = new PrismaClient();
 

@@ -1,6 +1,6 @@
 import path from 'path';
-import type { ProcessedMediaItem } from './types';
-import type { SonarrSeries, RadarrMovie } from './types';
+import type { ProcessedMediaItem } from '@/lib/types/media';
+import type { SonarrSeries, RadarrMovie } from '@/lib/types/arr';
 import { pickOverview } from '@/lib/utils/text-sanitization';
 
 export function enrichFromRadarr(

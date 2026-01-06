@@ -1,9 +1,9 @@
-import { PrismaClient } from '../../generated/prisma';
-import { deletionScoreCalculator } from '../deletion-score-calculator';
-import { getDeletionScoreSettings } from '../actions/settings';
-import { getDatePreference } from '../actions/settings/app-settings';
-import { folderSpaceService } from './folder-space-service';
-import { type FolderSpaceData } from '../types/media-processing';
+import { PrismaClient } from '@/generated/prisma';
+import { deletionScoreCalculator } from '@/lib/deletion-score-calculator';
+import { getDeletionScoreSettings } from '@/lib/actions/settings';
+import { getDatePreference } from '@/lib/actions/settings/app-settings';
+import { folderSpaceService } from '@/lib/services/folder-space-service';
+import { calculateFolderRemainingSpacePercent } from '@/lib/media-processor/utils';
 
 const prisma = new PrismaClient();
 
@@ -116,7 +116,7 @@ export class DeletionScoreService {
 
         for (const item of items) {
           const folderRemainingSpacePercent =
-            this.calculateFolderRemainingSpacePercent(
+            calculateFolderRemainingSpacePercent(
               item.parentFolder,
               folderSpaceData
             );
@@ -213,31 +213,6 @@ export class DeletionScoreService {
     }
   }
 
-  /**
-   * Calculate folder remaining space percentage for a given parent folder
-   */
-  private calculateFolderRemainingSpacePercent(
-    parentFolder: string | null,
-    folderSpaceData: FolderSpaceData[]
-  ): number | null {
-    if (!parentFolder) return null;
-
-    // Find matching folder space data
-    const matchingFolder = folderSpaceData.find(
-      (folder) =>
-        parentFolder.startsWith(folder.path) ||
-        folder.path.startsWith(parentFolder)
-    );
-
-    if (!matchingFolder || !matchingFolder.totalSpaceGB) {
-      return null;
-    }
-
-    // Calculate remaining space percentage
-    const remainingSpacePercent =
-      (matchingFolder.freeSpaceGB / matchingFolder.totalSpaceGB) * 100;
-    return Math.round(remainingSpacePercent * 100) / 100; // Round to 2 decimal places
-  }
 
   /**
    * Clear all deletion scores (set to null)

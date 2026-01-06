@@ -1,6 +1,6 @@
 'use server';
 import { ProgressStore } from '../media-processor/progress-store';
-import { type MediaProcessingProgress } from '../media-processor/types';
+import { type MediaProcessingProgress } from '@/lib/types/media-processing';
 import { eventsService } from '../services/events-service';
 
 export type ProgressState = 'none' | 'live' | 'completed';

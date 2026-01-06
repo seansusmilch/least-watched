@@ -12,7 +12,7 @@ import {
   type FormState,
 } from '@/lib/validation/schemas';
 import { ZodError } from 'zod';
-import { EmbySettingsInput } from '@/lib/actions/settings/types';
+import { EmbySettingsInput } from '@/lib/types/settings';
 import { type EmbySettings } from '@/lib/utils/single-emby-settings';
 // duplicate import removed
 

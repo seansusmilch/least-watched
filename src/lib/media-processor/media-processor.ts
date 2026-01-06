@@ -1,5 +1,5 @@
 import { sonarrSettingsService, radarrSettingsService } from '@/lib/database';
-import { type DeletionScoreSettings } from '@/lib/actions/settings/types';
+import { type DeletionScoreSettings } from '@/lib/types/settings';
 import { folderSpaceService } from '@/lib/services/folder-space-service';
 import { eventsService } from '@/lib/services/events-service';
 import { ProgressStore } from './progress-store';
@@ -7,9 +7,9 @@ import { MEDIA_PROCESSOR_ITEM_LIMIT } from './constants';
 import { MediaStorage } from './storage';
 import {
   type MediaProcessingProgress,
-  type ProcessedMediaItem,
   type ProcessingRunStats,
-} from './types';
+} from '@/lib/types/media-processing';
+import { type ProcessedMediaItem } from '@/lib/types/media';
 import { getDeletionScoreSettings } from '@/lib/actions/settings';
 import { getDatePreference } from '@/lib/actions/settings/app-settings';
 import { sonarrApiClient } from '@/lib/services/sonarr-service';

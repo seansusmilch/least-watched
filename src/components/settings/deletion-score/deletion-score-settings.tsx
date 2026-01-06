@@ -17,7 +17,7 @@ import {
   getDeletionScoreSettings,
   setDeletionScoreSettings,
 } from '@/lib/actions/settings';
-import type { DeletionScoreSettings } from '@/lib/actions/settings/types';
+import type { DeletionScoreSettings } from '@/lib/types/settings';
 import { SCORING_FACTORS, getDefaultSettings } from './types';
 import { ScoringFactorSection } from './scoring-factor-section';
 import { ScoreDistribution } from './score-distribution';

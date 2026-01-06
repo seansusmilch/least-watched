@@ -10,3 +10,4 @@ alwaysApply: true
 - ALWAYS follow DRY principle. DO NOT REPEAT YOURSELF
 - use proper async/await patterns instead of callbacks
 - ALWAYS use static imports at the top of the file. DO NOT use dynamic imports
+- Properly use the import shortcut '@/' for 'src/'

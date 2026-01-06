@@ -3,7 +3,7 @@ import { type EmbySettings } from '@/lib/utils/single-emby-settings';
 import {
   type EmbyPlaybackInfo,
   type EmbyMetadata,
-} from '@/lib/media-processor/types';
+} from '@/lib/types/media';
 import { eventsService } from './events-service';
 
 const DEFAULT_TIMEOUT = 10000; // 10 seconds

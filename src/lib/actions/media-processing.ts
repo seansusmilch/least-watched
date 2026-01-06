@@ -29,7 +29,7 @@ import { calculateUnwatchedDays } from '@/lib/utils/formatters';
 import { convertMediaItemToScoringFormat } from '@/lib/utils/media-scoring';
 import { getDatePreference } from './settings/app-settings';
 import { getDeletionScoreSettings } from '@/lib/actions/settings';
-import type { DeletionScoreSettings } from '@/lib/actions/settings/types';
+import type { DeletionScoreSettings } from '@/lib/types/settings';
 import { deletionScoreCalculator } from '@/lib/deletion-score-calculator';
 import { eventsService } from '@/lib/services/events-service';
 

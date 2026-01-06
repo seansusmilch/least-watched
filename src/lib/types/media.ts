@@ -186,3 +186,56 @@ export interface ColumnConfig {
   label: string;
   defaultVisible: boolean;
 }
+
+import Emby from 'emby-sdk-stainless';
+
+export type EmbyMetadata = Emby.BaseItem;
+
+export interface EmbyPlaybackInfo {
+  lastWatched?: Date;
+  watchCount?: number;
+  embyId: string;
+  metadata?: EmbyMetadata;
+}
+
+export interface ProcessedMediaItem {
+  title: string;
+  type: 'movie' | 'tv';
+  tmdbId?: number | null;
+  imdbId?: string | null;
+  tvdbId?: number | null;
+  year?: number;
+  mediaPath: string;
+  parentFolder: string;
+  sizeOnDisk: number;
+  dateAddedEmby?: Date;
+  dateAddedArr?: Date;
+  source: string;
+  sonarrId?: number;
+  radarrId?: number;
+  embyId: string;
+  lastWatched?: Date;
+  watchCount?: number;
+
+  quality?: string;
+  qualityScore?: number;
+
+  episodesOnDisk?: number;
+  totalEpisodes?: number;
+  seasonCount?: number;
+  completionPercentage?: number;
+
+  monitored?: boolean;
+
+  imdbRating?: number;
+  tmdbRating?: number;
+
+  playProgress?: number;
+  fullyWatched?: boolean;
+
+  runtime?: number;
+  sizePerHour?: number;
+
+  genres?: string[];
+  overview?: string;
+}

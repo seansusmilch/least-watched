@@ -16,6 +16,7 @@ interface MediaTableWithFiltersProps {
   totalItems: number;
   embyUrl?: string | null;
   embyApiKey?: string | null;
+  fullscreen?: boolean;
 }
 
 export function MediaTableWithFilters({
@@ -27,6 +28,7 @@ export function MediaTableWithFilters({
   totalItems,
   embyUrl,
   embyApiKey,
+  fullscreen = false,
 }: MediaTableWithFiltersProps) {
   const { filters, sortCriteria } = useMediaFilterContext();
 
@@ -48,6 +50,7 @@ export function MediaTableWithFilters({
       totalItems={totalItems}
       embyUrl={embyUrl}
       embyApiKey={embyApiKey}
+      fullscreen={fullscreen}
     />
   );
 }

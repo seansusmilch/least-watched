@@ -13,7 +13,7 @@ import {
   type FormState,
 } from '../../validation/schemas';
 import { ZodError } from 'zod';
-import { RadarrSettingsInput } from './types';
+import { RadarrSettingsInput } from '@/lib/types/settings';
 
 // Radarr Settings Actions
 export async function getRadarrSettings() {

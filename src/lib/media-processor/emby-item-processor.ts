@@ -1,6 +1,6 @@
 import path from 'path';
 import type Emby from 'emby-sdk-stainless';
-import type { ProcessedMediaItem } from './types';
+import type { ProcessedMediaItem } from '@/lib/types/media';
 import { normalizeProviderIds } from './arr-matching';
 import { sanitizeText } from '@/lib/utils/text-sanitization';
 

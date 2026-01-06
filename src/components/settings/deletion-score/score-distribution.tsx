@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { SCORING_FACTORS } from './types';
-import { DeletionScoreSettings } from '@/lib/actions/settings/types';
+import { DeletionScoreSettings } from '@/lib/types/settings';
 
 interface ScoreDistributionProps {
   settings: DeletionScoreSettings;

@@ -1,4 +1,4 @@
-import { DeletionScoreSettings } from './actions/settings/types';
+import { DeletionScoreSettings } from '@/lib/types/settings';
 import type { DatePreference } from './types/media';
 
 export interface MediaItemForScoring {

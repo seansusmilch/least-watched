@@ -1,4 +1,4 @@
-import { type MediaProcessingProgress } from './types';
+import { type MediaProcessingProgress } from '@/lib/types/media-processing';
 
 // Simple in-memory progress store for now
 class ProgressStoreImpl {

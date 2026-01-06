@@ -25,35 +25,3 @@ export const QUALITY_SCORE_MAP: Record<string, number> = {
   SDTV: 30,
   Unknown: 20,
 };
-
-// Utility functions
-export function getQualityScore(quality?: string): number {
-  return QUALITY_SCORE_MAP[quality || 'Unknown'] || 20;
-}
-
-export function calculateFolderRemainingSpacePercent(
-  parentFolder: string | undefined,
-  folderSpaceData: Array<{
-    path: string;
-    totalSpaceGB?: number;
-    freeSpaceGB: number;
-  }>
-): number | null {
-  if (!parentFolder) return null;
-
-  // Find matching folder space data
-  const matchingFolder = folderSpaceData.find(
-    (folder) =>
-      parentFolder.startsWith(folder.path) ||
-      folder.path.startsWith(parentFolder)
-  );
-
-  if (!matchingFolder || !matchingFolder.totalSpaceGB) {
-    return null;
-  }
-
-  // Calculate remaining space percentage
-  const remainingSpacePercent =
-    (matchingFolder.freeSpaceGB / matchingFolder.totalSpaceGB) * 100;
-  return Math.round(remainingSpacePercent * 100) / 100; // Round to 2 decimal places
-}

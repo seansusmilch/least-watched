@@ -7,7 +7,7 @@ import {
   testEmbyConnection,
 } from '@/lib/actions/settings/emby';
 import type { EmbySettings } from '@/lib/utils/single-emby-settings';
-import type { EmbySettingsInput } from '@/lib/actions/settings/types';
+import type { EmbySettingsInput } from '@/lib/types/settings';
 
 export function useEmbySettings() {
   const queryClient = useQueryClient();
