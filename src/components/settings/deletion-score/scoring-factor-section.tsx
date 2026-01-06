@@ -13,8 +13,8 @@ import {
 import {
   Breakpoint,
   DeletionScoreSettings,
-} from '@/lib/actions/settings/types';
-import { ScoringFactor } from './types';
+  ScoringFactor,
+} from '@/lib/types/settings';
 import { BreakpointEditor } from './breakpoint-editor';
 
 interface ScoringFactorSectionProps {

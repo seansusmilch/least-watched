@@ -19,6 +19,9 @@ This document specifies the functional requirements for the Media Items Table an
 11. [Quick Filters](#11-quick-filters)
 12. [Loading States](#12-loading-states)
 13. [Filter UI Organization](#13-filter-ui-organization)
+14. [Media Title Hover Card](#14-media-title-hover-card)
+15. [Deletion Preview and Confirmation](#15-deletion-preview-and-confirmation)
+16. [Fullscreen Mode](#16-fullscreen-mode)
 
 ---
 
@@ -28,6 +31,7 @@ This document specifies the functional requirements for the Media Items Table an
 
 - Media items are fetched using TanStack Query with the query key `['processed-media-items']`.
 - The fetch function is `getProcessedMediaItems()` (server action).
+- Emby settings are fetched with query key `['emby-settings']` via `getEmbySettings()`.
 - Available filter options (genres, qualities, sources, folders) are derived from the fetched items using `getUniqueFilterOptions()`.
 - Filter and sort state is managed via React Context (`MediaFilterProvider`) using the `useMediaFilters` hook.
 - TanStack Table manages internal table state (column visibility, row selection, column filters, global filter) separately from the filter context.
@@ -35,17 +39,18 @@ This document specifies the functional requirements for the Media Items Table an
 
 ### Data Flow
 
-1. `MediaPageClient` fetches data with TanStack Query
+1. `MediaPageClient` fetches data with TanStack Query (media items and Emby settings in parallel)
 2. `getUniqueFilterOptions()` extracts available filter values
 3. `MediaPageContent` wraps content in `MediaFilterProvider`
-4. `MediaTableWithFilters` applies context filters/sorting to items
-5. `MediaTableBase` receives pre-filtered data and manages table-level state
+4. `MediaTableWithFilters` applies context filters/sorting to items via `useMemo`
+5. `MediaTableBase` receives pre-filtered data and manages table-level state via `useMediaTable`
 
 ### Edge Cases
 
 - Empty data set: When no items are returned, the table renders without errors with zero rows.
-- Query refetch: After server-side changes, invalidating `['processed-media-items']` refreshes the UI.
-- Loading state: While `isLoading` is true, skeleton UI is displayed.
+- Query refetch: After server-side changes (e.g., deletion), invalidating `['processed-media-items']`, `['media-items']`, and `['media-summary']` refreshes the UI.
+- Loading state: While `isLoading` is true (either items or Emby settings loading), skeleton UI is displayed.
+- Missing Emby configuration: Table functions without poster URLs when Emby settings are unavailable.
 
 ---
 
@@ -86,6 +91,9 @@ This document specifies the functional requirements for the Media Items Table an
 | `overview`                    | string?      | Description/synopsis                   |
 | `folderRemainingSpacePercent` | number?      | Available space in folder (percentage) |
 | `deletionScore`               | number?      | Calculated deletion priority (0-100)   |
+| `embyId`                      | string?      | Emby identifier for image URLs         |
+| `sonarrId`                    | number?      | Sonarr identifier                      |
+| `radarrId`                    | number?      | Radarr identifier                      |
 
 ### Date Preference System
 
@@ -176,11 +184,18 @@ These continue to work alongside new filters:
 
 Legacy size filter uses: `sizeOnDisk >= parseFloat(minSize) * 1024 * 1024 * 1024`
 
+### Meta Fields
+
+| Field         | Type                   | Behavior                              |
+| ------------- | ---------------------- | ------------------------------------- |
+| filterMode    | `'basic'` / `'advanced'` | Filter UI mode                      |
+| savedPresetId | string?                | ID of currently applied preset        |
+
 ### Watch State Logic
 
 The `applyWatchStateFilter` function determines watch state as follows:
 
-- **isWatched**: `watchCount > 0` OR `lastWatched` is defined (not null/undefined)
+- **isWatched**: `watchCount > 0` OR `lastWatched` is not null/undefined
 - **isPartial**: TV shows only where `completionPercentage > 0 AND completionPercentage < 100`
 - **Watched filter**: Matches if `isWatched AND NOT isPartial`
 - **Unwatched filter**: Matches if `NOT isWatched`
@@ -210,7 +225,7 @@ Folder filters use `isMediaPathInFolder()` which:
 
 All range filters (`applyRangeFilter`) follow this logic:
 
-1. If both `min` and `max` are undefined, match all
+1. If both `min` and `max` are undefined/falsy, match all
 2. If value is `undefined` or `null`, fail the filter when any bound is set
 3. If `min` is set, value must be >= min
 4. If `max` is set, value must be <= max
@@ -231,10 +246,32 @@ Size filter (`applySizeFilter`) converts bytes to specified unit:
 
 - Multiplier: GB = 1024³, MB = 1024²
 - Compares `Number(sizeInBytes) / multiplier` against min/max
+- Returns true if no bounds are set
+- Returns false if `sizeInBytes` is undefined
 
 ### Filter Combination
 
 All filters are AND-combined: an item must match ALL active filters to be included in results.
+
+### Active Filter Count
+
+The UI displays a count of active filters, incrementing for each of:
+- Non-empty search term
+- Non-empty media types set
+- Non-empty sources set
+- Non-empty watch states set
+- Unwatched days range with min or max
+- Size range with min or max
+- Non-empty qualities set
+- Quality score range with min or max
+- Year range with min or max
+- Non-empty genres set
+- IMDB rating range with min or max
+- Runtime range with min or max
+- Completion range with min or max
+- Non-empty folders set
+- Deletion score range with min or max
+- Monitored filter defined (not undefined)
 
 ### Edge Cases
 
@@ -289,7 +326,7 @@ The `sortMediaItems` function handles sorting:
 | Column ID     | Field                | Default Visible | Features                                               |
 | ------------- | -------------------- | --------------- | ------------------------------------------------------ |
 | select        | -                    | Always          | Checkbox, cannot be hidden (`enableHiding: false`)     |
-| title         | title                | Yes             | Sortable, filterable, flex-grows with min-width 200px  |
+| title         | title                | Yes             | Sortable, filterable, flex-grows with min-width 200px, hover card |
 | type          | type                 | Yes             | Badge with icon (Film for movie, Tv for series)        |
 | year          | year                 | No              | Sortable, displays "N/A" when null                     |
 | size          | sizeOnDisk           | Yes             | Formatted using `formatFileSize()` (GB/TB)             |
@@ -360,14 +397,15 @@ The `sortMediaItems` function handles sorting:
 Uses Luxon library via `formatDate()`:
 
 - Accepts Date objects or ISO strings
-- Returns locale-formatted short date
+- Converts strings via `DateTime.fromISO()`, objects via `DateTime.fromJSDate()`
+- Returns locale-formatted short date (`DateTime.DATE_SHORT`)
 - Returns "N/A" for null/invalid dates
 
 ### File Size Formatting
 
 Uses `formatFileSize()`:
 
-- > = 1TB: Display as TB with 2 decimal places
+- >= 1TB: Display as TB with 2 decimal places
 - < 1TB: Display as GB with 1 decimal place
 
 ### Edge Cases
@@ -432,7 +470,8 @@ The `availableColumns` array in `columnConfig.ts` defines:
   - Checked: All rows selected (`table.getIsAllRowsSelected()`)
   - Indeterminate: Some rows selected (`table.getIsSomeRowsSelected()`)
 - Selection badge in header shows: "{count} selected ({formatted size})"
-- Badge only appears when at least one row is selected.
+- Selection controls only appear when at least one row is selected.
+- Delete button appears alongside selection badge when items are selected.
 
 ### Available Helper Functions (from useMediaTable)
 
@@ -481,7 +520,9 @@ rows.reduce((sum, row) => sum + (Number(row.original.sizeOnDisk) || 0), 0)
 
 ```
 const search = String(filterValue ?? '').toLowerCase();
+if (!search) return true;
 const value = row.getValue(columnId);
+if (value === null || value === undefined) return false;
 return String(value).toLowerCase().includes(search);
 ```
 
@@ -490,6 +531,7 @@ return String(value).toLowerCase().includes(search);
 - `null`/`undefined` column values: Returns `false` (excluded from matches).
 - Empty search: Returns `true` for all rows.
 - Only specified columns are searched; other columns ignored.
+- Column not in allowed set: Returns `false` for that column.
 
 ---
 
@@ -500,12 +542,21 @@ return String(value).toLowerCase().includes(search);
 - Uses `@tanstack/react-virtual` for performance with large datasets.
 - Estimated row height: 40px.
 - Overscan: 25 rows above and below viewport.
-- Container height: 70vh.
+- Default container height: 70vh.
+- Fullscreen container height: `calc(100vh - 12rem)`.
 - Horizontal scroll synchronization between header and body.
+
+### Virtualization Configuration
+
+Constants defined in `@/lib/constants/table`:
+- `VIRTUALIZER_CONFIG.estimateSize`: 40
+- `VIRTUALIZER_CONFIG.overscan`: 25
+- `SCROLL_SYNC_THROTTLE_MS`: 10
+- `MIN_TABLE_WIDTH`: 1000
 
 ### Scroll Synchronization
 
-- Uses refs for header and table container elements.
+- Uses `useTableScrollSync` hook with refs for header and table container elements.
 - Throttled sync (10ms minimum between syncs) to prevent jank.
 - Bidirectional: container scroll syncs to header, header scroll syncs to container.
 - Uses passive event listeners for scroll events.
@@ -532,14 +583,14 @@ Each virtual row:
 ### Requirements
 
 - Opens when clicking a deletion score badge in the table.
-- Uses custom event `openDeletionBreakdown` with `{ detail: { item: MediaItem } }` for cross-component communication.
-- Event listener attached to `window` in `MediaTableBase` component.
+- Uses `useDeletionBreakdown` hook that listens for custom event `openDeletionBreakdown` with `{ detail: { item: MediaItem } }`.
+- Event listener attached to `window` in the hook.
 
 ### Dialog Content
 
 1. **Header**: "Deletion Score Breakdown" title with item title in badge
 2. **Overall Score Card**: Score out of 100, progress bar, priority label
-3. **Category Cards**: One for each enabled category
+3. **Category Cards**: One for each enabled category with expandable explanations
 4. **Summary Card**: Usage instructions (shown when categories exist)
 
 ### Score Categories
@@ -555,9 +606,9 @@ Each virtual row:
 ### Category Card Features
 
 - Header: Icon + title + badge showing "pointsEarned/maxPoints"
-- Info button: Toggles detailed explanation
+- Info button: Toggles detailed explanation (managed by `expandedCategories` state)
 - Category-specific details in muted text
-- Expanded explanation in highlighted block
+- Expanded explanation in highlighted block with accent border
 
 ### Priority Labels and Colors
 
@@ -599,8 +650,8 @@ Each virtual row:
 
 - Clicking a quick filter **merges** its filters with current state (does not reset other filters).
 - Uses `applyQuickFilter()` from filter context which spreads new filters over existing state.
-- Quick filters section is collapsible (closed by default via `defaultOpen={false}`).
-- Each preset has an icon field (unused in current UI, shows Zap icon for all).
+- Quick filters section displays with Zap icon and "Quick Filters" heading.
+- Each preset rendered as outline button with rounded-full styling.
 
 ---
 
@@ -609,7 +660,7 @@ Each virtual row:
 ### Requirements
 
 - Skeleton UI shown while data is loading (`isLoading` from TanStack Query).
-- Page-level: Animated pulse div (h-32) + `MediaTableSkeleton` component.
+- Page-level: Animated pulse div (h-32) + `MediaTableSkeleton` component (not shown in fullscreen mode).
 - Skeleton matches table structure with placeholder rows.
 - 8 skeleton rows displayed during load.
 
@@ -626,92 +677,166 @@ Each virtual row:
 
 ### Component Structure
 
-The `MediaFiltersClient` component is displayed in a **Sheet (Side Drawer)**, organized as follows:
+The `MediaFiltersClient` component is displayed in a **Sheet (Side Drawer)** from the right side, organized as follows:
 
 ### 1. Sheet Header
 
 - Title: "Filters" with Filter icon
-- Description: Active filter count or default text
-- Action: "Reset" button (appears when filters are active)
+- Description: Active filter count or "Refine your media list"
+- Action: "Reset" button with RotateCcw icon (appears when filters are active)
 
 ### 2. Scrollable Content Area
 
 **Active Filters Display:**
 
 - Displays a list of dismissible badges (chips) for all currently active filters.
-- Allows users to quickly remove specific filters without navigating the accordions.
+- Each badge shows filter label and X icon.
+- Clicking badge removes that specific filter.
+- Heading: "Active Filters" in muted text.
 
 **Quick Filters:**
 
-- Horizontal wrap of chips (buttons) for presets like "Unwatched", "Large Files", etc.
+- Horizontal wrap of outline buttons for presets.
+- Heading: "Quick Filters" with Zap icon.
 
 **Filter Sections (Accordion):**
-The filters are grouped into expandable accordion sections. "Common Filters" is open by default.
+The filters are grouped into expandable accordion sections. "Common Filters" is open by default (`defaultValue={['common']}`).
 
-1.  **Common Filters**
+1.  **Common Filters** (default open)
 
-    - Search Title input + Search Type selector
-    - Media Types (Movies/TV)
-    - Sources
-    - Root Folders
+    - Search Title input with search icon + Search Type selector (Contains/Exact/Regex)
+    - Media Types (Movies/TV) via MultiSelect
+    - Sources via MultiSelect
+    - Root Folders via MultiSelect
 
-2.  **Watch Status**
+2.  **Watch Status** (Eye icon)
 
-    - Watch States (Watched/Unwatched/Partial)
-    - Unwatched Days slider
+    - Watch States (Watched/Unwatched/Partial) via MultiSelect
+    - Unwatched Days slider (0-1000)
 
-3.  **Quality & Size**
+3.  **Quality & Size** (HardDrive icon)
 
-    - Qualities
-    - Quality Score slider
-    - Size slider (GB)
+    - Qualities via MultiSelect
+    - Quality Score slider (0-100)
+    - Size slider (0-100 GB)
 
-4.  **Content Details**
+4.  **Content Details** (Star icon)
 
-    - Genres
-    - Year slider
-    - Runtime slider
+    - Genres via MultiSelect
+    - Year slider (1900-current year)
+    - Runtime slider (0-300 min)
 
-5.  **TV Specific**
+5.  **TV Specific** (Tv icon)
 
     - "Only Monitored" switch
-    - Completion % slider
-    - Season Count slider
+    - Completion % slider (0-100)
+    - Seasons slider (1-20)
 
-6.  **Management**
-    - Deletion Score slider
+6.  **Management** (Settings icon)
+    - Deletion Score slider (0-100)
 
 ### 3. Sheet Footer
 
 - Status text: "Showing {totalItems} items matching filters"
+- Background: muted/20 with top border
 
 ### UI Patterns
 
-- **Sheet**: Slides in from the right, better for mobile.
-- **Accordion**: Keeps the UI clean by hiding less common filters.
+- **Sheet**: Slides in from the right, max-width md on desktop.
+- **Accordion**: Multiple sections can be open simultaneously (`type='multiple'`).
 - **ScrollArea**: Ensures filters are accessible on small screens.
-- **Reset Button**: One-click clear all.
+- **RangeSlider**: Custom component for dual-thumb sliders with min/max display.
+- **Reset Button**: One-click clear all filters.
 
 ---
 
-## File Reference
+## 14. Media Title Hover Card
 
-| Purpose            | File Path                                                            |
-| ------------------ | -------------------------------------------------------------------- |
-| Types              | `src/lib/types/media.ts`                                             |
-| Filter logic       | `src/lib/utils/mediaFilters.ts`                                      |
-| Filter hook        | `src/hooks/useMediaFilters.ts`                                       |
-| Filter context     | `src/components/media/filters/MediaFilterProvider.tsx`               |
-| Filter UI          | `src/components/media/filters/MediaFiltersClient.tsx`                |
-| Table hook         | `src/hooks/useMediaTable.ts`                                         |
-| Table columns      | `src/components/media/table/mediaTableColumns.tsx`                   |
-| Table base         | `src/components/media/table/MediaTableBase.tsx`                      |
-| Table with filters | `src/components/media/table/MediaTableWithFilters.tsx`               |
-| Column config      | `src/lib/utils/columnConfig.ts`                                      |
-| Column dropdown    | `src/components/media/table/ColumnVisibilityDropdown.tsx`            |
-| Skeleton           | `src/components/media/table/MediaTableSkeleton.tsx`                  |
-| Score breakdown    | `src/components/media/summary/DeletionScoreBreakdown.tsx`            |
-| Page client        | `src/components/media/MediaPageClient.tsx`                           |
-| Page content       | `src/components/media/MediaPageContent.tsx`                          |
-| Formatters         | `src/lib/utils/formatters.ts`                                        |
-| Path utils         | `src/lib/utils.ts` (isMediaPathInFolder, normalizePathForComparison) |
+### Requirements
+
+- Displays on hover over media item title in the table.
+- Opens after 300ms delay, closes after 100ms delay.
+- Only shows if item has poster URL (Emby configured with embyId) or overview.
+
+### Content Structure
+
+1. **Poster Image**: Left side, 140px width on desktop, full width on mobile
+2. **Header**: Title, type badge with icon, year, quality badge
+3. **Stats**: IMDb rating, TMDB rating, runtime, watch count, size on disk
+4. **TV Show Info**: Season count and episodes on disk (TV only)
+5. **Genre Badges**: Up to displayed genres as badges
+6. **Overview**: Description text, line-clamped to 3-4 lines
+
+### Edge Cases
+
+- No Emby configuration: Title renders as plain text without hover functionality.
+- No overview and no poster: Title renders as plain text.
+- Image load error: Handled gracefully (image hidden on error).
+
+---
+
+## 15. Deletion Preview and Confirmation
+
+### Requirements
+
+- Opens when Delete button is clicked with items selected.
+- Shows all selected items with their posters and deletion scores.
+- Requires explicit confirmation before deletion.
+
+### Dialog Content
+
+1. **Header**: Warning icon with "Confirm Deletion" title in destructive color
+2. **Description**: Item count and warning message
+3. **Items List**: Scrollable area with each item showing:
+   - Poster image (or placeholder icon)
+   - Title
+   - Deletion score badge (clickable to open breakdown)
+   - Top 3 scoring factors with values
+4. **Summary**: Item count and total size to be freed
+5. **Footer**: Cancel and Delete buttons
+
+### Deletion Score Display in Preview
+
+- Calculates scores for all items on dialog open
+- Uses cancellation ref to handle dialog close during calculation
+- Shows loading spinner while calculating
+- Displays top 3 contributing factors (sorted by points earned)
+
+### Post-Deletion Behavior
+
+1. Dialog closes
+2. Invalidates queries: `['media-items']`, `['processed-media-items']`, `['media-summary']`
+3. Refetches active `['media-items']` queries
+4. Resets row selection
+5. Shows toast notification:
+   - Success: "Successfully deleted X items (Y Sonarr, Z Radarr)"
+   - Partial: Warning with success and failure counts
+   - Failure: Error toast
+
+---
+
+## 16. Fullscreen Mode
+
+### Requirements
+
+- Table can display in fullscreen mode via dedicated `/media` route.
+- Fullscreen mode adjusts table height to fill available viewport.
+- Navigation button changes based on mode.
+
+### Visual Differences
+
+| Aspect           | Normal Mode        | Fullscreen Mode                |
+| ---------------- | ------------------ | ------------------------------ |
+| Table Height     | 70vh               | calc(100vh - 12rem)            |
+| Container        | space-y-6          | h-full flex flex-col           |
+| Card             | default            | h-full flex flex-col           |
+| Card Content     | default            | flex-1 min-h-0                 |
+| Navigation       | "Expand" → /media  | "Back to Dashboard" → /        |
+| Loading Skeleton | With summary pulse | Without summary pulse          |
+
+### Navigation
+
+- Normal mode: Shows Maximize2 icon with "Expand" linking to `/media`
+- Fullscreen mode: Shows ArrowLeft icon with "Back to Dashboard" linking to `/`
+
+---

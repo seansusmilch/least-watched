@@ -1,16 +1,7 @@
-import { type DeletionScoreSettings } from '@/lib/actions/settings/types';
-
-export interface ScoringFactor {
-  key: string;
-  title: string;
-  description: string;
-  enabledKey: keyof DeletionScoreSettings;
-  maxPointsKey: keyof DeletionScoreSettings;
-  maxPoints: number;
-  color: string;
-  breakdownsKey?: keyof DeletionScoreSettings;
-  breakdownUnit?: string;
-}
+import {
+  type DeletionScoreSettings,
+  type ScoringFactor,
+} from '@/lib/types/settings';
 
 // Scoring factor configurations
 export const SCORING_FACTORS: ScoringFactor[] = [

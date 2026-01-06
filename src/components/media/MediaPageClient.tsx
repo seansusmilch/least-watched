@@ -7,7 +7,11 @@ import { getProcessedMediaItems } from '@/lib/actions/media-processing';
 import { getUniqueFilterOptions } from '@/lib/utils/mediaFilters';
 import { getEmbySettings } from '@/lib/actions/settings/emby';
 
-export function MediaPageClient() {
+interface MediaPageClientProps {
+  fullscreen?: boolean;
+}
+
+export function MediaPageClient({ fullscreen = false }: MediaPageClientProps) {
   const { data: processedItems = [], isLoading: itemsLoading } = useQuery({
     queryKey: ['processed-media-items'],
     queryFn: getProcessedMediaItems,
@@ -23,7 +27,7 @@ export function MediaPageClient() {
   if (isLoading) {
     return (
       <div className='space-y-6'>
-        <div className='h-32 bg-muted animate-pulse rounded' />
+        {!fullscreen && <div className='h-32 bg-muted animate-pulse rounded' />}
         <MediaTableSkeleton />
       </div>
     );
@@ -40,6 +44,7 @@ export function MediaPageClient() {
       availableFolders={filterOptions.folders}
       embyUrl={embySettings?.url}
       embyApiKey={embySettings?.apiKey}
+      fullscreen={fullscreen}
     />
   );
 }

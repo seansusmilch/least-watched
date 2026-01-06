@@ -1,4 +1,4 @@
-import type { SonarrSeries, RadarrMovie } from './types';
+import type { SonarrSeries, RadarrMovie } from '@/lib/types/arr';
 
 export interface ArrMaps {
   tvMapByTvdb: Map<number, SonarrSeries>;

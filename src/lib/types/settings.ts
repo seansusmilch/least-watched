@@ -1,4 +1,3 @@
-// Shared types for settings actions
 export type SonarrSettingsInput = {
   name: string;
   url: string;
@@ -20,9 +19,7 @@ export type EmbySettingsInput = {
   url: string;
   apiKey: string;
   enabled?: boolean;
-  // New preferred field
   selectedLibraries?: string[];
-  // Backward compatibility (deprecated)
   selectedFolders?: string[];
 };
 
@@ -43,7 +40,7 @@ export type AppSetting = {
 
 export interface BatchSettings {
   batchSize: number;
-  delayBetweenBatches: number; // milliseconds
+  delayBetweenBatches: number;
 }
 
 export interface Breakpoint {
@@ -54,26 +51,21 @@ export interface Breakpoint {
 export interface DeletionScoreSettings {
   enabled: boolean;
 
-  // Days Unwatched Factor
   daysUnwatchedEnabled: boolean;
   daysUnwatchedMaxPoints: number;
   daysUnwatchedBreakpoints: Breakpoint[];
 
-  // Never Watched Bonus
   neverWatchedEnabled: boolean;
   neverWatchedPoints: number;
 
-  // Size on Disk Factor
   sizeOnDiskEnabled: boolean;
   sizeOnDiskMaxPoints: number;
   sizeOnDiskBreakpoints: Breakpoint[];
 
-  // Age Since Added Factor
   ageSinceAddedEnabled: boolean;
   ageSinceAddedMaxPoints: number;
   ageSinceAddedBreakpoints: Breakpoint[];
 
-  // Folder Space Factor
   folderSpaceEnabled: boolean;
   folderSpaceMaxPoints: number;
   folderSpaceBreakpoints: Breakpoint[];
@@ -108,4 +100,16 @@ export interface DiskSpaceResponse {
     path: string;
     size: number;
   }>;
+}
+
+export interface ScoringFactor {
+  key: string;
+  title: string;
+  description: string;
+  enabledKey: keyof DeletionScoreSettings;
+  maxPointsKey: keyof DeletionScoreSettings;
+  maxPoints: number;
+  color: string;
+  breakdownsKey?: keyof DeletionScoreSettings;
+  breakdownUnit?: string;
 }

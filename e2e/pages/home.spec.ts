@@ -22,8 +22,13 @@ test.describe('Home Page - Media Table', () => {
   });
 
   test('should navigate to settings page', async ({ page }) => {
-    await page.getByRole('link', { name: 'Settings' }).click();
-    await expect(page).toHaveURL(/\/settings/);
+    await page.waitForLoadState('networkidle');
+    const settingsLink = page.getByRole('link', { name: 'Settings' });
+    await expect(settingsLink).toBeVisible({ timeout: 10000 });
+    await Promise.all([
+      page.waitForURL(/\/settings/, { timeout: 10000 }),
+      settingsLink.click(),
+    ]);
     await page.waitForLoadState('networkidle');
     await expect(
       page.getByRole('heading', { name: 'Settings', exact: true }).first()
@@ -60,23 +65,37 @@ test.describe('Home Page - Page Actions', () => {
 test.describe('Navigation', () => {
   test('should navigate between pages using sidebar', async ({ page }) => {
     await page.goto('/');
+    await page.waitForLoadState('networkidle');
 
-    await page.getByRole('link', { name: 'Settings' }).click();
-    await expect(page).toHaveURL(/\/settings/);
+    const settingsLink = page.getByRole('link', { name: 'Settings' });
+    await expect(settingsLink).toBeVisible({ timeout: 10000 });
+    await Promise.all([
+      page.waitForURL(/\/settings/, { timeout: 10000 }),
+      settingsLink.click(),
+    ]);
 
-    await page.getByRole('link', { name: 'Least Watched' }).first().click();
-    await expect(page).toHaveURL('/');
+    await page.waitForLoadState('networkidle');
+    const homeLink = page.getByRole('link', { name: 'Least Watched' }).first();
+    await expect(homeLink).toBeVisible({ timeout: 10000 });
+    await Promise.all([
+      page.waitForURL('/', { timeout: 10000 }),
+      homeLink.click(),
+    ]);
   });
 
   test('should preserve page state on navigation', async ({ page }) => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
-    await page.getByRole('link', { name: 'Settings' }).click();
-    await expect(page).toHaveURL(/\/settings/);
+    const settingsLink = page.getByRole('link', { name: 'Settings' });
+    await expect(settingsLink).toBeVisible({ timeout: 10000 });
+    await Promise.all([
+      page.waitForURL(/\/settings/, { timeout: 10000 }),
+      settingsLink.click(),
+    ]);
 
     await page.goBack();
-    await expect(page).toHaveURL('/');
+    await page.waitForURL('/', { timeout: 10000 });
     await expect(
       page.getByRole('heading', { name: 'Least Watched' })
     ).toBeVisible();

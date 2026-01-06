@@ -1,24 +1,41 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { flexRender, Table as TanStackTable } from '@tanstack/react-table';
 import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Film, SortAsc, SortDesc, Search, Filter, Trash2 } from 'lucide-react';
+import { Film, Search, Filter } from 'lucide-react';
 import { toast } from 'sonner';
 import { MediaFiltersClient } from '../filters/MediaFiltersClient';
 import { MediaItem } from '@/lib/types/media';
-import { formatFileSize } from '@/lib/utils/formatters';
 import { DeletionScoreBreakdown } from '../summary/DeletionScoreBreakdown';
 import { ColumnVisibilityDropdown } from './ColumnVisibilityDropdown';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { cn } from '@/lib/utils';
 import { DeletionPreviewDialog } from './DeletionPreviewDialog';
 import { deleteMediaItems } from '@/lib/actions/media-items';
+import { MediaTableNavigationButton } from './MediaTableNavigationButton';
+import { MediaTableSelectionControls } from './MediaTableSelectionControls';
+import { MediaTableSortIcon } from './MediaTableSortIcon';
+import { cn } from '@/lib/utils';
+import {
+  getCardClasses,
+  getCardContentClasses,
+  getTableHeightClass,
+} from '@/lib/utils/tableStyles';
+import {
+  getHeaderCellClasses,
+  getCellClasses,
+  getFixedColumnStyles,
+} from '@/lib/utils/tableCellStyles';
+import { useTableScrollSync } from '@/hooks/useTableScrollSync';
+import { useDeletionBreakdown } from '@/hooks/useDeletionBreakdown';
+import {
+  VIRTUALIZER_CONFIG,
+  MIN_TABLE_WIDTH,
+} from '@/lib/constants/table';
 
 interface MediaTableBaseProps {
   table: TanStackTable<MediaItem>;
@@ -29,6 +46,7 @@ interface MediaTableBaseProps {
   totalItems: number;
   embyUrl?: string | null;
   embyApiKey?: string | null;
+  fullscreen?: boolean;
 }
 
 export function MediaTableBase({
@@ -40,10 +58,11 @@ export function MediaTableBase({
   totalItems,
   embyUrl,
   embyApiKey,
+  fullscreen = false,
 }: MediaTableBaseProps) {
   const queryClient = useQueryClient();
-  const [breakdownItem, setBreakdownItem] = useState<MediaItem | null>(null);
-  const [showBreakdown, setShowBreakdown] = useState(false);
+  const { breakdownItem, showBreakdown, handleCloseBreakdown } =
+    useDeletionBreakdown();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [columnPopoverOpen, setColumnPopoverOpen] = useState(false);
 
@@ -61,73 +80,18 @@ export function MediaTableBase({
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => tableContainerRef.current,
-    estimateSize: () => 40,
-    overscan: 25,
+    estimateSize: () => VIRTUALIZER_CONFIG.estimateSize,
+    overscan: VIRTUALIZER_CONFIG.overscan,
   });
 
   const totalWidth = table
     .getVisibleLeafColumns()
     .reduce((sum, col) => sum + col.getSize(), 0);
 
-  const minTableWidth = Math.max(totalWidth, 1000);
+  const minTableWidth = Math.max(totalWidth, MIN_TABLE_WIDTH);
 
-  useEffect(() => {
-    const container = tableContainerRef.current;
-    const header = headerRef.current;
+  useTableScrollSync(tableContainerRef, headerRef);
 
-    if (!container || !header) return;
-
-    let lastScrollTime = 0;
-
-    const syncScroll = (source: HTMLElement, target: HTMLElement) => {
-      const now = Date.now();
-      if (now - lastScrollTime < 10) return;
-
-      lastScrollTime = now;
-
-      if (target.scrollLeft !== source.scrollLeft) {
-        target.scrollLeft = source.scrollLeft;
-      }
-    };
-
-    const handleContainerScroll = () => syncScroll(container, header);
-    const handleHeaderScroll = () => syncScroll(header, container);
-
-    container.addEventListener('scroll', handleContainerScroll, {
-      passive: true,
-    });
-    header.addEventListener('scroll', handleHeaderScroll, {
-      passive: true,
-    });
-
-    return () => {
-      container.removeEventListener('scroll', handleContainerScroll);
-      header.removeEventListener('scroll', handleHeaderScroll);
-    };
-  }, []);
-
-  useEffect(() => {
-    const handleOpenBreakdown = (event: CustomEvent) => {
-      setBreakdownItem(event.detail.item);
-      setShowBreakdown(true);
-    };
-
-    window.addEventListener(
-      'openDeletionBreakdown',
-      handleOpenBreakdown as EventListener
-    );
-    return () => {
-      window.removeEventListener(
-        'openDeletionBreakdown',
-        handleOpenBreakdown as EventListener
-      );
-    };
-  }, []);
-
-  const handleCloseBreakdown = () => {
-    setShowBreakdown(false);
-    setBreakdownItem(null);
-  };
 
   const handleDeleteClick = () => {
     setShowDeleteDialog(true);
@@ -163,52 +127,36 @@ export function MediaTableBase({
     }
   };
 
-  const getSortIcon = (isSorted: false | 'asc' | 'desc') => {
-    if (isSorted === 'asc') {
-      return <SortAsc className='h-4 w-4 ml-1' />;
-    } else if (isSorted === 'desc') {
-      return <SortDesc className='h-4 w-4 ml-1' />;
-    }
-    return null;
-  };
-
   return (
-    <Card>
+    <Card className={getCardClasses(fullscreen)}>
       <CardHeader>
-        <div className='flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between'>
+        <div className='flex flex-row items-center justify-between'>
           <CardTitle className='flex items-center space-x-2'>
             <Film className='h-5 w-5' />
             <span>Media Items</span>
           </CardTitle>
-          <div className='flex flex-col gap-3 lg:flex-row lg:items-center'>
-            {selectedTableRows.length > 0 && (
-              <div className='flex items-center justify-between md:justify-start gap-2 p-1 md:p-0'>
-                <Badge variant='secondary' className='whitespace-nowrap'>
-                  {selectedTableRows.length} selected (
-                  {formatFileSize(selectedSize)})
-                </Badge>
-                <Button
-                  variant='destructive'
-                  size='sm'
-                  onClick={handleDeleteClick}
-                  className='h-7'
-                >
-                  <Trash2 className='h-3 w-3 mr-1' />
-                  Delete
-                </Button>
-              </div>
-            )}
-            <div className='flex items-center gap-2 w-full md:w-auto'>
-              <div className='relative flex-1 md:flex-none'>
-                <Search className='absolute left-2 top-2.5 h-4 w-4 text-muted-foreground' />
-                <Input
-                  aria-label='Search media'
-                  placeholder='Search...'
-                  value={(table.getState().globalFilter as string) ?? ''}
-                  onChange={(e) => table.setGlobalFilter(e.target.value)}
-                  className='h-8 w-full md:w-[200px] pl-8'
-                />
-              </div>
+          {!fullscreen && (
+            <MediaTableNavigationButton fullscreen={fullscreen} />
+          )}
+        </div>
+        <div className='flex flex-col gap-3'>
+          <MediaTableSelectionControls
+            selectedCount={selectedTableRows.length}
+            selectedSize={selectedSize}
+            onDeleteClick={handleDeleteClick}
+          />
+          <div className='flex items-center gap-2 w-full'>
+            <div className='relative flex-1 md:flex-none'>
+              <Search className='absolute left-2 top-2.5 h-4 w-4 text-muted-foreground' />
+              <Input
+                aria-label='Search media'
+                placeholder='Search...'
+                value={(table.getState().globalFilter as string) ?? ''}
+                onChange={(e) => table.setGlobalFilter(e.target.value)}
+                className='h-8 w-full md:w-[200px] pl-8'
+              />
+            </div>
+            <div className='flex items-center gap-2 ml-auto'>
               <Sheet>
                 <SheetTrigger asChild>
                   <Button variant='outline' size='sm' aria-label='Open filters'>
@@ -234,8 +182,8 @@ export function MediaTableBase({
           </div>
         </div>
       </CardHeader>
-      <CardContent>
-        <div className='rounded-md border'>
+      <CardContent className={getCardContentClasses(fullscreen)}>
+        <div className='rounded-md border h-full flex flex-col'>
           <div
             ref={headerRef}
             className='border-b bg-background sticky top-0 z-10 overflow-x-auto scrollbar-hide'
@@ -253,24 +201,12 @@ export function MediaTableBase({
                     return (
                       <div
                         key={header.id}
-                        className={cn(
-                          'flex items-center px-4 py-2 font-medium text-left',
-                          isTitle && 'flex-1 min-w-[200px]',
+                        className={getHeaderCellClasses(
+                          isTitle,
                           header.column.getCanSort()
-                            ? 'cursor-pointer select-none hover:bg-muted/50'
-                            : ''
                         )}
                         onClick={header.column.getToggleSortingHandler()}
-                        style={
-                          isTitle
-                            ? {}
-                            : {
-                                width: `${header.column.getSize()}px`,
-                                minWidth: `${header.column.getSize()}px`,
-                                maxWidth: `${header.column.getSize()}px`,
-                                flex: 'none',
-                              }
-                        }
+                        style={isTitle ? {} : getFixedColumnStyles(header.column.getSize())}
                       >
                         {header.isPlaceholder ? null : (
                           <div className='flex items-center'>
@@ -278,7 +214,9 @@ export function MediaTableBase({
                               header.column.columnDef.header,
                               header.getContext()
                             )}
-                            {getSortIcon(header.column.getIsSorted())}
+                            <MediaTableSortIcon
+                              sortState={header.column.getIsSorted()}
+                            />
                           </div>
                         )}
                       </div>
@@ -292,7 +230,10 @@ export function MediaTableBase({
           <div
             data-testid='media-table'
             ref={tableContainerRef}
-            className='h-[70vh] scrollbar-hide overflow-auto'
+            className={cn(
+              'scrollbar-hide overflow-auto flex-1',
+              getTableHeightClass(fullscreen)
+            )}
           >
             <div
               style={{
@@ -324,20 +265,8 @@ export function MediaTableBase({
                       return (
                         <div
                           key={cell.id}
-                          className={cn(
-                            'flex items-center px-4 py-2',
-                            isTitle && 'flex-1 min-w-[200px]'
-                          )}
-                          style={
-                            isTitle
-                              ? {}
-                              : {
-                                  width: `${cell.column.getSize()}px`,
-                                  minWidth: `${cell.column.getSize()}px`,
-                                  maxWidth: `${cell.column.getSize()}px`,
-                                  flex: 'none',
-                                }
-                          }
+                          className={getCellClasses(isTitle)}
+                          style={isTitle ? {} : getFixedColumnStyles(cell.column.getSize())}
                         >
                           {flexRender(
                             cell.column.columnDef.cell,

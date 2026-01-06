@@ -11,8 +11,8 @@ import {
 import type {
   RootFolderResource as SonarrRootFolderResource,
   DiskSpaceResource as SonarrDiskSpaceResource,
-  SeriesResource as SonarrSeriesResource,
 } from '@/generated/sonarr/types.gen';
+import type { SonarrSeries } from '@/lib/types/arr';
 import {
   safeApiCall,
   DEFAULT_TIMEOUT,
@@ -20,7 +20,7 @@ import {
 } from './shared/api-utils';
 import { eventsService } from './events-service';
 
-export type SonarrSeries = SonarrSeriesResource;
+export type { SonarrSeries } from '@/lib/types/arr';
 export type SonarrRootFolder = SonarrRootFolderResource;
 export type SonarrDiskSpace = SonarrDiskSpaceResource;
 
@@ -55,7 +55,7 @@ export class SonarrApiClient {
     );
   }
 
-  async getSeries(instance: ServiceSettings): Promise<SonarrSeriesResource[]> {
+  async getSeries(instance: ServiceSettings): Promise<SonarrSeries[]> {
     this.configureClient(instance);
     return safeApiCall(
       () => getSonarrSeries({ client: sonarrClientRaw }),
@@ -67,7 +67,7 @@ export class SonarrApiClient {
   async getSeriesById(
     instance: ServiceSettings,
     id: number
-  ): Promise<SonarrSeriesResource | null> {
+  ): Promise<SonarrSeries | null> {
     this.configureClient(instance);
     return safeApiCall(
       () => getSonarrSeriesById({ client: sonarrClientRaw, path: { id } }),

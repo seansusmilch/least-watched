@@ -6,7 +6,7 @@ import {
   setAppSetting,
   triggerDeletionScoreRecalculation,
 } from './app-settings';
-import type { DeletionScoreSettings, Breakpoint } from './types';
+import type { DeletionScoreSettings, Breakpoint } from '@/lib/types/settings';
 import { appSettingsService } from '@/lib/database';
 
 const DEFAULT_DELETION_SCORE_SETTINGS: DeletionScoreSettings = {

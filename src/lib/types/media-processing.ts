@@ -78,3 +78,32 @@ export interface FolderWithSpaceEnhanced extends FolderWithSpace {
   driveRoot?: string; // Root drive path (e.g., "C:\", "/")
   isSystemDrive?: boolean; // Whether this is a system drive
 }
+
+export interface MediaProcessingProgress {
+  phase: string;
+  current: number;
+  total: number;
+  currentItem: string;
+  percentage: number;
+  isComplete?: boolean;
+  error?: string;
+}
+
+export interface ItemProcessingStats {
+  timeMs: number;
+  arrMatch: 'sonarr' | 'radarr' | 'none';
+  playbackFound: boolean;
+  deletionScore: number;
+  sizeOnDisk: number;
+}
+
+export interface ProcessingRunStats {
+  totalTimeMs: number;
+  itemsProcessed: number;
+  itemsWithArrMatch: number;
+  itemsWithPlayback: number;
+  avgTimePerItemMs: number;
+  embyItemsFetched: number;
+  sonarrSeriesFetched: number;
+  radarrMoviesFetched: number;
+}

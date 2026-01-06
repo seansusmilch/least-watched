@@ -1,7 +1,7 @@
 'use server';
 
 import { sonarrSettingsService, radarrSettingsService } from '@/lib/database';
-import type { FolderInfo } from './types';
+import type { FolderInfo } from '@/lib/types/settings';
 import { sonarrApiClient } from '@/lib/services/sonarr-service';
 import { radarrApiClient } from '@/lib/services/radarr-service';
 import type {

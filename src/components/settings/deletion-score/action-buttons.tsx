@@ -18,7 +18,7 @@ import { toast } from 'sonner';
 import {
   Breakpoint,
   DeletionScoreSettings,
-} from '@/lib/actions/settings/types';
+} from '@/lib/types/settings';
 
 interface ActionButtonsProps {
   settings: DeletionScoreSettings;

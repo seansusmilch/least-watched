@@ -13,7 +13,7 @@ import {
   type FormState,
 } from '../../validation/schemas';
 import { ZodError } from 'zod';
-import { SonarrSettingsInput } from './types';
+import { SonarrSettingsInput } from '@/lib/types/settings';
 
 // Sonarr Settings Actions
 export async function getSonarrSettings() {

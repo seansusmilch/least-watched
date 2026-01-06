@@ -3,6 +3,7 @@
 import { MediaFilterProvider } from './filters/MediaFilterProvider';
 import { MediaTableWithFilters } from './table/MediaTableWithFilters';
 import { MediaItem } from '@/lib/types/media';
+import { getContainerClasses } from '@/lib/utils/tableStyles';
 
 interface MediaPageContentProps {
   items: MediaItem[];
@@ -12,6 +13,7 @@ interface MediaPageContentProps {
   availableFolders: string[];
   embyUrl?: string | null;
   embyApiKey?: string | null;
+  fullscreen?: boolean;
 }
 
 export function MediaPageContent({
@@ -22,11 +24,11 @@ export function MediaPageContent({
   availableFolders,
   embyUrl,
   embyApiKey,
+  fullscreen = false,
 }: MediaPageContentProps) {
   return (
     <MediaFilterProvider>
-      <div className='space-y-6'>
-        {/* Media Table with Filtering and Filters Popover */}
+      <div className={getContainerClasses(fullscreen)}>
         <MediaTableWithFilters
           items={items}
           availableGenres={availableGenres}
@@ -36,6 +38,7 @@ export function MediaPageContent({
           totalItems={items.length}
           embyUrl={embyUrl}
           embyApiKey={embyApiKey}
+          fullscreen={fullscreen}
         />
       </div>
     </MediaFilterProvider>

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { Trash2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
-import { Breakpoint } from '@/lib/actions/settings/types';
+import { Breakpoint } from '@/lib/types/settings';
 import { getActualPoints } from './types';
 
 interface BreakpointEditorProps {

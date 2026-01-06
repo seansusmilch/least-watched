@@ -11,7 +11,6 @@ import {
 import type {
   RootFolderResource as RadarrRootFolderResource,
   DiskSpaceResource as RadarrDiskSpaceResource,
-  MovieResource as RadarrMovieResource,
 } from '@/generated/radarr/types.gen';
 import {
   safeApiCall,
@@ -19,8 +18,9 @@ import {
   createFetchWithTimeout,
 } from './shared/api-utils';
 import { eventsService } from './events-service';
+import type { RadarrMovie } from '@/lib/types/arr';
 
-export type RadarrMovie = RadarrMovieResource;
+export type { RadarrMovie };
 export type RadarrRootFolder = RadarrRootFolderResource;
 export type RadarrDiskSpace = RadarrDiskSpaceResource;
 
@@ -55,7 +55,7 @@ export class RadarrApiClient {
     );
   }
 
-  async getMovies(instance: ServiceSettings): Promise<RadarrMovieResource[]> {
+  async getMovies(instance: ServiceSettings): Promise<RadarrMovie[]> {
     this.configureClient(instance);
     return safeApiCall(
       () => getRadarrMovie({ client: radarrClientRaw }),
@@ -67,7 +67,7 @@ export class RadarrApiClient {
   async getMovieById(
     instance: ServiceSettings,
     id: number
-  ): Promise<RadarrMovieResource | null> {
+  ): Promise<RadarrMovie | null> {
     this.configureClient(instance);
     return safeApiCall(
       () => getRadarrMovieById({ client: radarrClientRaw, path: { id } }),
