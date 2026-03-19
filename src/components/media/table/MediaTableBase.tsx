@@ -235,10 +235,10 @@ export function MediaTableBase({
         </div>
       </CardHeader>
       <CardContent>
-        <div className='rounded-md border'>
+        <div className='rounded-md border flex flex-col h-[70vh]'>
           <div
             ref={headerRef}
-            className='border-b bg-background sticky top-0 z-10 overflow-x-auto scrollbar-hide'
+            className='border-b bg-background sticky top-0 z-10 overflow-x-auto scrollbar-hide flex-shrink-0'
             style={{
               scrollbarWidth: 'none',
               msOverflowStyle: 'none',
@@ -292,7 +292,7 @@ export function MediaTableBase({
           <div
             data-testid='media-table'
             ref={tableContainerRef}
-            className='h-[70vh] scrollbar-hide overflow-auto'
+            className='flex-1 scrollbar-hide overflow-auto'
           >
             <div
               style={{
