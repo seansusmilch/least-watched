@@ -7,16 +7,19 @@ export const FULLSCREEN_CARD_CLASSES = 'h-full flex flex-col';
 export const FULLSCREEN_CONTENT_CLASSES = 'flex-1 min-h-0';
 export const FULLSCREEN_CONTAINER_CLASSES = 'h-full flex flex-col';
 
+export const DEFAULT_CARD_CLASSES = 'flex flex-col h-[70vh]';
+export const DEFAULT_CONTENT_CLASSES = 'flex-1 min-h-0';
+
 export function getTableHeightClass(fullscreen: boolean): string {
-  return fullscreen ? TABLE_HEIGHTS.fullscreen : TABLE_HEIGHTS.default;
+  return fullscreen ? TABLE_HEIGHTS.fullscreen : '';
 }
 
 export function getCardClasses(fullscreen: boolean): string {
-  return fullscreen ? FULLSCREEN_CARD_CLASSES : '';
+  return fullscreen ? FULLSCREEN_CARD_CLASSES : DEFAULT_CARD_CLASSES;
 }
 
 export function getCardContentClasses(fullscreen: boolean): string {
-  return fullscreen ? FULLSCREEN_CONTENT_CLASSES : '';
+  return fullscreen ? FULLSCREEN_CONTENT_CLASSES : DEFAULT_CONTENT_CLASSES;
 }
 
 export function getContainerClasses(fullscreen: boolean): string {
