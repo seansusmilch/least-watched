@@ -41,11 +41,34 @@ bun run gen-api:radarr # Generate Radarr TypeScript client from OpenAPI spec
 bun run gen-api:sonarr # Generate Sonarr TypeScript client from OpenAPI spec
 bun run gen-api:all    # Generate both clients
 
-# E2E Testing
+# Unit Testing (Vitest)
+bun run test           # Run all unit tests once
+bun run test:watch     # Run unit tests in watch mode
+bun run test:ui        # Run unit tests with Vitest UI
+
+# E2E Testing (Playwright)
 bun test:e2e           # Run Playwright tests
 bun test:e2e:ui        # Run Playwright with UI
 bun test:e2e:codegen   # Generate Playwright tests
 ```
+
+## Testing
+
+### Unit Tests
+Vitest is used for unit testing pure business logic. Test files live alongside the code they test (`*.test.ts`).
+
+**Covered modules:**
+- `src/lib/deletion-score-calculator.ts` — scoring algorithm, breakpoints, date preference
+- `src/lib/utils/mediaFilters.ts` — all filter/sort logic
+- `src/lib/media-processor/arr-matching.ts` — Radarr/Sonarr ID matching
+- `src/lib/utils/media-scoring.ts` — type normalization utilities
+- `src/lib/utils/text-sanitization.ts` — text sanitization helpers
+- `src/lib/media-processor/arr-enrichment.ts` — Arr metadata enrichment
+
+**Important:** Use `bun run test` (not `bun test`) to invoke Vitest. `bun test` triggers Bun's native test runner which will also pick up Playwright spec files and fail.
+
+### E2E Tests
+Playwright tests live in `e2e/` and cover the home page and settings page. They require the dev server to be running (handled automatically by `playwright.config.ts`).
 
 ## Architecture
 
