@@ -1,8 +1,8 @@
+import { env } from '@/env';
+
 // Configuration constants
-export const MEDIA_PROCESSOR_ITEM_LIMIT: number | undefined = process.env
-  .MEDIA_PROCESSOR_ITEM_LIMIT
-  ? Number.parseInt(process.env.MEDIA_PROCESSOR_ITEM_LIMIT, 10)
-  : undefined;
+export const MEDIA_PROCESSOR_ITEM_LIMIT: number | undefined =
+  env.MEDIA_PROCESSOR_ITEM_LIMIT;
 
 // Events configuration
 export const EVENTS_PAGE_SIZE = 100;

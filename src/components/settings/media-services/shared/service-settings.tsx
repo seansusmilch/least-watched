@@ -120,30 +120,15 @@ export function ServiceSettings({
       let result: FormState;
       if (editingId) {
         result = await updateSetting(editingId, formDataObj);
-        if (result.success && result.data) {
-          startTransition(() => {
-            setOptimisticSettings({
-              type: 'update',
-              payload: result.data as ServiceSettings,
-            });
-          });
-        }
       } else {
         result = await createSetting(formDataObj);
-        if (result.success && result.data) {
-          startTransition(() => {
-            setOptimisticSettings({
-              type: 'add',
-              payload: result.data as ServiceSettings,
-            });
-          });
-        }
       }
 
       if (result.success) {
         toast.success(result.message || 'Settings saved successfully');
         setEditingId(null);
         setIsAddDialogOpen(false);
+        await queryClient.invalidateQueries({ queryKey: ['settings'] });
       } else {
         toast.error(result.message || 'Failed to save settings');
       }
@@ -162,6 +147,7 @@ export function ServiceSettings({
           setSettingToDelete(null);
         });
         toast.success(result.message || 'Settings deleted successfully');
+        await queryClient.invalidateQueries({ queryKey: ['settings'] });
       } else {
         toast.error(result.message || 'Failed to delete settings');
       }
