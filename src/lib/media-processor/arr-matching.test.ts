@@ -52,8 +52,6 @@ describe('findRadarrMatch', () => {
   });
 
   it('IMDB lookup is case-insensitive', () => {
-    const upperImdbMap = new Map([['TT0001', movie]]);
-    // Map key is uppercase but findRadarrMatch calls .toLowerCase() on the lookup
     const lowerImdbMap = new Map([['tt0001', movie]]);
     expect(findRadarrMatch(null, 'TT0001', new Map(), lowerImdbMap)).toBe(movie);
   });

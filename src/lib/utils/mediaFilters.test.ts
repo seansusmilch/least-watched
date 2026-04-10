@@ -5,7 +5,7 @@ import {
   filterAndSortMediaItems,
   createDefaultFilters,
 } from '@/lib/utils/mediaFilters';
-import type { MediaItem, FilterOptions } from '@/lib/types/media';
+import type { MediaItem } from '@/lib/types/media';
 
 function makeItem(overrides: Partial<MediaItem> = {}): MediaItem {
   return {
