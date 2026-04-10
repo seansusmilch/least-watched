@@ -40,6 +40,14 @@ interface DeletionScoreBreakdownProps {
   onClose: () => void;
 }
 
+function getScoreBadgeClass(earned: number, max: number): string {
+  if (max === 0) return '';
+  const pct = earned / max;
+  if (pct >= 0.75) return 'bg-red-600 text-white hover:bg-red-700';
+  if (pct >= 0.4) return 'bg-yellow-500 text-black hover:bg-yellow-600';
+  return 'bg-green-600 text-white hover:bg-green-700';
+}
+
 export function DeletionScoreBreakdown({
   item,
   open,
@@ -251,7 +259,7 @@ export function DeletionScoreBreakdown({
                         <span className='font-medium'>{title}</span>
                       </div>
                       <div className='flex items-center gap-2'>
-                        <Badge variant='default'>
+                        <Badge variant='default' className={getScoreBadgeClass(data.pointsEarned, data.maxPoints)}>
                           {data.pointsEarned}/{data.maxPoints}
                         </Badge>
                         <button
