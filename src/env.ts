@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 export const env = createEnv({
   server: {
-    DATABASE_URL: z.string().min(1),
+    DATABASE_URL: z.string().min(1).default('file:/data/least-watched.db'),
     MEDIA_PROCESSOR_ITEM_LIMIT: z.coerce.number().int().positive().optional(),
   },
   runtimeEnv: {
