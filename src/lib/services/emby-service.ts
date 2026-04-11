@@ -151,7 +151,7 @@ export class EmbyService {
         const targetedParams: Record<string, string | number | boolean> = {
           Recursive: true,
           IncludeItemTypes: includeTypes,
-          Fields: 'DateCreated,ProviderIds,Path,ProductionYear',
+          Fields: 'DateCreated,ProviderIds,Path,ProductionYear,RunTimeTicks,MediaSources,Overview',
           AnyProviderIdEquals: `${entry.key}.${entry.value}`,
           Limit: 50,
         };
@@ -168,7 +168,7 @@ export class EmbyService {
           const broadParams: Record<string, string | number | boolean> = {
             Recursive: true,
             IncludeItemTypes: includeTypes,
-            Fields: 'DateCreated,ProviderIds,Path,ProductionYear',
+            Fields: 'DateCreated,ProviderIds,Path,ProductionYear,RunTimeTicks,MediaSources,Overview',
             StartIndex: 0,
             Limit: 1000,
           };

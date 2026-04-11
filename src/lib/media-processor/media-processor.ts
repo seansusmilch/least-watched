@@ -456,6 +456,12 @@ export class MediaProcessor {
           }
         }
 
+        // If Arr enrichment did not provide a size (no match or Arr unavailable),
+        // preserve the existing stored value rather than overwriting with 0.
+        if (!processed.sizeOnDisk && item.sizeOnDisk) {
+          processed.sizeOnDisk = Number(item.sizeOnDisk);
+        }
+
         const playback = await EmbyService.getAggregatedPlaybackInfo(
           {
             title: name,
