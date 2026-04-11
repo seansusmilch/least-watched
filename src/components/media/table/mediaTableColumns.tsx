@@ -7,6 +7,7 @@ import { formatDate, formatFileSize } from '@/lib/utils/formatters';
 import { Film, Tv, Eye, Clock } from 'lucide-react';
 import { MediaTitleHoverCard } from './MediaTitleHoverCard';
 import { DeletionScoreBadge } from '../DeletionScoreBadge';
+import { PlaybackDebugDialog } from './PlaybackDebugDialog';
 
 const columnHelper = createColumnHelper<MediaItem>();
 
@@ -227,17 +228,25 @@ export const createMediaTableColumns = (
   // Last Watched column
   columnHelper.accessor('lastWatched', {
     header: 'Last Watched',
-    cell: ({ getValue }) => {
+    cell: ({ getValue, row }) => {
       const lastWatched = getValue();
       if (lastWatched) {
         return (
-          <span className='flex items-center'>
-            <Eye className='h-3 w-3 mr-1' />
-            {formatDate(lastWatched)}
-          </span>
+          <PlaybackDebugDialog item={row.original}>
+            <button className='flex items-center hover:underline cursor-pointer' title='Click to debug playback query'>
+              <Eye className='h-3 w-3 mr-1' />
+              {formatDate(lastWatched)}
+            </button>
+          </PlaybackDebugDialog>
         );
       }
-      return <span className='text-muted-foreground'>Never</span>;
+      return (
+        <PlaybackDebugDialog item={row.original}>
+          <button className='text-muted-foreground hover:underline cursor-pointer' title='Click to debug playback query'>
+            Never
+          </button>
+        </PlaybackDebugDialog>
+      );
     },
     enableSorting: true,
     enableColumnFilter: true,
