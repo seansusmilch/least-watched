@@ -5,8 +5,9 @@ import {
   radarrSettingsService,
   sonarrSettingsService,
   prisma,
+  embySettingsService,
 } from '../database';
-import { sonarrApiClient, radarrApiClient, eventsService } from '../services';
+import { sonarrApiClient, radarrApiClient, eventsService, EmbyService } from '../services';
 import { revalidatePath } from 'next/cache';
 
 export async function deleteRadarrMediaItem(id: number): Promise<boolean> {
@@ -129,4 +130,21 @@ export async function deleteMediaItems(mediaItems: MediaItem[]) {
     radarrCount,
     failedCount,
   };
+}
+
+export type PlaybackDebugResult = {
+  sql: string;
+  columns: string[];
+  rows: Array<Array<string | number>>;
+} | null;
+
+export async function getPlaybackDebugInfo(input: {
+  type: 'movie' | 'tv';
+  embyId?: string | null;
+  title?: string | null;
+}): Promise<PlaybackDebugResult> {
+  const embySettings = await embySettingsService.get();
+  if (!embySettings) return null;
+
+  return EmbyService.getPlaybackDebugInfo(input, embySettings);
 }

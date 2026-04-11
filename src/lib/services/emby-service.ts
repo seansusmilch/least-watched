@@ -559,4 +559,43 @@ export class EmbyService {
   private static escapeSqlString(value: string): string {
     return String(value).replace(/'/g, "''");
   }
+
+  /** Build and execute the playback SQL query for a given media item, returning the SQL and raw results for debugging */
+  static async getPlaybackDebugInfo(
+    input: { type: 'movie' | 'tv'; embyId?: string | null; title?: string | null },
+    embyInstance: EmbySettings
+  ): Promise<{ sql: string; columns: string[]; rows: Array<Array<string | number>> } | null> {
+    let sql: string;
+
+    if (input.type === 'tv') {
+      if (!input.title) return null;
+      const safeTitle = this.escapeSqlString(input.title).replace(/;/g, '');
+      const likePattern = `${safeTitle} - s%`;
+      sql = `SELECT
+  MAX(DateCreated) AS LastWatched,
+  SUM(CASE WHEN PlayDuration > 300 AND PlayDuration < 28800 THEN 1 ELSE 0 END) AS WatchCount
+FROM (
+  SELECT DateCreated, PlayDuration
+  FROM PlaybackActivity
+  WHERE lower(ItemName) LIKE lower('${likePattern}')
+) AS Activity`;
+    } else {
+      if (!input.embyId) return null;
+      const escapedId = `'${String(input.embyId).replace(/'/g, "''").replace(/;/g, '')}'`;
+      sql = `SELECT
+  MAX(DateCreated) AS LastWatched,
+  SUM(CASE WHEN PlayDuration > 300 AND PlayDuration < 28800 THEN 1 ELSE 0 END) AS WatchCount
+FROM (
+  SELECT DateCreated, PlayDuration
+  FROM PlaybackActivity
+  WHERE ItemId IN (${escapedId})
+) AS Activity`;
+    }
+
+    const data = await this.executeCustomQuery(sql, embyInstance);
+    if (!data) return null;
+
+    const columns = data.columns ?? data.colums ?? [];
+    return { sql, columns, rows: data.results ?? [] };
+  }
 }
