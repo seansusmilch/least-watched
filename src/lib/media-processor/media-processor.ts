@@ -1,4 +1,4 @@
-import { sonarrSettingsService, radarrSettingsService } from '@/lib/database';
+import { prisma, sonarrSettingsService, radarrSettingsService } from '@/lib/database';
 import { type DeletionScoreSettings } from '@/lib/types/settings';
 import { folderSpaceService } from '@/lib/services/folder-space-service';
 import { eventsService } from '@/lib/services/events-service';
@@ -21,6 +21,10 @@ import { findRadarrMatch, findSonarrMatch } from './arr-matching';
 import { enrichFromRadarr, enrichFromSonarr } from './arr-enrichment';
 import { buildArrMaps } from './arr-maps';
 import type Emby from 'emby-sdk-stainless';
+
+type StoredMediaItem = Awaited<
+  ReturnType<typeof prisma.mediaItem.findMany>
+>[number];
 
 export class MediaProcessor {
   private onProgress?: (progress: MediaProcessingProgress) => void;
@@ -87,6 +91,14 @@ export class MediaProcessor {
         'media-processor',
         'No enabled Emby instance found. Skipping processing.'
       );
+      await ProgressStore.setProgress({
+        phase: 'Complete',
+        current: 0,
+        total: 0,
+        currentItem: 'No Emby instance configured',
+        percentage: 100,
+        isComplete: true,
+      });
       return [];
     }
 
@@ -282,6 +294,236 @@ export class MediaProcessor {
     await eventsService.logInfo(
       'media-processor',
       `Processing complete: ${runStats.itemsProcessed} items in ${totalTimeSec}s (${runStats.itemsWithArrMatch} arr matches, ${runStats.itemsWithPlayback} with playback) | Avg: ${runStats.avgTimePerItemMs}ms/item | Pre-fetch: ${runStats.sonarrSeriesFetched} Sonarr series, ${runStats.radarrMoviesFetched} Radarr movies | Emby items: ${limitedSeries.length} series, ${limitedMovies.length} movies (${runStats.embyItemsFetched} total)`
+    );
+
+    return allProcessedItems;
+  }
+
+  async processByDatabaseIds(ids: string[]): Promise<ProcessedMediaItem[]> {
+    const allProcessedItems: ProcessedMediaItem[] = [];
+    const runStartTime = performance.now();
+
+    const runStats: ProcessingRunStats = {
+      totalTimeMs: 0,
+      itemsProcessed: 0,
+      itemsWithArrMatch: 0,
+      itemsWithPlayback: 0,
+      avgTimePerItemMs: 0,
+      embyItemsFetched: 0,
+      sonarrSeriesFetched: 0,
+      radarrMoviesFetched: 0,
+    };
+
+    await this.updateProgress('Initializing', 0, 100, 'Starting selected media rescan...');
+
+    const [sonarrInstances, radarrInstances, datePreference, embyInstance] =
+      await Promise.all([
+        sonarrSettingsService.getEnabled(),
+        radarrSettingsService.getEnabled(),
+        getDatePreference(),
+        singleEmbySettingsService.getEnabled(),
+      ]);
+
+    if (!embyInstance) {
+      await eventsService.logWarning(
+        'media-processor',
+        'No enabled Emby instance found. Skipping selected media rescan.'
+      );
+      await ProgressStore.setProgress({
+        phase: 'Complete',
+        current: 0,
+        total: 0,
+        currentItem: 'No Emby instance configured',
+        percentage: 100,
+        isComplete: true,
+      });
+      return [];
+    }
+
+    const deletionScoreSettings = await getDeletionScoreSettings();
+    const folderSpaceData = await folderSpaceService.getFolderSpaceData();
+
+    const mediaItems = await prisma.mediaItem.findMany({
+      where: { id: { in: ids } },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    if (mediaItems.length === 0) {
+      await eventsService.logWarning(
+        'media-processor',
+        `No media items found for selected rescan (${ids.length} requested)`
+      );
+      await ProgressStore.setProgress({
+        phase: 'Complete',
+        current: 0,
+        total: 0,
+        currentItem: 'No matching media items found',
+        percentage: 100,
+        isComplete: true,
+      });
+      return [];
+    }
+
+    const selectedCount = mediaItems.length;
+    const itemLimitInfo = `${selectedCount} selected item${selectedCount === 1 ? '' : 's'}`;
+    const configMessage = `Selected media rescan started (date preference: ${datePreference}, ${itemLimitInfo}, ${sonarrInstances.length} Sonarr instance${sonarrInstances.length !== 1 ? 's' : ''}, ${radarrInstances.length} Radarr instance${radarrInstances.length !== 1 ? 's' : ''})`;
+    await eventsService.logInfo('media-processor', configMessage);
+
+    const [allSeries, allMovies] = await Promise.all([
+      Promise.all(
+        sonarrInstances.map((instance) => sonarrApiClient.getSeries(instance))
+      ).then((list) => list.flat()),
+      Promise.all(
+        radarrInstances.map((instance) => radarrApiClient.getMovies(instance))
+      ).then((list) => list.flat()),
+    ]);
+
+    runStats.sonarrSeriesFetched = allSeries.length;
+    runStats.radarrMoviesFetched = allMovies.length;
+
+    const arrMaps = buildArrMaps(allSeries, allMovies);
+
+    runStats.embyItemsFetched = selectedCount;
+
+    for (let i = 0; i < mediaItems.length; i++) {
+      const item = mediaItems[i] as StoredMediaItem;
+      const itemStartTime = performance.now();
+      const name = item.title || 'Unknown';
+
+      await eventsService.logInfo(
+        'media-processor',
+        `Started selected rescan for ${name}`
+      );
+
+      await this.updateProgress('Processing Selected Items', i + 1, selectedCount, name);
+
+      let arrMatch: 'sonarr' | 'radarr' | 'none' = 'none';
+      let playbackFound = false;
+      let deletionScore = -1;
+
+      try {
+        const freshEmbyItem = await EmbyService.findItemByProviderIds(
+          {
+            tmdbId: item.tmdbId,
+            imdbId: item.imdbId,
+            tvdbId: item.tvdbId,
+            type: item.type as 'movie' | 'tv',
+          },
+          embyInstance
+        );
+
+        if (!freshEmbyItem?.Id) {
+          await eventsService.logWarning(
+            'media-processor',
+            `Skipping selected rescan for ${name}: no current Emby item found`
+          );
+          continue;
+        }
+
+        const freshEmbyId = String(freshEmbyItem.Id);
+        if (freshEmbyId !== item.embyId) {
+          await prisma.mediaItem.update({
+            where: { id: item.id },
+            data: { embyId: freshEmbyId },
+          });
+        }
+
+        const processed = createBaseProcessedItem(freshEmbyItem);
+
+        if (processed.type === 'movie') {
+          const match = findRadarrMatch(
+            processed.tmdbId ?? undefined,
+            processed.imdbId ?? undefined,
+            arrMaps.movieMapByTmdb,
+            arrMaps.movieMapByImdb
+          );
+          if (match) {
+            arrMatch = 'radarr';
+            enrichFromRadarr(processed, match);
+          }
+        } else {
+          const match = findSonarrMatch(
+            processed.tvdbId ?? undefined,
+            processed.tmdbId ?? undefined,
+            processed.imdbId ?? undefined,
+            arrMaps.tvMapByTvdb,
+            arrMaps.tvMapByTmdb,
+            arrMaps.tvMapByImdb
+          );
+          if (match) {
+            arrMatch = 'sonarr';
+            enrichFromSonarr(processed, match);
+          }
+        }
+
+        const playback = await EmbyService.getAggregatedPlaybackInfo(
+          {
+            title: name,
+            type: processed.type,
+            embyId: freshEmbyId,
+          },
+          embyInstance
+        );
+
+        if (playback) {
+          playbackFound = true;
+          processed.lastWatched = playback.lastWatched;
+          processed.watchCount = playback.watchCount || 0;
+        }
+
+        deletionScore = await MediaStorage.storeProcessedItem(
+          processed,
+          deletionScoreSettings,
+          folderSpaceData,
+          datePreference
+        );
+        allProcessedItems.push(processed);
+
+        if (arrMatch !== 'none') {
+          runStats.itemsWithArrMatch++;
+        }
+        if (playbackFound) {
+          runStats.itemsWithPlayback++;
+        }
+        runStats.itemsProcessed++;
+
+        const itemTimeMs = Math.round(performance.now() - itemStartTime);
+        await eventsService.logInfo(
+          'media-processor',
+          `Finished selected rescan for ${name} in ${itemTimeMs}ms | arr: ${arrMatch} | playback: ${
+            playbackFound ? 'found' : 'none'
+          } | score: ${deletionScore}`
+        );
+      } catch (error) {
+        const itemTimeMs = Math.round(performance.now() - itemStartTime);
+        await eventsService.logError(
+          'media-processor',
+          `Error rescanning "${name}" after ${itemTimeMs}ms: ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
+      }
+    }
+
+    await ProgressStore.setProgress({
+      phase: 'Complete',
+      current: selectedCount,
+      total: selectedCount,
+      currentItem: `Processed ${allProcessedItems.length} items`,
+      percentage: 100,
+      isComplete: true,
+    });
+
+    runStats.totalTimeMs = Math.round(performance.now() - runStartTime);
+    runStats.avgTimePerItemMs =
+      runStats.itemsProcessed > 0
+        ? Math.round(runStats.totalTimeMs / runStats.itemsProcessed)
+        : 0;
+
+    const totalTimeSec = (runStats.totalTimeMs / 1000).toFixed(1);
+    await eventsService.logInfo(
+      'media-processor',
+      `Selected media rescan complete: ${runStats.itemsProcessed} items in ${totalTimeSec}s (${runStats.itemsWithArrMatch} arr matches, ${runStats.itemsWithPlayback} with playback) | Avg: ${runStats.avgTimePerItemMs}ms/item | Pre-fetch: ${runStats.sonarrSeriesFetched} Sonarr series, ${runStats.radarrMoviesFetched} Radarr movies | Selected items: ${selectedCount}`
     );
 
     return allProcessedItems;

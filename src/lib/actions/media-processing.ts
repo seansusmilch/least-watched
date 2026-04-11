@@ -32,6 +32,7 @@ import { getDeletionScoreSettings } from '@/lib/actions/settings';
 import type { DeletionScoreSettings } from '@/lib/types/settings';
 import { deletionScoreCalculator } from '@/lib/deletion-score-calculator';
 import { eventsService } from '@/lib/services/events-service';
+import { extractMediaItemIds } from './media-processing-utils';
 
 // ============================================================================
 // Media Processing Functions
@@ -74,6 +75,46 @@ export async function startMediaProcessing(
   }
 }
 
+export async function startRescanSelectedMedia(
+  _prevState: FormState | undefined,
+  formData: FormData
+): Promise<FormState<MediaProcessingResult>> {
+  try {
+    const mediaItemIds = extractMediaItemIds(formData);
+
+    if (mediaItemIds.length === 0) {
+      return createFormState<MediaProcessingResult>(
+        false,
+        'Select at least one media item to rescan'
+      );
+    }
+
+    processSelectedMediaInBackground(mediaItemIds).catch(async (error) => {
+      await eventsService.logError(
+        'media-processor',
+        `Background selected-item processing failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+    });
+
+    revalidatePath('/');
+
+    return createFormState<MediaProcessingResult>(
+      true,
+      'Selected media rescan started successfully',
+      undefined,
+      {
+        success: true,
+        message: 'Selected media rescan started successfully',
+        processedItems: mediaItemIds.length,
+      }
+    );
+  } catch (error) {
+    return handleServerError(error, 'Failed to start selected media rescan') as FormState<MediaProcessingResult>;
+  }
+}
+
 async function processMediaInBackground(): Promise<void> {
   try {
     await ProgressStore.clearProgress();
@@ -89,6 +130,28 @@ async function processMediaInBackground(): Promise<void> {
     await eventsService.logError(
       'media-processor',
       `Background media processing failed: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
+    throw error;
+  }
+}
+
+async function processSelectedMediaInBackground(ids: string[]): Promise<void> {
+  try {
+    await ProgressStore.clearProgress();
+
+    const processor = new MediaProcessor(undefined);
+    await processor.processByDatabaseIds(ids);
+
+    await eventsService.logInfo(
+      'media-processor',
+      `Background selected-media processing completed successfully (${ids.length} items)`
+    );
+  } catch (error) {
+    await eventsService.logError(
+      'media-processor',
+      `Background selected-media processing failed: ${
         error instanceof Error ? error.message : String(error)
       }`
     );

@@ -1,4 +1,11 @@
 import { defineConfig, devices } from "@playwright/test";
+import path from 'path';
+
+process.env.DATABASE_URL ??= `file:${path.join(
+  process.cwd(),
+  'prisma',
+  'e2e.db'
+)}`;
 
 export default defineConfig({
   testDir: "./e2e",

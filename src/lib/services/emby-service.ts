@@ -134,20 +134,25 @@ export class EmbyService {
       type === 'movie' ? 'Movie' : type === 'tv' ? 'Series' : 'Movie,Series';
 
     const searchOrder: Array<{ key: 'tvdb' | 'tmdb' | 'imdb'; value: string }> =
-      [];
-
-    if (tmdbId) searchOrder.push({ key: 'tmdb', value: String(tmdbId) });
-    if (imdbId) searchOrder.push({ key: 'imdb', value: imdbId });
-    if (tvdbId) searchOrder.push({ key: 'tvdb', value: String(tvdbId) });
+      type === 'movie'
+        ? [
+            ...(tmdbId ? [{ key: 'tmdb' as const, value: String(tmdbId) }] : []),
+            ...(imdbId ? [{ key: 'imdb' as const, value: imdbId }] : []),
+          ]
+        : [
+            ...(tvdbId ? [{ key: 'tvdb' as const, value: String(tvdbId) }] : []),
+            ...(tmdbId ? [{ key: 'tmdb' as const, value: String(tmdbId) }] : []),
+            ...(imdbId ? [{ key: 'imdb' as const, value: imdbId }] : []),
+          ];
 
     for (const entry of searchOrder) {
       try {
-        // Targeted query using SearchTerm to reduce result size
+        // Targeted query using Emby's provider-id filter so we get the current item.Id
         const targetedParams: Record<string, string | number | boolean> = {
           Recursive: true,
           IncludeItemTypes: includeTypes,
           Fields: 'DateCreated,ProviderIds,Path,ProductionYear',
-          SearchTerm: `${entry.key}:${entry.value}`,
+          AnyProviderIdEquals: `${entry.key}.${entry.value}`,
           Limit: 50,
         };
         let items: Emby.QueryResultBaseItem = await embyClient.items.list(
@@ -176,7 +181,7 @@ export class EmbyService {
           );
         }
 
-        const match = items.Items?.find((it: Emby.BaseItem) => {
+        const matches = (items.Items || []).filter((it: Emby.BaseItem) => {
           const providers = (
             it as Emby.BaseItem & {
               ProviderIds?: Record<string, string>;
@@ -221,6 +226,15 @@ export class EmbyService {
           }
           return false;
         });
+
+        const match = matches[0];
+
+        if (matches.length > 1) {
+          await eventsService.logWarning(
+            'emby-api',
+            `Emby provider-id lookup for ${entry.key.toUpperCase()}:${entry.value} returned ${matches.length} matches; using the first result`
+          );
+        }
 
         if (match) {
           await eventsService.logInfo(

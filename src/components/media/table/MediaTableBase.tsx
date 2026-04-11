@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { flexRender, Table as TanStackTable } from '@tanstack/react-table';
-import { useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -16,6 +16,7 @@ import { ColumnVisibilityDropdown } from './ColumnVisibilityDropdown';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { DeletionPreviewDialog } from './DeletionPreviewDialog';
 import { deleteMediaItems } from '@/lib/actions/media-items';
+import { startRescanSelectedMedia } from '@/lib/actions/media-processing';
 import { MediaTableNavigationButton } from './MediaTableNavigationButton';
 import { MediaTableSelectionControls } from './MediaTableSelectionControls';
 import { MediaTableSortIcon } from './MediaTableSortIcon';
@@ -32,6 +33,7 @@ import {
 } from '@/lib/utils/tableCellStyles';
 import { useTableScrollSync } from '@/hooks/useTableScrollSync';
 import { useDeletionBreakdown } from '@/hooks/useDeletionBreakdown';
+import { useProgress } from '@/hooks/use-progress';
 import {
   VIRTUALIZER_CONFIG,
   MIN_TABLE_WIDTH,
@@ -61,6 +63,7 @@ export function MediaTableBase({
   fullscreen = false,
 }: MediaTableBaseProps) {
   const queryClient = useQueryClient();
+  const { state: progressState } = useProgress();
   const { breakdownItem, showBreakdown, handleCloseBreakdown } =
     useDeletionBreakdown();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -72,6 +75,7 @@ export function MediaTableBase({
     (sum, row) => sum + (Number(row.original.sizeOnDisk) || 0),
     0
   );
+  const hasActiveProcess = progressState === 'live';
 
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
@@ -95,6 +99,38 @@ export function MediaTableBase({
 
   const handleDeleteClick = () => {
     setShowDeleteDialog(true);
+  };
+
+  const rescanMutation = useMutation({
+    mutationFn: async () => {
+      const formData = new FormData();
+
+      selectedMediaItems.forEach((item) => {
+        formData.append('mediaItemIds', String(item.id));
+      });
+
+      return startRescanSelectedMedia(undefined, formData);
+    },
+    onSuccess: (result) => {
+      if (!result?.success) {
+        throw new Error(result?.message || 'Failed to start media rescan');
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['progress'] });
+      table.resetRowSelection();
+      toast.success(
+        `Rescan started for ${selectedMediaItems.length} item${
+          selectedMediaItems.length === 1 ? '' : 's'
+        }`
+      );
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to start media rescan');
+    },
+  });
+
+  const handleRescanClick = () => {
+    rescanMutation.mutate();
   };
 
   const handleConfirmDelete = async () => {
@@ -144,6 +180,8 @@ export function MediaTableBase({
             selectedCount={selectedTableRows.length}
             selectedSize={selectedSize}
             onDeleteClick={handleDeleteClick}
+            onRescanClick={handleRescanClick}
+            rescanDisabled={hasActiveProcess || rescanMutation.isPending}
           />
           <div className='flex items-center gap-2 w-full'>
             <div className='relative flex-1 md:flex-none'>
