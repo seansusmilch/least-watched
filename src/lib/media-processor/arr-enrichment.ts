@@ -8,9 +8,12 @@ export function enrichFromRadarr(
   match: RadarrMovie
 ): void {
   processed.mediaPath = match.path || processed.mediaPath;
-  processed.parentFolder = match.path
-    ? path.dirname(match.path)
-    : processed.parentFolder;
+  const radarrRootFolder = match.rootFolderPath
+    ? match.rootFolderPath.replace(/\/+$/, '')
+    : match.path
+      ? path.dirname(match.path)
+      : null;
+  processed.parentFolder = radarrRootFolder ?? processed.parentFolder;
   processed.sizeOnDisk = match.sizeOnDisk || processed.sizeOnDisk;
   processed.quality =
     match.movieFile?.quality?.quality?.name ?? undefined;
@@ -28,9 +31,12 @@ export function enrichFromSonarr(
   match: SonarrSeries
 ): void {
   processed.mediaPath = match.path || processed.mediaPath;
-  processed.parentFolder = match.path
-    ? path.dirname(match.path)
-    : processed.parentFolder;
+  const sonarrRootFolder = match.rootFolderPath
+    ? match.rootFolderPath.replace(/\/+$/, '')
+    : match.path
+      ? path.dirname(match.path)
+      : null;
+  processed.parentFolder = sonarrRootFolder ?? processed.parentFolder;
   processed.sizeOnDisk =
     match.statistics?.sizeOnDisk || processed.sizeOnDisk;
   processed.episodesOnDisk =

@@ -462,6 +462,13 @@ export class MediaProcessor {
           processed.sizeOnDisk = Number(item.sizeOnDisk);
         }
 
+        // If Arr enrichment did not run, preserve the stored parentFolder.
+        // createBaseProcessedItem derives parentFolder from the Emby file path;
+        // for movies this is the movie-specific folder, not the root folder.
+        if (arrMatch === 'none' && item.parentFolder) {
+          processed.parentFolder = item.parentFolder;
+        }
+
         const playback = await EmbyService.getAggregatedPlaybackInfo(
           {
             title: name,

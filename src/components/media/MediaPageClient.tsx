@@ -3,7 +3,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { MediaPageContent } from './MediaPageContent';
 import { MediaTableSkeleton } from './table/MediaTableSkeleton';
-import { getProcessedMediaItems } from '@/lib/actions/media-processing';
+import {
+  getProcessedMediaItems,
+  getSelectedFoldersFromDatabase,
+} from '@/lib/actions/media-processing';
 import { getUniqueFilterOptions } from '@/lib/utils/mediaFilters';
 import { getEmbySettings } from '@/lib/actions/settings/emby';
 
@@ -22,7 +25,12 @@ export function MediaPageClient({ fullscreen = false }: MediaPageClientProps) {
     queryFn: getEmbySettings,
   });
 
-  const isLoading = itemsLoading || embyLoading;
+  const { data: selectedFolders, isLoading: foldersLoading } = useQuery({
+    queryKey: ['selected-folders'],
+    queryFn: getSelectedFoldersFromDatabase,
+  });
+
+  const isLoading = itemsLoading || embyLoading || foldersLoading;
 
   if (isLoading) {
     return (
@@ -35,13 +43,18 @@ export function MediaPageClient({ fullscreen = false }: MediaPageClientProps) {
 
   const filterOptions = getUniqueFilterOptions(processedItems);
 
+  const availableFolders = [
+    ...(selectedFolders?.radarrFolders.flatMap((i) => i.folders) ?? []),
+    ...(selectedFolders?.sonarrFolders.flatMap((i) => i.folders) ?? []),
+  ].sort();
+
   return (
     <MediaPageContent
       items={processedItems}
       availableGenres={filterOptions.genres}
       availableQualities={filterOptions.qualities}
       availableSources={filterOptions.sources}
-      availableFolders={filterOptions.folders}
+      availableFolders={availableFolders.length > 0 ? availableFolders : filterOptions.folders}
       embyUrl={embySettings?.url}
       embyApiKey={embySettings?.apiKey}
       fullscreen={fullscreen}
