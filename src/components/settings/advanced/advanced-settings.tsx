@@ -5,13 +5,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -25,7 +18,7 @@ import {
   FormItem,
   FormMessage,
 } from '@/components/ui/form';
-import { AlertTriangle, Database, Trash2, Save, Loader2 } from 'lucide-react';
+import { AlertTriangle, Trash2, Save, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -139,204 +132,151 @@ export function AdvancedSettings() {
   // Show loading state while query is loading
   if (datePreferenceQuery.isLoading) {
     return (
-      <div className='space-y-6'>
-        <Card>
-          <CardHeader>
-            <CardTitle className='flex items-center gap-2'>
-              <AlertTriangle className='h-5 w-5' />
-              Advanced Configuration
-            </CardTitle>
-            <CardDescription>
-              Advanced settings and configuration options
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className='flex items-center justify-center p-8'>
-              <Loader2 className='h-6 w-6 animate-spin' />
-              <span className='ml-2'>Loading settings...</span>
-            </div>
-          </CardContent>
-        </Card>
+      <div className='py-8 flex items-center gap-2 text-sm text-muted-foreground'>
+        <Loader2 className='h-4 w-4 animate-spin' />
+        Loading settings…
       </div>
     );
   }
 
   return (
-    <div className='space-y-6'>
-      <Card>
-        <CardHeader>
-          <CardTitle className='flex items-center gap-2'>
-            <AlertTriangle className='h-5 w-5' />
-            Advanced Configuration
-          </CardTitle>
-          <CardDescription>
-            Advanced settings and configuration options
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
-              <div className='flex items-center justify-between p-4 border rounded-lg'>
-                <div className='space-y-1'>
-                  <div className='flex items-center gap-2'>
-                    <h4 className='font-medium'>Date Added Preference</h4>
-                    <Badge variant='secondary'>Configuration</Badge>
-                  </div>
-                  <p className='text-sm text-muted-foreground'>
-                    Choose which date to use when calculating age-based deletion
-                    scores. &quot;Oldest&quot; will use the earliest date
-                    available between Arr and Emby dates.
-                  </p>
-                  <p className='text-sm text-muted-foreground'>
-                    <strong>
-                      Changing this setting will recalculate deletion scores for
-                      all existing media items.
-                    </strong>
-                  </p>
+    <div className='space-y-0'>
+      {/* Date Preference */}
+      <div className='py-5 border-b space-y-4'>
+        <p className='text-xs uppercase tracking-widest text-muted-foreground font-medium'>
+          Configuration
+        </p>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <div className='flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 py-2'>
+              <div className='space-y-1 max-w-md'>
+                <div className='flex items-center gap-2'>
+                  <h4 className='text-sm font-medium'>Date Added Preference</h4>
+                  <Badge variant='secondary' className='text-[10px]'>Configuration</Badge>
                 </div>
-                <FormField
-                  control={form.control}
-                  name='datePreference'
-                  render={({ field }) => (
-                    <FormItem className='w-36'>
-                      <FormControl>
-                        <Select
-                          disabled={datePreferenceQuery.isLoading}
-                          onValueChange={field.onChange}
-                          value={
-                            field.value || datePreferenceQuery.data || 'arr'
-                          }
-                        >
-                          <SelectTrigger className='w-36'>
-                            <SelectValue
-                              placeholder={
-                                datePreferenceQuery.isLoading
-                                  ? 'Loading...'
-                                  : 'Select date preference'
-                              }
-                            />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value='arr'>Arr Date</SelectItem>
-                            <SelectItem value='emby'>Emby Date</SelectItem>
-                            <SelectItem value='oldest'>Oldest Date</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <p className='text-xs text-muted-foreground'>
+                  Which date to use when calculating age-based deletion scores.
+                  &ldquo;Oldest&rdquo; uses the earliest date between Arr and Emby.
+                </p>
+                <p className='text-xs text-muted-foreground'>
+                  <strong>Changing this will recalculate all deletion scores.</strong>
+                </p>
               </div>
-
-              {/* Form Actions */}
-              <div className='flex justify-end pt-4'>
-                <Button
-                  type='submit'
-                  disabled={
-                    datePreferenceQuery.isLoading ||
-                    updateDatePreferenceMutation.isPending ||
-                    !hasUnsavedChanges
-                  }
-                  data-testid='save-advanced-settings'
-                >
-                  {updateDatePreferenceMutation.isPending ? (
-                    <>
-                      <Loader2 className='h-4 w-4 mr-2 animate-spin' />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Save className='h-4 w-4 mr-2' />
-                      Save Settings
-                    </>
-                  )}
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
-      <AllSettingsBackup />
-      <Card>
-        <CardHeader>
-          <CardTitle className='flex items-center gap-2'>
-            <Database className='h-5 w-5' />
-            Database Management
-          </CardTitle>
-          <CardDescription>
-            Manage your application&apos;s database and stored media information
-          </CardDescription>
-        </CardHeader>
-        <CardContent className='space-y-4'>
-          <div className='flex items-center justify-between p-4 border rounded-lg'>
-            <div className='space-y-1'>
-              <div className='flex items-center gap-2'>
-                <h4 className='font-medium'>Clear Media Items</h4>
-                <Badge variant='destructive'>Destructive</Badge>
-              </div>
-              <p className='text-sm text-muted-foreground'>
-                Remove all media items from the database. This will not affect
-                your actual media files.
-              </p>
+              <FormField
+                control={form.control}
+                name='datePreference'
+                render={({ field }) => (
+                  <FormItem className='w-40 shrink-0'>
+                    <FormControl>
+                      <Select
+                        disabled={datePreferenceQuery.isLoading}
+                        onValueChange={field.onChange}
+                        value={field.value || datePreferenceQuery.data || 'arr'}
+                      >
+                        <SelectTrigger className='w-40'>
+                          <SelectValue placeholder='Select…' />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value='arr'>Arr Date</SelectItem>
+                          <SelectItem value='emby'>Emby Date</SelectItem>
+                          <SelectItem value='oldest'>Oldest Date</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button variant='destructive' size='sm'>
-                  <Trash2 className='h-4 w-4 mr-2' />
-                  Clear All
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle className='flex items-center gap-2'>
-                    <AlertTriangle className='h-5 w-5 text-destructive' />
-                    Clear Media Items
-                  </DialogTitle>
-                  <DialogDescription>
-                    Are you sure you want to clear all media items from the
-                    database? This action cannot be undone.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className='bg-muted p-4 rounded-lg'>
-                  <div className='flex items-start gap-3'>
-                    <AlertTriangle className='h-5 w-5 text-destructive mt-0.5' />
-                    <div className='space-y-2'>
-                      <p className='text-sm font-medium'>This will:</p>
-                      <ul className='text-sm text-muted-foreground space-y-1'>
-                        <li>• Remove all media items from the database</li>
-                        <li>• Clear watch history and deletion scores</li>
-                        <li>• Reset all media processing data</li>
-                        <li>
-                          • <strong>NOT</strong> affect your actual media files
-                        </li>
-                      </ul>
-                    </div>
+            <div className='flex justify-end pt-2'>
+              <Button
+                type='submit'
+                size='sm'
+                disabled={
+                  datePreferenceQuery.isLoading ||
+                  updateDatePreferenceMutation.isPending ||
+                  !hasUnsavedChanges
+                }
+                data-testid='save-advanced-settings'
+              >
+                {updateDatePreferenceMutation.isPending ? (
+                  <><Loader2 className='h-4 w-4 mr-2 animate-spin' />Saving…</>
+                ) : (
+                  <><Save className='h-4 w-4 mr-2' />Save Settings</>
+                )}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </div>
+
+      <AllSettingsBackup />
+
+      {/* Database */}
+      <div className='py-5 border-b space-y-4'>
+        <p className='text-xs uppercase tracking-widest text-muted-foreground font-medium'>
+          Database
+        </p>
+        <div className='flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 py-2'>
+          <div className='space-y-1 max-w-md'>
+            <div className='flex items-center gap-2'>
+              <h4 className='text-sm font-medium'>Clear Media Items</h4>
+              <Badge variant='destructive' className='text-[10px]'>Destructive</Badge>
+            </div>
+            <p className='text-xs text-muted-foreground'>
+              Remove all media items from the database. This will not affect your actual media files.
+            </p>
+          </div>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant='destructive' size='sm' className='shrink-0'>
+                <Trash2 className='h-4 w-4 mr-2' />Clear All
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle className='flex items-center gap-2'>
+                  <AlertTriangle className='h-5 w-5 text-destructive' />
+                  Clear Media Items
+                </DialogTitle>
+                <DialogDescription>
+                  Are you sure you want to clear all media items? This action cannot be undone.
+                </DialogDescription>
+              </DialogHeader>
+              <div className='bg-muted p-4 rounded-lg'>
+                <div className='flex items-start gap-3'>
+                  <AlertTriangle className='h-5 w-5 text-destructive mt-0.5 shrink-0' />
+                  <div className='space-y-2'>
+                    <p className='text-sm font-medium'>This will:</p>
+                    <ul className='text-sm text-muted-foreground space-y-1'>
+                      <li>• Remove all media items from the database</li>
+                      <li>• Clear watch history and deletion scores</li>
+                      <li>• Reset all media processing data</li>
+                      <li>• <strong>NOT</strong> affect your actual media files</li>
+                    </ul>
                   </div>
                 </div>
-                <DialogFooter>
-                  <Button
-                    variant='outline'
-                    onClick={() => setIsDialogOpen(false)}
-                    disabled={clearMediaItemsMutation.isPending}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    variant='destructive'
-                    onClick={handleClearMediaItems}
-                    disabled={clearMediaItemsMutation.isPending}
-                  >
-                    {clearMediaItemsMutation.isPending
-                      ? 'Clearing...'
-                      : 'Clear All Media Items'}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </CardContent>
-      </Card>
+              </div>
+              <DialogFooter>
+                <Button
+                  variant='outline'
+                  onClick={() => setIsDialogOpen(false)}
+                  disabled={clearMediaItemsMutation.isPending}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant='destructive'
+                  onClick={handleClearMediaItems}
+                  disabled={clearMediaItemsMutation.isPending}
+                >
+                  {clearMediaItemsMutation.isPending ? 'Clearing…' : 'Clear All Media Items'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
 
       {/* Date Preference Confirmation Dialog */}
       <DatePreferenceConfirmationDialog

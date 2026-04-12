@@ -4,13 +4,6 @@ import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from '@/components/ui/card';
-import {
   Dialog,
   DialogClose,
   DialogContent,
@@ -21,7 +14,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { FileInput } from '@/components/ui/file-input';
-import { Download, Upload, ShieldAlert, Loader2 } from 'lucide-react';
+import { Download, Upload, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { exportAllSettings, importAllSettings } from '@/lib/actions/settings';
 
@@ -62,12 +55,9 @@ export function AllSettingsBackup() {
       const res = await importAllSettings(json);
       if (res.success) {
         toast.success('Imported all settings');
-        // Invalidate common settings queries
         queryClient.invalidateQueries({ queryKey: ['settings'] });
         queryClient.invalidateQueries({ queryKey: ['app-settings'] });
-        queryClient.invalidateQueries({
-          queryKey: ['deletion-score-settings'],
-        });
+        queryClient.invalidateQueries({ queryKey: ['deletion-score-settings'] });
         queryClient.invalidateQueries({ queryKey: ['sonarr-settings'] });
         queryClient.invalidateQueries({ queryKey: ['radarr-settings'] });
         queryClient.invalidateQueries({ queryKey: ['emby-settings'] });
@@ -84,63 +74,57 @@ export function AllSettingsBackup() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className='flex items-center gap-2'>
-          <ShieldAlert className='h-5 w-5' /> Backup & Restore
-        </CardTitle>
-        <CardDescription>
-          Export all settings to a JSON file or import from a previous backup.
-          Importing will overwrite existing settings, including API keys.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className='flex gap-2 justify-between flex-col sm:flex-row'>
-        <div className='flex gap-2'>
-          <Button variant='outline' onClick={handleExport} disabled={importing}>
-            <Download className='h-4 w-4 mr-2' /> Export Settings
-          </Button>
+    <div className='py-5 border-b space-y-3'>
+      <p className='text-xs uppercase tracking-widest text-muted-foreground font-medium'>
+        Backup &amp; Restore
+      </p>
+      <p className='text-sm text-muted-foreground'>
+        Export all settings to a JSON file or import from a previous backup.
+        Importing will overwrite existing settings, including API keys.
+      </p>
+      <div className='flex flex-wrap items-center gap-2'>
+        <Button variant='outline' size='sm' onClick={handleExport} disabled={importing}>
+          <Download className='h-4 w-4 mr-2' />Export Settings
+        </Button>
 
-          <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
-            <DialogTrigger asChild>
-              <Button variant='outline' disabled={importing}>
-                <Upload className='h-4 w-4 mr-2' /> Import Settings
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Import All Settings</DialogTitle>
-                <DialogDescription>
-                  Select a JSON file exported from this app. Importing will
-                  overwrite existing settings, including API keys.
-                </DialogDescription>
-              </DialogHeader>
-              <div className='py-4'>
-                <FileInput
-                  ref={fileInputRef}
-                  accept='.json'
-                  onFileSelect={handleFileImport}
-                  buttonText='Choose JSON file'
-                  placeholder='Drag and drop a JSON file here, or click to browse'
-                  maxSize={1024 * 1024}
-                />
-              </div>
-              <DialogFooter>
-                <DialogClose asChild>
-                  <Button variant='outline'>Cancel</Button>
-                </DialogClose>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
+        <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+          <DialogTrigger asChild>
+            <Button variant='outline' size='sm' disabled={importing}>
+              <Upload className='h-4 w-4 mr-2' />Import Settings
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Import All Settings</DialogTitle>
+              <DialogDescription>
+                Select a JSON file exported from this app. Importing will
+                overwrite existing settings, including API keys.
+              </DialogDescription>
+            </DialogHeader>
+            <div className='py-4'>
+              <FileInput
+                ref={fileInputRef}
+                accept='.json'
+                onFileSelect={handleFileImport}
+                buttonText='Choose JSON file'
+                placeholder='Drag and drop a JSON file here, or click to browse'
+                maxSize={1024 * 1024}
+              />
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant='outline'>Cancel</Button>
+              </DialogClose>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
-        <div className='flex items-center text-xs text-muted-foreground'>
-          {importing && (
-            <>
-              <Loader2 className='h-4 w-4 mr-1 animate-spin' /> Importing...
-            </>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+        {importing && (
+          <span className='flex items-center text-xs text-muted-foreground'>
+            <Loader2 className='h-3.5 w-3.5 mr-1 animate-spin' />Importing…
+          </span>
+        )}
+      </div>
+    </div>
   );
 }

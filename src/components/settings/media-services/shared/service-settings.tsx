@@ -6,7 +6,6 @@ import { Plus, Monitor, Globe } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 
 import { ServiceInstanceCard } from './service-instance-card';
 import { ServiceInstanceDialog } from './service-instance-dialog';
@@ -350,27 +349,22 @@ export function ServiceSettings({
     : null;
 
   const serviceName = serviceType === 'sonarr' ? 'Sonarr' : 'Radarr';
-  const serviceDescription =
-    serviceType === 'sonarr' ? 'TV show management' : 'movie management';
   const emptyStateIcon = serviceType === 'sonarr' ? Monitor : Globe;
   const testId = `add-${serviceType}-instance`;
 
   return (
-    <div className='space-y-6'>
-      <div className='flex items-center justify-between'>
-        <div>
-          <h2 className='text-2xl font-bold'>{serviceName} Settings</h2>
-          <p className='text-muted-foreground'>
-            Configure your {serviceName} instances for {serviceDescription}
-          </p>
-        </div>
-        <Button onClick={() => setIsAddDialogOpen(true)} data-testid={testId}>
+    <div className='space-y-0'>
+      <div className='flex items-center justify-between pb-4 border-b'>
+        <p className='text-xs uppercase tracking-widest text-muted-foreground font-medium'>
+          {serviceName} Instances
+        </p>
+        <Button size='sm' onClick={() => setIsAddDialogOpen(true)} data-testid={testId}>
           <Plus className='mr-2 h-4 w-4' />
           Add Instance
         </Button>
       </div>
 
-      <div className='grid gap-4' data-testid='instance-list'>
+      <div data-testid='instance-list'>
         {optimisticSettings.map((setting) => (
           <ServiceInstanceCard
             key={setting.id}
@@ -394,19 +388,17 @@ export function ServiceSettings({
         ))}
 
         {optimisticSettings.length === 0 && (
-          <Card>
-            <CardContent className='flex flex-col items-center justify-center py-12'>
-              {React.createElement(emptyStateIcon, {
-                className: 'h-12 w-12 text-muted-foreground',
-              })}
-              <h3 className='mt-4 text-lg font-medium'>
-                No {serviceName} instances
-              </h3>
-              <p className='mt-2 text-sm text-muted-foreground'>
-                Add your first {serviceName} instance to get started
-              </p>
-            </CardContent>
-          </Card>
+          <div className='flex flex-col items-center justify-center py-16 text-center border-b'>
+            {React.createElement(emptyStateIcon, {
+              className: 'h-10 w-10 text-muted-foreground/40',
+            })}
+            <p className='mt-4 text-sm font-medium text-muted-foreground'>
+              No {serviceName} instances
+            </p>
+            <p className='mt-1 text-xs text-muted-foreground/60'>
+              Add your first {serviceName} instance to get started
+            </p>
+          </div>
         )}
       </div>
 

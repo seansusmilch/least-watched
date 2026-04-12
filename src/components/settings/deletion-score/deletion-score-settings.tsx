@@ -1,17 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { Trash2, Info, Loader2 } from 'lucide-react';
+import { Info, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   getDeletionScoreSettings,
@@ -196,24 +189,7 @@ export function DeletionScoreSettings() {
   const validation = validateSettings();
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className='flex items-center space-x-2'>
-          <Trash2 className='h-5 w-5' />
-          <span>Deletion Score Configuration</span>
-        </CardTitle>
-        <CardDescription>
-          Configure how deletion scores are calculated for media items. Higher
-          scores indicate items that are better candidates for deletion.
-          <br />
-          <span className='text-xs text-muted-foreground'>
-            Breakpoints are checked from highest to lowest value. The first
-            breakpoint where an item&apos;s value exceeds the breakpoint value
-            determines the score.
-          </span>
-        </CardDescription>
-      </CardHeader>
-      <CardContent className='space-y-6'>
+    <div className='space-y-6'>
         {/* Master Enable Switch */}
         <div className='flex items-center justify-between space-x-2'>
           <div className='space-y-1'>
@@ -293,7 +269,6 @@ export function DeletionScoreSettings() {
           onSave={handleSave}
           validation={validation}
         />
-      </CardContent>
-    </Card>
+    </div>
   );
 }

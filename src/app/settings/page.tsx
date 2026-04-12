@@ -5,7 +5,6 @@ import { useEffect, useState, useMemo, useCallback, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AppLayout } from '@/components/app-layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Separator } from '@/components/ui/separator';
 import { Server, Trash2, Settings } from 'lucide-react';
 import { MediaServices } from '@/components/settings/media-services';
 import { DeletionScoreSettings } from '@/components/settings/deletion-score';
@@ -141,19 +140,17 @@ function SettingsPageContent() {
           </div>
         </div>
 
-        <Separator />
-
         {/* Settings Tabs */}
         <Tabs
           value={activeTab}
           onValueChange={handleTabChange}
-          className='space-y-4'
+          className='space-y-6'
         >
-          <TabsList className='grid w-full grid-cols-3'>
+          <TabsList className='bg-transparent rounded-none p-0 h-auto border-b w-full justify-start gap-0'>
             <TabsTrigger
               value={TAB_VALUES.SERVICES}
               data-testid='media-services-tab'
-              className='flex items-center gap-2'
+              className='rounded-none border-b-2 border-transparent -mb-px data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none px-4 pb-3 pt-1 font-medium text-muted-foreground hover:text-foreground transition-colors gap-2'
             >
               <Server className='h-4 w-4' />
               Media Services
@@ -161,7 +158,7 @@ function SettingsPageContent() {
             <TabsTrigger
               value={TAB_VALUES.DELETION}
               data-testid='deletion-score-tab'
-              className='flex items-center gap-2'
+              className='rounded-none border-b-2 border-transparent -mb-px data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none px-4 pb-3 pt-1 font-medium text-muted-foreground hover:text-foreground transition-colors gap-2'
             >
               <Trash2 className='h-4 w-4' />
               Deletion Scoring
@@ -169,12 +166,11 @@ function SettingsPageContent() {
             <TabsTrigger
               value={TAB_VALUES.ADVANCED}
               data-testid='advanced-settings-tab'
-              className='flex items-center gap-2'
+              className='rounded-none border-b-2 border-transparent -mb-px data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none px-4 pb-3 pt-1 font-medium text-muted-foreground hover:text-foreground transition-colors gap-2'
             >
               <Settings className='h-4 w-4' />
               Advanced
             </TabsTrigger>
-            {/* Backup tab removed; backup UI moved under Advanced */}
           </TabsList>
 
           {/* Media Services */}
