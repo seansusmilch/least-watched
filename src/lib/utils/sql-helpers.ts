@@ -3,33 +3,37 @@ export function sanitizeSqlParam(value: string): string {
   return value.replace(/'/g, "''");
 }
 
-/** Swap ': ' and ' - ' separators to produce an alternative title for fuzzy matching. */
-function getAltTitle(title: string): string {
-  return title.includes(': ')
-    ? title.replace(/: /g, ' - ')
-    : title.replace(/ - /g, ': ');
+/**
+ * Convert a title into a SQL LIKE pattern that ignores punctuation.
+ * Every run of non-alphanumeric, non-space characters becomes a single `%` wildcard,
+ * so "Steins;Gate", "Steins:Gate", and "Steins—Gate" all produce "Steins%Gate".
+ * Whitespace is collapsed and the result is trimmed.
+ */
+export function titleToLikePattern(title: string): string {
+  return title
+    .replace(/[^a-zA-Z0-9\s]+/g, '%')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 /**
  * Build a WHERE clause matching series playback rows.
- * Generates LIKE patterns for both ' - ' / ': ' separator variants so playbacks
- * recorded under an old title are still matched (e.g. "Show - Part" vs "Show: Part").
+ * Uses LIKE with `%` wildcards in place of punctuation so symbol differences
+ * (colons, dashes, em-dashes, semicolons, etc.) don't prevent matching.
+ * Series rows are stored as "[title] - sXXeYY - [episode]" in PlaybackActivity.
  */
-export function buildSeriesWhereClause(safeTitle: string): string {
-  const altTitle = getAltTitle(safeTitle);
-  const patterns = [`lower(ItemName) LIKE lower('${safeTitle} - s%')`];
-  if (altTitle !== safeTitle) patterns.push(`lower(ItemName) LIKE lower('${altTitle} - s%')`);
-  return `(${patterns.join(' OR ')})`;
+export function buildSeriesWhereClause(title: string): string {
+  const pattern = sanitizeSqlParam(titleToLikePattern(title));
+  return `(lower(ItemName) LIKE lower('${pattern}%s%'))`;
 }
 
 /**
  * Build a WHERE clause matching movie playback rows.
- * Matches the current title and its separator variant (' - ' <-> ': ') plus optional ItemId.
+ * Uses LIKE with `%` wildcards in place of punctuation so symbol differences don't prevent matching.
  */
-export function buildMovieWhereClause(safeTitle: string, safeId: string | null): string {
-  const altTitle = getAltTitle(safeTitle);
-  const conditions = [`ItemName = '${safeTitle}'`];
-  if (altTitle !== safeTitle) conditions.push(`ItemName = '${altTitle}'`);
+export function buildMovieWhereClause(title: string, safeId: string | null): string {
+  const pattern = sanitizeSqlParam(titleToLikePattern(title));
+  const conditions = [`lower(ItemName) LIKE lower('${pattern}')`];
   if (safeId) conditions.push(`ItemId = '${safeId}'`);
   return `(${conditions.join(' OR ')}) AND ItemType = 'Movie'`;
 }

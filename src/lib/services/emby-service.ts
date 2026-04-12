@@ -439,9 +439,8 @@ export class EmbyService {
     embyInstance: EmbySettings,
     embyId?: string
   ): Promise<Pick<EmbyPlaybackInfo, 'lastWatched' | 'watchCount'>> {
-    const safeTitle = sanitizeSqlParam(movieTitle);
     const safeId = embyId ? sanitizeSqlParam(embyId) : null;
-    const whereClause = buildMovieWhereClause(safeTitle, safeId);
+    const whereClause = buildMovieWhereClause(movieTitle, safeId);
     const data = await this.executeCustomQuery(buildPlaybackSql(whereClause), embyInstance);
     return this.parseAggregatedPlaybackResponse(data);
   }
@@ -450,8 +449,7 @@ export class EmbyService {
     seriesTitle: string,
     embyInstance: EmbySettings
   ): Promise<Pick<EmbyPlaybackInfo, 'lastWatched' | 'watchCount'>> {
-    const safeTitle = sanitizeSqlParam(seriesTitle);
-    const whereClause = buildSeriesWhereClause(safeTitle);
+    const whereClause = buildSeriesWhereClause(seriesTitle);
     const data = await this.executeCustomQuery(buildPlaybackSql(whereClause), embyInstance);
     return this.parseAggregatedPlaybackResponse(data);
   }
@@ -577,14 +575,13 @@ export class EmbyService {
     embyInstance: EmbySettings
   ): Promise<{ sql: string; columns: string[]; rows: Array<Array<string | number>> } | null> {
     if (!input.title) return null;
-    const safeTitle = sanitizeSqlParam(input.title);
 
     let whereClause: string;
     if (input.type === 'tv') {
-      whereClause = buildSeriesWhereClause(safeTitle);
+      whereClause = buildSeriesWhereClause(input.title);
     } else {
       const safeId = input.embyId ? sanitizeSqlParam(String(input.embyId)) : null;
-      whereClause = buildMovieWhereClause(safeTitle, safeId);
+      whereClause = buildMovieWhereClause(input.title, safeId);
     }
 
     const sql = buildPlaybackSql(whereClause);
