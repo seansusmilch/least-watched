@@ -5,6 +5,12 @@ import {
   type EmbyMetadata,
 } from '@/lib/types/media';
 import { eventsService } from './events-service';
+import {
+  sanitizeSqlParam,
+  buildSeriesWhereClause,
+  buildMovieWhereClause,
+  buildPlaybackSql,
+} from '@/lib/utils/sql-helpers';
 
 const DEFAULT_TIMEOUT = 10000; // 10 seconds
 
@@ -331,9 +337,9 @@ export class EmbyService {
 
     for (const chunk of chunks) {
       const escapedIdList = chunk
-        .map((id) => `'${this.sanitizeSqlParam(String(id))}'`)
+        .map((id) => `'${sanitizeSqlParam(String(id))}'`)
         .join(',');
-      const sqlQuery = this.buildPlaybackSql(`ItemId IN (${escapedIdList})`);
+      const sqlQuery = buildPlaybackSql(`ItemId IN (${escapedIdList})`);
 
       const data = await this.executeCustomQuery(sqlQuery, embyInstance);
       const partial = this.parseAggregatedPlaybackResponse(data);
@@ -428,37 +434,16 @@ export class EmbyService {
       return null;
   }
 
-  // Generates LIKE patterns for both ' - ' / ': ' separator variants so playbacks
-  // recorded under an old title are still matched (e.g. "Show - Part" vs "Show: Part").
-  private static buildSeriesWhereClause(safeTitle: string): string {
-    const altTitle = safeTitle.includes(': ')
-      ? safeTitle.replace(/: /g, ' - ')
-      : safeTitle.replace(/ - /g, ': ');
-    const patterns = [`lower(ItemName) LIKE lower('${safeTitle} - s%')`];
-    if (altTitle !== safeTitle) patterns.push(`lower(ItemName) LIKE lower('${altTitle} - s%')`);
-    return `(${patterns.join(' OR ')})`;
-  }
-
-  // Matches the current title and its separator variant (' - ' <-> ': ') plus optional ItemId.
-  private static buildMovieWhereClause(safeTitle: string, safeId: string | null): string {
-    const altTitle = safeTitle.includes(': ')
-      ? safeTitle.replace(/: /g, ' - ')
-      : safeTitle.replace(/ - /g, ': ');
-    const conditions = [`ItemName = '${safeTitle}'`];
-    if (altTitle !== safeTitle) conditions.push(`ItemName = '${altTitle}'`);
-    if (safeId) conditions.push(`ItemId = '${safeId}'`);
-    return `(${conditions.join(' OR ')}) AND ItemType = 'Movie'`;
-  }
 
   private static async getAggregatedPlaybackByMovieTitle(
     movieTitle: string,
     embyInstance: EmbySettings,
     embyId?: string
   ): Promise<Pick<EmbyPlaybackInfo, 'lastWatched' | 'watchCount'>> {
-    const safeTitle = this.sanitizeSqlParam(movieTitle);
-    const safeId = embyId ? this.sanitizeSqlParam(embyId) : null;
-    const whereClause = this.buildMovieWhereClause(safeTitle, safeId);
-    const data = await this.executeCustomQuery(this.buildPlaybackSql(whereClause), embyInstance);
+    const safeTitle = sanitizeSqlParam(movieTitle);
+    const safeId = embyId ? sanitizeSqlParam(embyId) : null;
+    const whereClause = buildMovieWhereClause(safeTitle, safeId);
+    const data = await this.executeCustomQuery(buildPlaybackSql(whereClause), embyInstance);
     return this.parseAggregatedPlaybackResponse(data);
   }
 
@@ -466,9 +451,9 @@ export class EmbyService {
     seriesTitle: string,
     embyInstance: EmbySettings
   ): Promise<Pick<EmbyPlaybackInfo, 'lastWatched' | 'watchCount'>> {
-    const safeTitle = this.sanitizeSqlParam(seriesTitle);
-    const whereClause = this.buildSeriesWhereClause(safeTitle);
-    const data = await this.executeCustomQuery(this.buildPlaybackSql(whereClause), embyInstance);
+    const safeTitle = sanitizeSqlParam(seriesTitle);
+    const whereClause = buildSeriesWhereClause(safeTitle);
+    const data = await this.executeCustomQuery(buildPlaybackSql(whereClause), embyInstance);
     return this.parseAggregatedPlaybackResponse(data);
   }
 
@@ -588,37 +573,22 @@ export class EmbyService {
     }
   }
 
-  private static sanitizeSqlParam(value: string): string {
-    return String(value).replace(/'/g, "''").replace(/;/g, '');
-  }
-
-  private static buildPlaybackSql(whereClause: string): string {
-    return `SELECT
-        MAX(DateCreated) AS LastWatched,
-        SUM(CASE WHEN PlayDuration > 300 AND PlayDuration < 28800 THEN 1 ELSE 0 END) AS WatchCount
-      FROM (
-        SELECT DateCreated, PlayDuration
-        FROM PlaybackActivity
-        WHERE ${whereClause}
-      ) AS Activity`;
-  }
-
   static async getPlaybackDebugInfo(
     input: { type: 'movie' | 'tv'; embyId?: string | null; title?: string | null },
     embyInstance: EmbySettings
   ): Promise<{ sql: string; columns: string[]; rows: Array<Array<string | number>> } | null> {
     if (!input.title) return null;
-    const safeTitle = this.sanitizeSqlParam(input.title);
+    const safeTitle = sanitizeSqlParam(input.title);
 
     let whereClause: string;
     if (input.type === 'tv') {
-      whereClause = this.buildSeriesWhereClause(safeTitle);
+      whereClause = buildSeriesWhereClause(safeTitle);
     } else {
-      const safeId = input.embyId ? this.sanitizeSqlParam(String(input.embyId)) : null;
-      whereClause = this.buildMovieWhereClause(safeTitle, safeId);
+      const safeId = input.embyId ? sanitizeSqlParam(String(input.embyId)) : null;
+      whereClause = buildMovieWhereClause(safeTitle, safeId);
     }
 
-    const sql = this.buildPlaybackSql(whereClause);
+    const sql = buildPlaybackSql(whereClause);
     const data = await this.executeCustomQuery(sql, embyInstance);
     if (!data) return null;
 
