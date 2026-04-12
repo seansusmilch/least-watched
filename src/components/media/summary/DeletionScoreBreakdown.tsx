@@ -8,7 +8,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import {
   Tooltip,
   TooltipContent,
@@ -43,26 +42,51 @@ interface DeletionScoreBreakdownProps {
   onClose: () => void;
 }
 
-function getScoreBadgeClass(earned: number, max: number): string {
-  if (max === 0) return '';
-  const pct = earned / max;
-  if (pct >= 0.75) return 'bg-red-600 text-white hover:bg-red-700';
-  if (pct >= 0.4) return 'bg-yellow-500 text-black hover:bg-yellow-600';
-  return 'bg-green-600 text-white hover:bg-green-700';
+function getScoreColor(pct: number): 'red' | 'yellow' | 'green' {
+  if (pct >= 0.75) return 'red';
+  if (pct >= 0.4) return 'yellow';
+  return 'green';
 }
 
-function getScoreBarClass(score: number): string {
-  if (score > 70) return '[&>div]:bg-red-500';
-  if (score > 40) return '[&>div]:bg-yellow-500';
-  return '[&>div]:bg-green-500';
-}
+const colorClasses = {
+  red: {
+    bar: 'bg-red-500',
+    badge: 'bg-red-600 text-white border-red-600',
+    text: 'text-red-400',
+  },
+  yellow: {
+    bar: 'bg-yellow-500',
+    badge: 'bg-yellow-500 text-black border-yellow-500',
+    text: 'text-yellow-400',
+  },
+  green: {
+    bar: 'bg-green-500',
+    badge: 'bg-green-600 text-white border-green-600',
+    text: 'text-green-400',
+  },
+};
 
-function getFactorBarClass(earned: number, max: number): string {
-  if (max === 0) return '';
-  const pct = earned / max;
-  if (pct >= 0.75) return '[&>div]:bg-red-500';
-  if (pct >= 0.4) return '[&>div]:bg-yellow-500';
-  return '[&>div]:bg-green-500';
+function ScoreBar({
+  value,
+  max,
+  className = '',
+}: {
+  value: number;
+  max: number;
+  className?: string;
+}) {
+  const pct = max > 0 ? (value / max) * 100 : 0;
+  const color = getScoreColor(max > 0 ? value / max : 0);
+  return (
+    <div
+      className={`relative overflow-hidden rounded-full bg-white/10 ${className}`}
+    >
+      <div
+        className={`h-full transition-all duration-500 ${colorClasses[color].bar}`}
+        style={{ width: `${pct}%` }}
+      />
+    </div>
+  );
 }
 
 export function DeletionScoreBreakdown({
@@ -241,11 +265,14 @@ export function DeletionScoreBreakdown({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className='max-w-lg'>
+      <DialogContent
+        className='max-w-lg max-h-[calc(100svh-4rem)] overflow-y-auto'
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         <DialogHeader>
-          <DialogTitle className='flex items-center gap-2'>
-            <span>Score Breakdown</span>
-            <Badge variant='outline' className='font-normal truncate max-w-48'>
+          <DialogTitle className='flex items-center gap-2 min-w-0'>
+            <span className='shrink-0'>Score Breakdown</span>
+            <Badge variant='outline' className='font-normal truncate min-w-0'>
               {item.title}
             </Badge>
           </DialogTitle>
@@ -256,20 +283,24 @@ export function DeletionScoreBreakdown({
             <Loader2 className='h-6 w-6 animate-spin text-muted-foreground' />
           </div>
         ) : breakdown ? (
-          <div>
+          <div className='min-w-0'>
             {/* Score header */}
-            <div className='flex items-center gap-4 pb-4'>
-              <div className='flex items-baseline gap-1'>
+            <div className='flex items-center gap-3 pb-4'>
+              <div className='flex items-baseline gap-1 shrink-0'>
                 <span className='text-4xl font-bold tabular-nums'>
                   {breakdown.totalScore}
                 </span>
                 <span className='text-lg text-muted-foreground'>/100</span>
               </div>
-              <Progress
+              <ScoreBar
                 value={breakdown.totalScore}
-                className={`flex-1 h-2 ${getScoreBarClass(breakdown.totalScore)}`}
+                max={100}
+                className='flex-1 min-w-0 h-2'
               />
-              <Badge variant={getPriorityVariant(breakdown.totalScore)}>
+              <Badge
+                variant={getPriorityVariant(breakdown.totalScore)}
+                className='shrink-0'
+              >
                 {getPriorityLabel(breakdown.totalScore)}
               </Badge>
             </div>
@@ -279,40 +310,61 @@ export function DeletionScoreBreakdown({
             {/* Factor rows */}
             {enabledCategories.length > 0 ? (
               <div className='pt-1'>
-                {enabledCategories.map(({ key, data, icon: Icon, title }, idx) => (
-                  <div
-                    key={key}
-                    className={`flex items-center gap-3 py-2.5 ${idx < enabledCategories.length - 1 ? 'border-b' : ''}`}
-                  >
-                    <Icon className='h-4 w-4 text-muted-foreground shrink-0' />
-                    <span className='text-sm font-medium w-32 shrink-0'>
-                      {title}
-                    </span>
-                    <span className='text-xs text-muted-foreground flex-1 truncate'>
-                      {getCategoryDetail(key, data)}
-                    </span>
-                    <Progress
-                      value={data.maxPoints > 0 ? (data.pointsEarned / data.maxPoints) * 100 : 0}
-                      className={`w-16 h-1.5 shrink-0 ${getFactorBarClass(data.pointsEarned, data.maxPoints)}`}
-                    />
-                    <Badge
-                      variant='default'
-                      className={`text-xs tabular-nums shrink-0 ${getScoreBadgeClass(data.pointsEarned, data.maxPoints)}`}
+                {enabledCategories.map(({ key, data, icon: Icon, title }, idx) => {
+                  const color = getScoreColor(
+                    data.maxPoints > 0 ? data.pointsEarned / data.maxPoints : 0
+                  );
+                  return (
+                    <div
+                      key={key}
+                      className={`py-2.5 ${idx < enabledCategories.length - 1 ? 'border-b' : ''}`}
                     >
-                      {data.pointsEarned}/{data.maxPoints}
-                    </Badge>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button className='p-0.5 rounded hover:bg-muted transition-colors shrink-0'>
-                          <Info className='h-3.5 w-3.5 text-muted-foreground' />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side='left' className='max-w-56'>
-                        {getCategoryExplanation(key, data)}
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                ))}
+                      {/* Primary row: icon + title + [desktop: detail] + bar + badge + info */}
+                      <div className='flex items-center gap-3'>
+                        <Icon className='h-4 w-4 text-muted-foreground shrink-0' />
+                        <span className='text-sm font-medium shrink-0 sm:w-32'>
+                          {title}
+                        </span>
+                        {/* Detail text: desktop only */}
+                        <span className='hidden sm:block text-xs text-muted-foreground flex-1 min-w-0 truncate'>
+                          {getCategoryDetail(key, data)}
+                        </span>
+                        {/* Progress bar: desktop only */}
+                        <ScoreBar
+                          value={data.pointsEarned}
+                          max={data.maxPoints}
+                          className='hidden sm:block w-16 h-1.5 shrink-0'
+                        />
+                        <span
+                          className={`ml-auto sm:ml-0 text-xs tabular-nums shrink-0 font-medium px-1.5 py-0.5 rounded border ${colorClasses[color].badge}`}
+                        >
+                          {data.pointsEarned}/{data.maxPoints}
+                        </span>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button className='p-0.5 rounded hover:bg-muted transition-colors shrink-0'>
+                              <Info className='h-3.5 w-3.5 text-muted-foreground' />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side='left' className='max-w-56'>
+                            {getCategoryExplanation(key, data)}
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                      {/* Secondary row: detail + bar on mobile only */}
+                      <div className='flex items-center gap-2 mt-1.5 pl-7 sm:hidden'>
+                        <span className='text-xs text-muted-foreground flex-1 min-w-0 truncate'>
+                          {getCategoryDetail(key, data)}
+                        </span>
+                        <ScoreBar
+                          value={data.pointsEarned}
+                          max={data.maxPoints}
+                          className='w-20 h-1.5 shrink-0'
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <div className='py-8 text-center text-muted-foreground'>
