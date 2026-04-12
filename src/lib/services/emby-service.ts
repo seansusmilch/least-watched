@@ -434,7 +434,6 @@ export class EmbyService {
       return null;
   }
 
-
   private static async getAggregatedPlaybackByMovieTitle(
     movieTitle: string,
     embyInstance: EmbySettings,

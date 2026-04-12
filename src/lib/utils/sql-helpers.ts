@@ -1,6 +1,13 @@
 /** Escape a value for use inside a SQL string literal (single-quote doubling). */
 export function sanitizeSqlParam(value: string): string {
-  return String(value).replace(/'/g, "''");
+  return value.replace(/'/g, "''");
+}
+
+/** Swap ': ' and ' - ' separators to produce an alternative title for fuzzy matching. */
+function getAltTitle(title: string): string {
+  return title.includes(': ')
+    ? title.replace(/: /g, ' - ')
+    : title.replace(/ - /g, ': ');
 }
 
 /**
@@ -9,9 +16,7 @@ export function sanitizeSqlParam(value: string): string {
  * recorded under an old title are still matched (e.g. "Show - Part" vs "Show: Part").
  */
 export function buildSeriesWhereClause(safeTitle: string): string {
-  const altTitle = safeTitle.includes(': ')
-    ? safeTitle.replace(/: /g, ' - ')
-    : safeTitle.replace(/ - /g, ': ');
+  const altTitle = getAltTitle(safeTitle);
   const patterns = [`lower(ItemName) LIKE lower('${safeTitle} - s%')`];
   if (altTitle !== safeTitle) patterns.push(`lower(ItemName) LIKE lower('${altTitle} - s%')`);
   return `(${patterns.join(' OR ')})`;
@@ -22,9 +27,7 @@ export function buildSeriesWhereClause(safeTitle: string): string {
  * Matches the current title and its separator variant (' - ' <-> ': ') plus optional ItemId.
  */
 export function buildMovieWhereClause(safeTitle: string, safeId: string | null): string {
-  const altTitle = safeTitle.includes(': ')
-    ? safeTitle.replace(/: /g, ' - ')
-    : safeTitle.replace(/ - /g, ': ');
+  const altTitle = getAltTitle(safeTitle);
   const conditions = [`ItemName = '${safeTitle}'`];
   if (altTitle !== safeTitle) conditions.push(`ItemName = '${altTitle}'`);
   if (safeId) conditions.push(`ItemId = '${safeId}'`);
