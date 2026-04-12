@@ -331,16 +331,9 @@ export class EmbyService {
 
     for (const chunk of chunks) {
       const escapedIdList = chunk
-        .map((id) => `'${String(id).replace(/'/g, "''").replace(/;/g, '')}'`)
+        .map((id) => `'${this.sanitizeSqlParam(String(id))}'`)
         .join(',');
-      const sqlQuery = `SELECT
-          MAX(DateCreated) AS LastWatched,
-          SUM(CASE WHEN PlayDuration > 300 AND PlayDuration < 28800 THEN 1 ELSE 0 END) AS WatchCount
-        FROM (
-          SELECT DateCreated, PlayDuration
-          FROM PlaybackActivity
-          WHERE ItemId IN (${escapedIdList})
-        ) AS Activity`;
+      const sqlQuery = this.buildPlaybackSql(`ItemId IN (${escapedIdList})`);
 
       const data = await this.executeCustomQuery(sqlQuery, embyInstance);
       const partial = this.parseAggregatedPlaybackResponse(data);
@@ -421,7 +414,8 @@ export class EmbyService {
         }
         const agg = await this.getAggregatedPlaybackByMovieTitle(
           title,
-          embyInstance
+          embyInstance,
+          embyId
         );
         return { ...agg, embyId: embyId ?? '' };
       }
@@ -434,42 +428,47 @@ export class EmbyService {
       return null;
   }
 
-  /** Aggregate playback info for a movie using exact ItemName + ItemType match */
+  // Generates LIKE patterns for both ' - ' / ': ' separator variants so playbacks
+  // recorded under an old title are still matched (e.g. "Show - Part" vs "Show: Part").
+  private static buildSeriesWhereClause(safeTitle: string): string {
+    const altTitle = safeTitle.includes(': ')
+      ? safeTitle.replace(/: /g, ' - ')
+      : safeTitle.replace(/ - /g, ': ');
+    const patterns = [`lower(ItemName) LIKE lower('${safeTitle} - s%')`];
+    if (altTitle !== safeTitle) patterns.push(`lower(ItemName) LIKE lower('${altTitle} - s%')`);
+    return `(${patterns.join(' OR ')})`;
+  }
+
+  // Matches the current title and its separator variant (' - ' <-> ': ') plus optional ItemId.
+  private static buildMovieWhereClause(safeTitle: string, safeId: string | null): string {
+    const altTitle = safeTitle.includes(': ')
+      ? safeTitle.replace(/: /g, ' - ')
+      : safeTitle.replace(/ - /g, ': ');
+    const conditions = [`ItemName = '${safeTitle}'`];
+    if (altTitle !== safeTitle) conditions.push(`ItemName = '${altTitle}'`);
+    if (safeId) conditions.push(`ItemId = '${safeId}'`);
+    return `(${conditions.join(' OR ')}) AND ItemType = 'Movie'`;
+  }
+
   private static async getAggregatedPlaybackByMovieTitle(
     movieTitle: string,
-    embyInstance: EmbySettings
+    embyInstance: EmbySettings,
+    embyId?: string
   ): Promise<Pick<EmbyPlaybackInfo, 'lastWatched' | 'watchCount'>> {
-    const safeTitle = this.escapeSqlString(movieTitle).replace(/;/g, '');
-    const sqlQuery = `SELECT
-        MAX(DateCreated) AS LastWatched,
-        SUM(CASE WHEN PlayDuration > 300 AND PlayDuration < 28800 THEN 1 ELSE 0 END) AS WatchCount
-      FROM (
-        SELECT DateCreated, PlayDuration
-        FROM PlaybackActivity
-        WHERE ItemName = '${safeTitle}' AND ItemType = 'Movie'
-      ) AS Activity`;
-
-    const data = await this.executeCustomQuery(sqlQuery, embyInstance);
+    const safeTitle = this.sanitizeSqlParam(movieTitle);
+    const safeId = embyId ? this.sanitizeSqlParam(embyId) : null;
+    const whereClause = this.buildMovieWhereClause(safeTitle, safeId);
+    const data = await this.executeCustomQuery(this.buildPlaybackSql(whereClause), embyInstance);
     return this.parseAggregatedPlaybackResponse(data);
   }
 
-  /** Aggregate playback info for a series using the user_usage_stats ItemName convention "[title] - s%" */
   private static async getAggregatedPlaybackBySeriesTitle(
     seriesTitle: string,
     embyInstance: EmbySettings
   ): Promise<Pick<EmbyPlaybackInfo, 'lastWatched' | 'watchCount'>> {
-    const safeTitle = this.escapeSqlString(seriesTitle).replace(/;/g, '');
-    const likePattern = `${safeTitle} - s%`;
-    const sqlQuery = `SELECT
-        MAX(DateCreated) AS LastWatched,
-        SUM(CASE WHEN PlayDuration > 300 AND PlayDuration < 28800 THEN 1 ELSE 0 END) AS WatchCount
-      FROM (
-        SELECT DateCreated, PlayDuration
-        FROM PlaybackActivity
-        WHERE lower(ItemName) LIKE lower('${likePattern}')
-      ) AS Activity`;
-
-    const data = await this.executeCustomQuery(sqlQuery, embyInstance);
+    const safeTitle = this.sanitizeSqlParam(seriesTitle);
+    const whereClause = this.buildSeriesWhereClause(safeTitle);
+    const data = await this.executeCustomQuery(this.buildPlaybackSql(whereClause), embyInstance);
     return this.parseAggregatedPlaybackResponse(data);
   }
 
@@ -589,42 +588,37 @@ export class EmbyService {
     }
   }
 
-  private static escapeSqlString(value: string): string {
-    return String(value).replace(/'/g, "''");
+  private static sanitizeSqlParam(value: string): string {
+    return String(value).replace(/'/g, "''").replace(/;/g, '');
   }
 
-  /** Build and execute the playback SQL query for a given media item, returning the SQL and raw results for debugging */
+  private static buildPlaybackSql(whereClause: string): string {
+    return `SELECT
+        MAX(DateCreated) AS LastWatched,
+        SUM(CASE WHEN PlayDuration > 300 AND PlayDuration < 28800 THEN 1 ELSE 0 END) AS WatchCount
+      FROM (
+        SELECT DateCreated, PlayDuration
+        FROM PlaybackActivity
+        WHERE ${whereClause}
+      ) AS Activity`;
+  }
+
   static async getPlaybackDebugInfo(
     input: { type: 'movie' | 'tv'; embyId?: string | null; title?: string | null },
     embyInstance: EmbySettings
   ): Promise<{ sql: string; columns: string[]; rows: Array<Array<string | number>> } | null> {
-    let sql: string;
+    if (!input.title) return null;
+    const safeTitle = this.sanitizeSqlParam(input.title);
 
+    let whereClause: string;
     if (input.type === 'tv') {
-      if (!input.title) return null;
-      const safeTitle = this.escapeSqlString(input.title).replace(/;/g, '');
-      const likePattern = `${safeTitle} - s%`;
-      sql = `SELECT
-  MAX(DateCreated) AS LastWatched,
-  SUM(CASE WHEN PlayDuration > 300 AND PlayDuration < 28800 THEN 1 ELSE 0 END) AS WatchCount
-FROM (
-  SELECT DateCreated, PlayDuration
-  FROM PlaybackActivity
-  WHERE lower(ItemName) LIKE lower('${likePattern}')
-) AS Activity`;
+      whereClause = this.buildSeriesWhereClause(safeTitle);
     } else {
-      if (!input.embyId) return null;
-      const escapedId = `'${String(input.embyId).replace(/'/g, "''").replace(/;/g, '')}'`;
-      sql = `SELECT
-  MAX(DateCreated) AS LastWatched,
-  SUM(CASE WHEN PlayDuration > 300 AND PlayDuration < 28800 THEN 1 ELSE 0 END) AS WatchCount
-FROM (
-  SELECT DateCreated, PlayDuration
-  FROM PlaybackActivity
-  WHERE ItemId IN (${escapedId})
-) AS Activity`;
+      const safeId = input.embyId ? this.sanitizeSqlParam(String(input.embyId)) : null;
+      whereClause = this.buildMovieWhereClause(safeTitle, safeId);
     }
 
+    const sql = this.buildPlaybackSql(whereClause);
     const data = await this.executeCustomQuery(sql, embyInstance);
     if (!data) return null;
 
