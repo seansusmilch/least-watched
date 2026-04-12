@@ -145,7 +145,7 @@ export function MediaTableBase({
       queryClient.invalidateQueries({ queryKey: ['media-items'] });
       queryClient.invalidateQueries({ queryKey: ['processed-media-items'] });
       queryClient.invalidateQueries({ queryKey: ['media-summary'] });
-      queryClient.refetchQueries({ queryKey: ['media-items'], type: 'active' });
+      queryClient.refetchQueries({ queryKey: ['processed-media-items'], type: 'active' });
 
       table.resetRowSelection();
 
