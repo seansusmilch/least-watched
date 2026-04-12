@@ -90,8 +90,10 @@ export function PageActions({
 
   return (
     <div className='flex items-center space-x-2'>
-      {/* Latest Update Timestamp */}
-      <LatestUpdateTimestamp />
+      {/* Latest Update Timestamp — hidden on small screens */}
+      <span className='hidden sm:contents'>
+        <LatestUpdateTimestamp />
+      </span>
 
       {/* Process Media Button */}
       <Button

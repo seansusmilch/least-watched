@@ -3,11 +3,10 @@
 import { useState, useRef } from 'react';
 import { flexRender, Table as TanStackTable } from '@tanstack/react-table';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Film, Search, Filter } from 'lucide-react';
+import { Search, Filter } from 'lucide-react';
 import { toast } from 'sonner';
 import { MediaFiltersClient } from '../filters/MediaFiltersClient';
 import { MediaItem } from '@/lib/types/media';
@@ -164,64 +163,64 @@ export function MediaTableBase({
   };
 
   return (
-    <Card className={getCardClasses(fullscreen)}>
-      <CardHeader>
+    <div className={getCardClasses(fullscreen)}>
+      {/* Controls bar */}
+      <div className='pb-3 flex flex-col gap-3'>
         <div className='flex flex-row items-center justify-between'>
-          <CardTitle className='flex items-center space-x-2'>
-            <Film className='h-5 w-5' />
-            <span>Media Items</span>
-          </CardTitle>
+          <p className='text-xs uppercase tracking-widest text-muted-foreground font-medium'>
+            Media Items
+          </p>
           {!fullscreen && (
             <MediaTableNavigationButton fullscreen={fullscreen} />
           )}
         </div>
-        <div className='flex flex-col gap-3'>
-          <MediaTableSelectionControls
-            selectedCount={selectedTableRows.length}
-            selectedSize={selectedSize}
-            onDeleteClick={handleDeleteClick}
-            onRescanClick={handleRescanClick}
-            rescanDisabled={hasActiveProcess || rescanMutation.isPending}
-          />
-          <div className='flex items-center gap-2 w-full'>
-            <div className='relative flex-1 md:flex-none'>
-              <Search className='absolute left-2 top-2.5 h-4 w-4 text-muted-foreground' />
-              <Input
-                aria-label='Search media'
-                placeholder='Search...'
-                value={(table.getState().globalFilter as string) ?? ''}
-                onChange={(e) => table.setGlobalFilter(e.target.value)}
-                className='h-8 w-full md:w-[200px] pl-8'
-              />
-            </div>
-            <div className='flex items-center gap-2 ml-auto'>
-              <Sheet>
-                <SheetTrigger asChild>
-                  <Button variant='outline' size='sm' aria-label='Open filters'>
-                    <Filter className='h-4 w-4 mr-2' /> Filters
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side='right' className='w-full md:max-w-md p-0'>
-                  <MediaFiltersClient
-                    availableGenres={availableGenres}
-                    availableQualities={availableQualities}
-                    availableSources={availableSources}
-                    availableFolders={availableFolders}
-                    totalItems={totalItems}
-                  />
-                </SheetContent>
-              </Sheet>
-              <ColumnVisibilityDropdown
-                table={table}
-                open={columnPopoverOpen}
-                onOpenChange={setColumnPopoverOpen}
-              />
-            </div>
+        <MediaTableSelectionControls
+          selectedCount={selectedTableRows.length}
+          selectedSize={selectedSize}
+          onDeleteClick={handleDeleteClick}
+          onRescanClick={handleRescanClick}
+          rescanDisabled={hasActiveProcess || rescanMutation.isPending}
+        />
+        <div className='flex items-center gap-2 w-full'>
+          <div className='relative flex-1 md:flex-none'>
+            <Search className='absolute left-2 top-2.5 h-4 w-4 text-muted-foreground' />
+            <Input
+              aria-label='Search media'
+              placeholder='Search...'
+              value={(table.getState().globalFilter as string) ?? ''}
+              onChange={(e) => table.setGlobalFilter(e.target.value)}
+              className='h-8 w-full md:w-[200px] pl-8'
+            />
+          </div>
+          <div className='flex items-center gap-2 ml-auto'>
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant='outline' size='sm' aria-label='Open filters'>
+                  <Filter className='h-4 w-4 mr-2' /> Filters
+                </Button>
+              </SheetTrigger>
+              <SheetContent side='right' className='w-full md:max-w-md p-0'>
+                <MediaFiltersClient
+                  availableGenres={availableGenres}
+                  availableQualities={availableQualities}
+                  availableSources={availableSources}
+                  availableFolders={availableFolders}
+                  totalItems={totalItems}
+                />
+              </SheetContent>
+            </Sheet>
+            <ColumnVisibilityDropdown
+              table={table}
+              open={columnPopoverOpen}
+              onOpenChange={setColumnPopoverOpen}
+            />
           </div>
         </div>
-      </CardHeader>
-      <CardContent className={getCardContentClasses(fullscreen)}>
-        <div className='rounded-md border h-full flex flex-col'>
+      </div>
+
+      {/* Table */}
+      <div className={getCardContentClasses(fullscreen)}>
+        <div className='border h-full flex flex-col'>
           <div
             ref={headerRef}
             className='border-b bg-background sticky top-0 z-10 overflow-x-auto scrollbar-hide'
@@ -319,7 +318,7 @@ export function MediaTableBase({
             </div>
           </div>
         </div>
-      </CardContent>
+      </div>
 
       {breakdownItem && (
         <DeletionScoreBreakdown
@@ -337,7 +336,7 @@ export function MediaTableBase({
         embyUrl={embyUrl}
         embyApiKey={embyApiKey}
       />
-    </Card>
+    </div>
   );
 }
 

@@ -22,7 +22,7 @@ export default function LeastWatchedPage() {
     <AppLayout>
       <div className='space-y-6'>
         {/* Static Page Header */}
-        <div className='flex items-center justify-between'>
+        <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
           <div>
             <h1 className='font-display text-3xl font-normal tracking-tight'>
               Least Watched

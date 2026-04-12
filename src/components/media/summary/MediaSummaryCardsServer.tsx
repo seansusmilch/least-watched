@@ -6,9 +6,6 @@ export async function MediaSummaryCardsServer() {
   const processedItems = await getProcessedMediaItems();
 
   return (
-    <MediaSummaryCards
-      filteredItems={processedItems}
-      totalItems={processedItems.length}
-    />
+    <MediaSummaryCards filteredItems={processedItems} />
   );
 }

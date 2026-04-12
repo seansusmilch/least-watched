@@ -5,55 +5,30 @@ import { formatFileSize } from '@/lib/utils/formatters';
 
 interface MediaSummaryCardsProps {
   filteredItems: MediaItem[];
-  totalItems: number;
 }
 
-interface StatCardProps {
+interface StatProps {
   label: string;
   value: string | number;
-  sub: string;
   icon: ElementType;
-  accentClass: string;
-  iconClass: string;
 }
 
-function StatCard({
-  label,
-  value,
-  sub,
-  icon: Icon,
-  accentClass,
-  iconClass,
-}: StatCardProps) {
+function Stat({ label, value, icon: Icon }: StatProps) {
   return (
-    <div className='relative overflow-hidden rounded-lg border bg-card p-5 flex flex-col gap-3 shadow-sm'>
-      {/* Accent bar */}
-      <div className={`absolute left-0 top-0 bottom-0 w-0.5 ${accentClass}`} />
-
-      <div className='flex items-start justify-between'>
-        <p className='text-xs font-semibold uppercase tracking-widest text-muted-foreground'>
-          {label}
-        </p>
-        <div
-          className={`flex size-8 items-center justify-center rounded-md ${iconClass}`}
-        >
-          <Icon className='size-4' />
-        </div>
-      </div>
-
-      <div>
-        <p className='text-3xl font-bold tracking-tight font-mono leading-none'>
-          {value}
-        </p>
-        <p className='mt-1.5 text-xs text-muted-foreground'>{sub}</p>
-      </div>
+    <div className='flex items-baseline gap-2'>
+      <span className='text-2xl font-bold font-mono tracking-tight tabular-nums'>
+        {value}
+      </span>
+      <span className='text-xs text-muted-foreground uppercase tracking-widest font-medium flex items-center gap-1'>
+        <Icon className='size-3 shrink-0' />
+        {label}
+      </span>
     </div>
   );
 }
 
 export const MediaSummaryCards = ({
   filteredItems,
-  totalItems,
 }: MediaSummaryCardsProps) => {
   const totalSize = filteredItems.reduce(
     (sum, item) => sum + (Number(item.sizeOnDisk) || 0),
@@ -66,39 +41,14 @@ export const MediaSummaryCards = ({
   const tvCount = filteredItems.filter((item) => item.type === 'tv').length;
 
   return (
-    <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-4'>
-      <StatCard
-        label='Total Items'
-        value={filteredItems.length}
-        sub={`of ${totalItems} total in library`}
-        icon={TrendingDown}
-        accentClass='bg-primary'
-        iconClass='bg-primary/10 text-primary'
-      />
-      <StatCard
-        label='Storage Impact'
-        value={formatFileSize(totalSize)}
-        sub='Space used by filtered items'
-        icon={HardDrive}
-        accentClass='bg-chart-2'
-        iconClass='bg-chart-2/10 text-chart-2'
-      />
-      <StatCard
-        label='Movies'
-        value={movieCount}
-        sub='Least-watched films'
-        icon={Film}
-        accentClass='bg-chart-3'
-        iconClass='bg-chart-3/10 text-chart-3'
-      />
-      <StatCard
-        label='TV Shows'
-        value={tvCount}
-        sub='Least-watched series'
-        icon={Tv}
-        accentClass='bg-chart-5'
-        iconClass='bg-chart-5/10 text-chart-5'
-      />
+    <div className='flex flex-wrap items-center gap-x-8 gap-y-3 py-1 border-b border-border/50'>
+      <Stat label='items' value={filteredItems.length} icon={TrendingDown} />
+      <div className='w-px h-5 bg-border hidden sm:block' />
+      <Stat label='storage' value={formatFileSize(totalSize)} icon={HardDrive} />
+      <div className='w-px h-5 bg-border hidden sm:block' />
+      <Stat label='movies' value={movieCount} icon={Film} />
+      <div className='w-px h-5 bg-border hidden sm:block' />
+      <Stat label='shows' value={tvCount} icon={Tv} />
     </div>
   );
 };

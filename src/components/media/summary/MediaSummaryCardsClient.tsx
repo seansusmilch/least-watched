@@ -16,9 +16,6 @@ export function MediaSummaryCardsClient() {
   }
 
   return (
-    <MediaSummaryCards
-      filteredItems={processedItems}
-      totalItems={processedItems.length}
-    />
+    <MediaSummaryCards filteredItems={processedItems} />
   );
 }
