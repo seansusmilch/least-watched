@@ -410,20 +410,20 @@ export class EmbyService {
         return { ...agg, embyId: embyId ?? '' };
       }
 
-      // Movies: require a concrete item id
+      // Movies: prefer title-based aggregation to handle item ID changes across rescans
       if (type === 'movie') {
-        if (embyId) {
-          const agg = await this.getAggregatedPlaybackForItemIds(
-            [embyId],
-            embyInstance
+        if (!title) {
+          await eventsService.logError(
+            'emby-api',
+            'Unable to aggregate movie playback without title. Provide title for movie aggregation.'
           );
-          return { ...agg, embyId };
+          return null;
         }
-        await eventsService.logError(
-          'emby-api',
-          'Unable to aggregate movie playback without embyId.'
+        const agg = await this.getAggregatedPlaybackByMovieTitle(
+          title,
+          embyInstance
         );
-        return null;
+        return { ...agg, embyId: embyId ?? '' };
       }
 
       // Unknown type: require explicit type, no fallbacks
@@ -432,6 +432,25 @@ export class EmbyService {
         'Unable to aggregate playback: unknown or missing type.'
       );
       return null;
+  }
+
+  /** Aggregate playback info for a movie using exact ItemName + ItemType match */
+  private static async getAggregatedPlaybackByMovieTitle(
+    movieTitle: string,
+    embyInstance: EmbySettings
+  ): Promise<Pick<EmbyPlaybackInfo, 'lastWatched' | 'watchCount'>> {
+    const safeTitle = this.escapeSqlString(movieTitle).replace(/;/g, '');
+    const sqlQuery = `SELECT
+        MAX(DateCreated) AS LastWatched,
+        SUM(CASE WHEN PlayDuration > 300 AND PlayDuration < 28800 THEN 1 ELSE 0 END) AS WatchCount
+      FROM (
+        SELECT DateCreated, PlayDuration
+        FROM PlaybackActivity
+        WHERE ItemName = '${safeTitle}' AND ItemType = 'Movie'
+      ) AS Activity`;
+
+    const data = await this.executeCustomQuery(sqlQuery, embyInstance);
+    return this.parseAggregatedPlaybackResponse(data);
   }
 
   /** Aggregate playback info for a series using the user_usage_stats ItemName convention "[title] - s%" */
