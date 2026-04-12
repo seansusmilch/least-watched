@@ -10,6 +10,7 @@ import {
   SidebarInset,
 } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
+import { BottomNav } from '@/components/bottom-nav';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -55,9 +56,10 @@ export function AppLayout({ children }: AppLayoutProps) {
         </header>
 
         {/* Page content */}
-        <main className='flex flex-1 flex-col gap-4 p-4 md:p-6'>
+        <main className='flex flex-1 flex-col gap-4 p-4 pb-24 sm:pb-6 md:p-6'>
           {children}
         </main>
+        <BottomNav />
       </SidebarInset>
     </SidebarProvider>
   );
