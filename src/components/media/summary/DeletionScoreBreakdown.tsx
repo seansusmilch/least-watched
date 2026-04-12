@@ -8,8 +8,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import {
   Loader2,
   Calendar,
@@ -18,7 +22,6 @@ import {
   FolderOpen,
   Eye,
   Info,
-  TrendingUp,
 } from 'lucide-react';
 import {
   MediaItem,
@@ -48,6 +51,20 @@ function getScoreBadgeClass(earned: number, max: number): string {
   return 'bg-green-600 text-white hover:bg-green-700';
 }
 
+function getScoreBarClass(score: number): string {
+  if (score > 70) return '[&>div]:bg-red-500';
+  if (score > 40) return '[&>div]:bg-yellow-500';
+  return '[&>div]:bg-green-500';
+}
+
+function getFactorBarClass(earned: number, max: number): string {
+  if (max === 0) return '';
+  const pct = earned / max;
+  if (pct >= 0.75) return '[&>div]:bg-red-500';
+  if (pct >= 0.4) return '[&>div]:bg-yellow-500';
+  return '[&>div]:bg-green-500';
+}
+
 export function DeletionScoreBreakdown({
   item,
   open,
@@ -56,11 +73,7 @@ export function DeletionScoreBreakdown({
   const [breakdown, setBreakdown] = useState<ScoreBreakdownData | null>(null);
   const [loading, setLoading] = useState(true);
   const [datePreference, setDatePreference] = useState<DatePreference>('arr');
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
-    new Set()
-  );
 
-  // Helper to get effective date for display
   const getEffectiveDate = () => getEffectiveDateAdded(item, datePreference);
 
   const loadSettingsAndCalculateBreakdown = useCallback(async () => {
@@ -97,7 +110,6 @@ export function DeletionScoreBreakdown({
     }
   }, [open, loadSettingsAndCalculateBreakdown]);
 
-  // Filter out disabled categories
   const enabledCategories = breakdown
     ? [
         {
@@ -110,7 +122,7 @@ export function DeletionScoreBreakdown({
           key: 'neverWatched',
           data: breakdown.neverWatched,
           icon: Eye,
-          title: 'Never Watched Bonus',
+          title: 'Never Watched',
         },
         {
           key: 'sizeOnDisk',
@@ -133,14 +145,47 @@ export function DeletionScoreBreakdown({
       ].filter((category) => category.data.enabled)
     : [];
 
-  const toggleCategoryExpansion = (categoryKey: string) => {
-    const newExpanded = new Set(expandedCategories);
-    if (newExpanded.has(categoryKey)) {
-      newExpanded.delete(categoryKey);
-    } else {
-      newExpanded.add(categoryKey);
+  const getCategoryDetail = (
+    categoryKey: string,
+    data:
+      | ScoreBreakdownData['daysUnwatched']
+      | ScoreBreakdownData['neverWatched']
+      | ScoreBreakdownData['sizeOnDisk']
+      | ScoreBreakdownData['ageSinceAdded']
+      | ScoreBreakdownData['folderSpace']
+  ): string => {
+    if (!breakdown) return '';
+    switch (categoryKey) {
+      case 'daysUnwatched': {
+        const d = data as ScoreBreakdownData['daysUnwatched'];
+        const suffix = item.lastWatched
+          ? ` · last ${formatDate(item.lastWatched)}`
+          : '';
+        return `${d.daysSince}d · ${d.category}${suffix}`;
+      }
+      case 'neverWatched': {
+        const d = data as ScoreBreakdownData['neverWatched'];
+        return d.applies ? 'Never watched' : 'Has been watched';
+      }
+      case 'sizeOnDisk': {
+        const d = data as ScoreBreakdownData['sizeOnDisk'];
+        return `${formatFileSize(item.sizeOnDisk || 0)} · ${d.category}`;
+      }
+      case 'ageSinceAdded': {
+        const d = data as ScoreBreakdownData['ageSinceAdded'];
+        const effectiveDate = getEffectiveDate();
+        const suffix = effectiveDate ? ` · added ${formatDate(effectiveDate)}` : '';
+        return `${d.daysSince}d${suffix} · ${d.category}`;
+      }
+      case 'folderSpace': {
+        const d = data as ScoreBreakdownData['folderSpace'];
+        return d.remainingPercent !== null && d.remainingPercent !== undefined
+          ? `${d.remainingPercent}% remaining · ${d.category}`
+          : 'No data';
+      }
+      default:
+        return '';
     }
-    setExpandedCategories(newExpanded);
   };
 
   const getCategoryExplanation = (
@@ -151,50 +196,33 @@ export function DeletionScoreBreakdown({
       | ScoreBreakdownData['sizeOnDisk']
       | ScoreBreakdownData['ageSinceAdded']
       | ScoreBreakdownData['folderSpace']
-  ) => {
+  ): string => {
     switch (categoryKey) {
       case 'daysUnwatched': {
-        const daysData = data as ScoreBreakdownData['daysUnwatched'];
-        return `This item has been unwatched for ${daysData.daysSince} days. The score increases the longer an item remains unwatched. This duration is calculated from the last watched date, or the added date for items that have never been watched.`;
+        const d = data as ScoreBreakdownData['daysUnwatched'];
+        return `Unwatched for ${d.daysSince} days. Score increases the longer an item remains unwatched.`;
       }
-
       case 'neverWatched': {
-        const neverData = data as ScoreBreakdownData['neverWatched'];
-        return neverData.applies
-          ? 'This item has never been watched, earning a bonus score. Items that have never been viewed are considered better candidates for deletion.'
-          : "This item has been watched at least once, so no 'never watched' bonus is applied.";
+        const d = data as ScoreBreakdownData['neverWatched'];
+        return d.applies
+          ? 'Never watched bonus applied — items never viewed score higher.'
+          : 'No bonus — item has been watched at least once.';
       }
-
       case 'sizeOnDisk':
-        return `This item takes up ${formatFileSize(
-          item.sizeOnDisk || 0
-        )} of disk space. Larger files get higher deletion scores as they free up more space when deleted.`;
-
+        return `${formatFileSize(item.sizeOnDisk || 0)} on disk. Larger files score higher as they free more space.`;
       case 'ageSinceAdded': {
-        const ageData = data as ScoreBreakdownData['ageSinceAdded'];
-        const effectiveDate = getEffectiveDate();
-        return effectiveDate
-          ? `This item was added ${ageData.daysSince} days ago. Older items that have been in your library longer get higher deletion scores.`
-          : 'No date added information available for this item.';
+        const d = data as ScoreBreakdownData['ageSinceAdded'];
+        return `Added ${d.daysSince} days ago. Older items score higher.`;
       }
-
       case 'folderSpace': {
-        const folderData = data as ScoreBreakdownData['folderSpace'];
-        return folderData.remainingPercent !== null &&
-          folderData.remainingPercent !== undefined
-          ? `The folder containing this item has ${folderData.remainingPercent}% remaining space. Items in folders with less available space get higher deletion scores.`
-          : 'No folder space information available for this item.';
+        const d = data as ScoreBreakdownData['folderSpace'];
+        return d.remainingPercent !== null && d.remainingPercent !== undefined
+          ? `Folder has ${d.remainingPercent}% remaining. Items in fuller folders score higher.`
+          : 'No folder space data available.';
       }
-
       default:
         return '';
     }
-  };
-
-  const getPriorityColor = (score: number) => {
-    if (score > 70) return 'destructive';
-    if (score > 40) return 'secondary';
-    return 'outline';
   };
 
   const getPriorityLabel = (score: number) => {
@@ -203,197 +231,103 @@ export function DeletionScoreBreakdown({
     return 'Low Priority';
   };
 
+  const getPriorityVariant = (
+    score: number
+  ): 'destructive' | 'secondary' | 'outline' => {
+    if (score > 70) return 'destructive';
+    if (score > 40) return 'secondary';
+    return 'outline';
+  };
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className='max-w-2xl max-h-[90vh] overflow-y-auto'>
+      <DialogContent className='max-w-lg'>
         <DialogHeader>
           <DialogTitle className='flex items-center gap-2'>
-            <span>Deletion Score Breakdown</span>
-            <Badge variant='outline'>{item.title}</Badge>
+            <span>Score Breakdown</span>
+            <Badge variant='outline' className='font-normal truncate max-w-48'>
+              {item.title}
+            </Badge>
           </DialogTitle>
         </DialogHeader>
 
         {loading ? (
-          <div className='flex items-center justify-center p-8'>
-            <Loader2 className='h-8 w-8 animate-spin' />
+          <div className='flex items-center justify-center py-10'>
+            <Loader2 className='h-6 w-6 animate-spin text-muted-foreground' />
           </div>
         ) : breakdown ? (
-          <div className='space-y-4'>
-            {/* Overall Score */}
-            <Card>
-              <CardHeader>
-                <CardTitle className='text-lg flex items-center gap-2'>
-                  <TrendingUp className='h-5 w-5' />
-                  Overall Score
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className='flex items-center justify-between mb-3'>
-                  <span className='text-2xl font-bold'>
-                    {breakdown.totalScore}/100
-                  </span>
-                  <Badge
-                    variant={getPriorityColor(breakdown.totalScore)}
-                    className='text-sm'
-                  >
-                    {getPriorityLabel(breakdown.totalScore)}
-                  </Badge>
-                </div>
-                <Progress value={breakdown.totalScore} className='h-3' />
-                <p className='text-sm text-muted-foreground mt-3'>
-                  The overall deletion score is calculated by combining all
-                  enabled factors. Higher scores indicate items that are better
-                  candidates for deletion based on your configured preferences.
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* Score Factors */}
-            <div className='space-y-3'>
-              {enabledCategories.map(({ key, data, icon: Icon, title }) => (
-                <Card key={key}>
-                  <CardHeader>
-                    <div className='flex items-center justify-between'>
-                      <div className='flex items-center gap-2'>
-                        <Icon className='h-4 w-4 text-muted-foreground' />
-                        <span className='font-medium'>{title}</span>
-                      </div>
-                      <div className='flex items-center gap-2'>
-                        <Badge variant='default' className={getScoreBadgeClass(data.pointsEarned, data.maxPoints)}>
-                          {data.pointsEarned}/{data.maxPoints}
-                        </Badge>
-                        <button
-                          onClick={() => toggleCategoryExpansion(key)}
-                          className='p-1 hover:bg-muted rounded transition-colors'
-                          title='Show detailed explanation'
-                        >
-                          <Info className='h-4 w-4 text-muted-foreground hover:text-foreground' />
-                        </button>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    {/* Category-specific details */}
-                    <div className='text-sm text-muted-foreground'>
-                      {key === 'daysUnwatched' && (
-                        <div>
-                          {breakdown.daysUnwatched.daysSince} days since last
-                          watched ({breakdown.daysUnwatched.category})
-                          {item.lastWatched && (
-                            <div className='mt-1'>
-                              <Eye className='h-3 w-3 inline mr-1' />
-                              Last watched: {formatDate(item.lastWatched)}
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {key === 'neverWatched' && (
-                        <div>
-                          {breakdown.neverWatched.applies
-                            ? 'Never watched'
-                            : 'Has been watched'}
-                        </div>
-                      )}
-
-                      {key === 'sizeOnDisk' && (
-                        <div>
-                          {formatFileSize(item.sizeOnDisk || 0)} (
-                          {breakdown.sizeOnDisk.category})
-                        </div>
-                      )}
-
-                      {key === 'ageSinceAdded' && getEffectiveDate() && (
-                        <div>
-                          {breakdown.ageSinceAdded.daysSince} days since added (
-                          {breakdown.ageSinceAdded.category})
-                          <div className='mt-1'>
-                            Added: {formatDate(getEffectiveDate()!)}
-                          </div>
-                        </div>
-                      )}
-
-                      {key === 'folderSpace' && (
-                        <div>
-                          {breakdown.folderSpace.remainingPercent !== null &&
-                          breakdown.folderSpace.remainingPercent !== undefined
-                            ? `${breakdown.folderSpace.remainingPercent}% remaining space (${breakdown.folderSpace.category})`
-                            : 'No folder space data available'}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Detailed explanation when info icon is clicked */}
-                    {expandedCategories.has(key) && (
-                      <div className='mt-3 flex'>
-                        <div className='w-1 bg-primary rounded-l-md mr-3' />
-                        <div className='flex-1 p-3 bg-muted/50 rounded-md'>
-                          <p className='text-sm text-muted-foreground'>
-                            {getCategoryExplanation(key, data)}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-
-              {/* Show message if no categories are enabled */}
-              {enabledCategories.length === 0 && (
-                <Card>
-                  <CardContent className='pt-4'>
-                    <div className='text-center text-muted-foreground py-4'>
-                      <Info className='h-8 w-8 mx-auto mb-2 opacity-50' />
-                      <p>
-                        All deletion score categories are currently disabled.
-                      </p>
-                      <p className='text-sm mt-1'>
-                        Enable categories in Settings → Deletion Score
-                        Configuration to see scoring breakdown.
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+          <div>
+            {/* Score header */}
+            <div className='flex items-center gap-4 pb-4'>
+              <div className='flex items-baseline gap-1'>
+                <span className='text-4xl font-bold tabular-nums'>
+                  {breakdown.totalScore}
+                </span>
+                <span className='text-lg text-muted-foreground'>/100</span>
+              </div>
+              <Progress
+                value={breakdown.totalScore}
+                className={`flex-1 h-2 ${getScoreBarClass(breakdown.totalScore)}`}
+              />
+              <Badge variant={getPriorityVariant(breakdown.totalScore)}>
+                {getPriorityLabel(breakdown.totalScore)}
+              </Badge>
             </div>
 
-            {/* Summary */}
-            {enabledCategories.length > 0 && (
-              <Card>
-                <CardContent className='pt-4'>
-                  <h4 className='font-medium mb-2 flex items-center gap-2'>
-                    <Info className='h-4 w-4' />
-                    How to Use This Information
-                  </h4>
-                  <div className='text-sm text-muted-foreground space-y-2'>
-                    <p>
-                      • <strong>Higher scores</strong> indicate items that are
-                      better candidates for deletion
-                    </p>
-                    <p>
-                      • <strong>Disabled categories</strong> don&apos;t
-                      contribute to the score
-                    </p>
-                    <p>
-                      • <strong>Adjust weights</strong> in Settings to match
-                      your priorities
-                    </p>
-                    <p>
-                      • <strong>Consider context</strong> - scores are
-                      suggestions, not automatic deletion commands
-                    </p>
+            <div className='border-t' />
+
+            {/* Factor rows */}
+            {enabledCategories.length > 0 ? (
+              <div className='pt-1'>
+                {enabledCategories.map(({ key, data, icon: Icon, title }, idx) => (
+                  <div
+                    key={key}
+                    className={`flex items-center gap-3 py-2.5 ${idx < enabledCategories.length - 1 ? 'border-b' : ''}`}
+                  >
+                    <Icon className='h-4 w-4 text-muted-foreground shrink-0' />
+                    <span className='text-sm font-medium w-32 shrink-0'>
+                      {title}
+                    </span>
+                    <span className='text-xs text-muted-foreground flex-1 truncate'>
+                      {getCategoryDetail(key, data)}
+                    </span>
+                    <Progress
+                      value={data.maxPoints > 0 ? (data.pointsEarned / data.maxPoints) * 100 : 0}
+                      className={`w-16 h-1.5 shrink-0 ${getFactorBarClass(data.pointsEarned, data.maxPoints)}`}
+                    />
+                    <Badge
+                      variant='default'
+                      className={`text-xs tabular-nums shrink-0 ${getScoreBadgeClass(data.pointsEarned, data.maxPoints)}`}
+                    >
+                      {data.pointsEarned}/{data.maxPoints}
+                    </Badge>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button className='p-0.5 rounded hover:bg-muted transition-colors shrink-0'>
+                          <Info className='h-3.5 w-3.5 text-muted-foreground' />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side='left' className='max-w-56'>
+                        {getCategoryExplanation(key, data)}
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
-                </CardContent>
-              </Card>
+                ))}
+              </div>
+            ) : (
+              <div className='py-8 text-center text-muted-foreground'>
+                <Info className='h-6 w-6 mx-auto mb-2 opacity-40' />
+                <p className='text-sm'>All scoring categories are disabled.</p>
+                <p className='text-xs mt-1'>
+                  Enable categories in Settings → Deletion Score.
+                </p>
+              </div>
             )}
           </div>
         ) : (
-          <div className='text-center text-muted-foreground p-8'>
-            <Info className='h-8 w-8 mx-auto mb-2 opacity-50' />
-            <p>No breakdown data available</p>
-            <p className='text-sm mt-1'>
-              Check your deletion score settings to ensure scoring is enabled.
-            </p>
+          <div className='py-8 text-center text-muted-foreground'>
+            <Info className='h-6 w-6 mx-auto mb-2 opacity-40' />
+            <p className='text-sm'>No breakdown data available.</p>
           </div>
         )}
       </DialogContent>
