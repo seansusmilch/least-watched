@@ -4,10 +4,11 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { MediaItem } from '@/lib/types/media';
 import { formatDate, formatFileSize } from '@/lib/utils/formatters';
-import { Film, Tv, Eye, Clock } from 'lucide-react';
+import { Film, Tv, Eye, Clock, CalendarPlus } from 'lucide-react';
 import { MediaTitleHoverCard } from './MediaTitleHoverCard';
 import { DeletionScoreBadge } from '../DeletionScoreBadge';
 import { PlaybackDebugDialog } from './PlaybackDebugDialog';
+import { DateAddedDebugDialog } from './DateAddedDebugDialog';
 
 const columnHelper = createColumnHelper<MediaItem>();
 
@@ -199,10 +200,20 @@ export const createMediaTableColumns = (
   columnHelper.accessor('effectiveDateAdded', {
     id: 'dateAdded',
     header: 'Date Added',
-    cell: ({ getValue }) => formatDate(getValue()),
+    cell: ({ getValue, row }) => {
+      const value = getValue();
+      return (
+        <DateAddedDebugDialog item={row.original}>
+          <button className='flex items-center hover:underline cursor-pointer' title='Click to debug date added'>
+            <CalendarPlus className='h-3 w-3 mr-1' />
+            {value ? formatDate(value) : <span className='text-muted-foreground'>Unknown</span>}
+          </button>
+        </DateAddedDebugDialog>
+      );
+    },
     enableSorting: true,
     enableColumnFilter: true,
-    size: 140,
+    size: 155,
   }),
 
   // Emby Date Added column (hidden by default via column config)

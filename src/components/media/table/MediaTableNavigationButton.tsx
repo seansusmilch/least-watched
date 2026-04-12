@@ -21,10 +21,9 @@ export function MediaTableNavigationButton({
   }
 
   return (
-    <Button variant='outline' size='sm' asChild>
-      <Link href='/media'>
-        <Maximize2 className='h-4 w-4 mr-2' />
-        Expand
+    <Button variant='outline' size='icon' asChild>
+      <Link href='/media' aria-label='Expand to full view'>
+        <Maximize2 className='h-4 w-4' />
       </Link>
     </Button>
   );

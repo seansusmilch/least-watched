@@ -66,13 +66,10 @@ export const MediaItemSchema = z.object({
 
 export type MediaItem = z.infer<typeof MediaItemSchema>;
 
-/**
- * Helper function to get the effective dateAdded based on the date preference setting
- */
-export function getEffectiveDateAdded(
+export function getEffectiveDateAddedWithSource(
   item: MediaItem,
   datePreference: DatePreference = 'arr'
-): Date | null {
+): { date: Date | null; source: 'arr' | 'emby' | null } {
   const embyDate = item.dateAddedEmby
     ? typeof item.dateAddedEmby === 'string'
       ? new Date(item.dateAddedEmby)
@@ -87,17 +84,29 @@ export function getEffectiveDateAdded(
 
   switch (datePreference) {
     case 'emby':
-      return embyDate || arrDate;
+      if (embyDate) return { date: embyDate, source: 'emby' };
+      return { date: arrDate, source: arrDate ? 'arr' : null };
     case 'arr':
-      return arrDate || embyDate;
+      if (arrDate) return { date: arrDate, source: 'arr' };
+      return { date: embyDate, source: embyDate ? 'emby' : null };
     case 'oldest':
       if (embyDate && arrDate) {
-        return embyDate < arrDate ? embyDate : arrDate;
+        return embyDate < arrDate ? { date: embyDate, source: 'emby' } : { date: arrDate, source: 'arr' };
       }
-      return embyDate || arrDate;
+      if (embyDate) return { date: embyDate, source: 'emby' };
+      if (arrDate) return { date: arrDate, source: 'arr' };
+      return { date: null, source: null };
     default:
-      return arrDate || embyDate;
+      if (arrDate) return { date: arrDate, source: 'arr' };
+      return { date: embyDate, source: embyDate ? 'emby' : null };
   }
+}
+
+export function getEffectiveDateAdded(
+  item: MediaItem,
+  datePreference: DatePreference = 'arr'
+): Date | null {
+  return getEffectiveDateAddedWithSource(item, datePreference).date;
 }
 
 export interface SortCriteria {

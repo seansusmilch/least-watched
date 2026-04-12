@@ -8,10 +8,11 @@ import {
   VisibilityState,
   RowSelectionState,
 } from '@tanstack/react-table';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { MediaItem } from '@/lib/types/media';
 import { createMediaTableColumns } from '@/components/media/table/mediaTableColumns';
 import {
+  getDefaultColumnVisibility,
   loadColumnVisibility,
   saveColumnVisibility,
 } from '@/lib/utils/columnConfig';
@@ -24,18 +25,26 @@ export function useMediaTable(
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
-    () => loadColumnVisibility()
+    getDefaultColumnVisibility()
   );
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [globalFilter, setGlobalFilter] = useState('');
+  const hasHydratedRef = useRef(false);
 
   const globalSearchColumnIds = useMemo(
     () => new Set<string>(['title', 'type', 'source', 'folder']),
     []
   );
 
-  // Save column visibility changes to localStorage
+  // Load from localStorage after client hydration, then save on subsequent changes.
+  // Using useState initializer alone won't work because Next.js SSR runs it without
+  // window access, returning defaults, and hydration preserves that server state.
   useEffect(() => {
+    if (!hasHydratedRef.current) {
+      hasHydratedRef.current = true;
+      setColumnVisibility(loadColumnVisibility());
+      return;
+    }
     saveColumnVisibility(columnVisibility);
   }, [columnVisibility]);
 
