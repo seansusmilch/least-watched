@@ -9,6 +9,7 @@ import {
   SidebarTrigger,
   SidebarInset,
 } from '@/components/ui/sidebar';
+import { Separator } from '@/components/ui/separator';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -43,15 +44,20 @@ export function AppLayout({ children }: AppLayoutProps) {
       <AppSidebar />
       <SidebarInset>
         {/* Top header */}
-        <header className='flex h-16 shrink-0 items-center gap-2 border-b px-4'>
-          <SidebarTrigger className='-ml-1' />
+        <header className='flex h-14 shrink-0 items-center gap-2 border-b bg-background/95 backdrop-blur-sm px-4'>
+          <SidebarTrigger className='-ml-1 text-muted-foreground hover:text-foreground' />
+          <Separator orientation='vertical' className='h-4 mx-1' />
           <div className='flex-1' />
-          <AlertsDropdown />
-          <ThemeToggle />
+          <div className='flex items-center gap-1'>
+            <AlertsDropdown />
+            <ThemeToggle />
+          </div>
         </header>
 
         {/* Page content */}
-        <main className='flex flex-1 flex-col gap-4 p-4'>{children}</main>
+        <main className='flex flex-1 flex-col gap-4 p-4 md:p-6'>
+          {children}
+        </main>
       </SidebarInset>
     </SidebarProvider>
   );

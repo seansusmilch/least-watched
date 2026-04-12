@@ -24,8 +24,10 @@ export default function LeastWatchedPage() {
         {/* Static Page Header */}
         <div className='flex items-center justify-between'>
           <div>
-            <h1 className='text-3xl font-bold tracking-tight'>Least Watched</h1>
-            <p className='text-muted-foreground'>
+            <h1 className='font-display text-3xl font-normal tracking-tight'>
+              Least Watched
+            </h1>
+            <p className='text-sm text-muted-foreground mt-0.5'>
               Identify and manage your unwatched media content
             </p>
           </div>
