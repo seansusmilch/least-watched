@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { Geist, Geist_Mono, Instrument_Serif } from 'next/font/google';
 import { ThemeProvider } from '@/components/theme-provider';
 import { QueryProvider } from '@/providers/query-provider';
 import { Toaster } from '@/components/ui/sonner';
@@ -15,6 +15,12 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
+const instrumentSerif = Instrument_Serif({
+  variable: '--font-instrument-serif',
+  subsets: ['latin'],
+  weight: '400',
+});
+
 export const metadata: Metadata = {
   title: 'Least Watched',
   description: 'Track your least watched media',
@@ -28,7 +34,7 @@ export default function RootLayout({
   return (
     <html lang='en' suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} antialiased`}
       >
         <QueryProvider>
           <ThemeProvider
@@ -43,7 +49,6 @@ export default function RootLayout({
         <Toaster
           toastOptions={{
             className: 'toast-item',
-            // Add test ID for individual toasts
             ...(process.env.NODE_ENV === 'test' && {
               'data-testid': 'toast-item',
             }),
