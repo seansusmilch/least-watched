@@ -14,7 +14,11 @@ const columnHelper = createColumnHelper<MediaItem>();
 
 export const createMediaTableColumns = (
   embyUrl?: string | null,
-  embyApiKey?: string | null
+  embyApiKey?: string | null,
+  onRowCtrlShiftClick?: (
+    rowId: string,
+    modifiers: Pick<MouseEvent, 'ctrlKey' | 'metaKey' | 'shiftKey'>
+  ) => void
 ) => [
   // Selection column
   columnHelper.display({
@@ -33,6 +37,15 @@ export const createMediaTableColumns = (
       <Checkbox
         checked={row.getIsSelected()}
         onCheckedChange={(value) => row.toggleSelected(!!value)}
+        onClickCapture={(event) => {
+          if (!event.shiftKey || (!event.ctrlKey && !event.metaKey)) {
+            return;
+          }
+
+          event.preventDefault();
+          event.stopPropagation();
+          onRowCtrlShiftClick?.(row.original.id, event);
+        }}
         aria-label='Select row'
       />
     ),

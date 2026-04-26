@@ -7,10 +7,12 @@ import {
   SortingState,
   VisibilityState,
   RowSelectionState,
+  type Table as TanStackTable,
 } from '@tanstack/react-table';
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { MediaItem } from '@/lib/types/media';
 import { createMediaTableColumns } from '@/components/media/table/mediaTableColumns';
+import { applyCtrlShiftRangeSelection } from '@/components/media/table/selection-utils';
 import {
   getDefaultColumnVisibility,
   loadColumnVisibility,
@@ -30,6 +32,7 @@ export function useMediaTable(
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [globalFilter, setGlobalFilter] = useState('');
   const hasHydratedRef = useRef(false);
+  const tableRef = useRef<TanStackTable<MediaItem> | null>(null);
 
   const globalSearchColumnIds = useMemo(
     () => new Set<string>(['title', 'type', 'source', 'folder']),
@@ -48,10 +51,30 @@ export function useMediaTable(
     saveColumnVisibility(columnVisibility);
   }, [columnVisibility]);
 
-  // Memoize columns to prevent unnecessary re-renders
+  const selectRowWithCtrlShift = useCallback(
+    (
+      rowId: string,
+      modifiers: Pick<MouseEvent, 'ctrlKey' | 'metaKey' | 'shiftKey'>
+    ) => {
+      setRowSelection((currentSelection) => {
+        if (!(modifiers.shiftKey && (modifiers.ctrlKey || modifiers.metaKey))) {
+          return currentSelection;
+        }
+
+        const rowIds = tableRef.current
+          ? tableRef.current.getRowModel().rows.map((row) => row.original.id)
+          : data.map((row) => row.id);
+
+        return applyCtrlShiftRangeSelection(rowIds, currentSelection, rowId);
+      });
+    },
+    [data]
+  );
+
   const columns = useMemo(
-    () => createMediaTableColumns(embyUrl, embyApiKey),
-    [embyUrl, embyApiKey]
+    () =>
+      createMediaTableColumns(embyUrl, embyApiKey, selectRowWithCtrlShift),
+    [embyUrl, embyApiKey, selectRowWithCtrlShift]
   );
 
   const table = useReactTable({
@@ -65,6 +88,7 @@ export function useMediaTable(
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
     onGlobalFilterChange: setGlobalFilter,
+    getRowId: (row) => row.id,
     state: {
       sorting,
       columnFilters,
@@ -98,6 +122,8 @@ export function useMediaTable(
       return String(value).toLowerCase().includes(search);
     },
   });
+
+  tableRef.current = table;
 
   // Helper functions for common operations
   const resetFilters = () => {
