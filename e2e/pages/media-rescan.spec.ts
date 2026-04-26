@@ -36,4 +36,18 @@ test.describe.serial('Media Table Rescan', () => {
     await expect(page.getByTestId('progress-percentage')).toBeVisible();
     await expect(page.getByTestId('progress-percentage')).toContainText('100');
   });
+
+  test('ctrl+shift click selects the range between checked rows', async ({ page }) => {
+    const rowCheckboxes = page.getByRole('checkbox', { name: 'Select row' });
+
+    await expect(rowCheckboxes.nth(2)).toBeVisible({ timeout: 15000 });
+
+    await rowCheckboxes.nth(0).check();
+    await rowCheckboxes.nth(2).check();
+    await rowCheckboxes.nth(1).click({ modifiers: ['Control', 'Shift'] });
+
+    await expect(page.getByText(/3 selected/)).toBeVisible();
+    await expect(rowCheckboxes.nth(1)).toBeChecked();
+    await expect(rowCheckboxes.nth(2)).toBeChecked();
+  });
 });
